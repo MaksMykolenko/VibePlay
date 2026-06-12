@@ -1,13 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import {
   createCommentSchema,
+  createFeedbackSchema,
   createReportSchema,
   errors,
   gamesListQuerySchema,
   paginationSchema,
+  parseGameHostBase,
+  publishedGameOrigin,
   updateCommentSchema,
 } from '@vibeplay/shared';
 import { requireActiveUser } from '../lib/guards.js';
+import { rlPolicy } from '../lib/rateLimit.js';
 import {
   paginated,
   toCommentDto,
@@ -220,31 +224,35 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     );
   });
 
-  app.post<{ Params: { gameId: string } }>('/games/:gameId/comments', async (req) => {
-    const user = requireActiveUser(req);
-    const body = parse(createCommentSchema, req.body);
-    const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, status: 'PUBLISHED' },
-      select: { id: true, creatorId: true, title: true },
-    });
-    if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
-    const comment = await prisma.comment.create({
-      data: { gameId: game.id, userId: user.id, body: body.body },
-      include: { user: true },
-    });
-    if (game.creatorId !== user.id) {
-      await prisma.notification.create({
-        data: {
-          userId: game.creatorId,
-          type: 'NEW_COMMENT',
-          title: 'New comment',
-          body: `@${user.username} commented on “${game.title}”.`,
-          metadata: { gameId: game.id, commentId: comment.id },
-        },
+  app.post<{ Params: { gameId: string } }>(
+    '/games/:gameId/comments',
+    { config: { rateLimit: rlPolicy('comments') } },
+    async (req) => {
+      const user = requireActiveUser(req);
+      const body = parse(createCommentSchema, req.body);
+      const game = await prisma.game.findFirst({
+        where: { id: req.params.gameId, status: 'PUBLISHED' },
+        select: { id: true, creatorId: true, title: true },
       });
-    }
-    return { comment: toCommentDto(comment, user.id) };
-  });
+      if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
+      const comment = await prisma.comment.create({
+        data: { gameId: game.id, userId: user.id, body: body.body },
+        include: { user: true },
+      });
+      if (game.creatorId !== user.id) {
+        await prisma.notification.create({
+          data: {
+            userId: game.creatorId,
+            type: 'NEW_COMMENT',
+            title: 'New comment',
+            body: `@${user.username} commented on “${game.title}”.`,
+            metadata: { gameId: game.id, commentId: comment.id },
+          },
+        });
+      }
+      return { comment: toCommentDto(comment, user.id) };
+    },
+  );
 
   app.patch<{ Params: { commentId: string } }>('/comments/:commentId', async (req) => {
     const user = requireActiveUser(req);
@@ -274,7 +282,30 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     reply.status(204).send();
   });
 
-  app.post('/reports', async (req, reply) => {
+  // Beta feedback / bug reports (spec §38): stored and surfaced to admins.
+  app.post('/feedback', { config: { rateLimit: rlPolicy('feedback') } }, async (req, reply) => {
+    const user = requireActiveUser(req);
+    const body = parse(createFeedbackSchema, req.body);
+    await prisma.feedback.create({
+      data: { userId: user.id, category: body.category, message: body.message, page: body.page },
+    });
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN', status: 'ACTIVE' },
+      select: { id: true },
+    });
+    await prisma.notification.createMany({
+      data: admins.map((a) => ({
+        userId: a.id,
+        type: 'PLATFORM' as const,
+        title: body.category === 'BUG' ? 'Beta bug report' : 'Beta feedback',
+        body: `@${user.username}: ${body.message.slice(0, 300)}`,
+        metadata: { page: body.page },
+      })),
+    });
+    reply.status(204).send();
+  });
+
+  app.post('/reports', { config: { rateLimit: rlPolicy('reports') } }, async (req, reply) => {
     const user = requireActiveUser(req);
     const body = parse(createReportSchema, req.body);
     const exists =
@@ -317,31 +348,42 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     reply.status(204).send();
   });
 
-  app.post<{ Params: { gameId: string } }>('/games/:gameId/launch', async (req) => {
-    const game = await prisma.game.findFirst({
-      where: { id: req.params.gameId, status: 'PUBLISHED', publishedVersionId: { not: null } },
-      select: { id: true, publishedVersionId: true },
-    });
-    if (!game?.publishedVersionId) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
-    const play = await prisma.$transaction(async (tx) => {
-      const session = await tx.playSession.create({
-        data: {
-          userId: req.currentUser?.id ?? null,
-          gameId: game.id,
-          gameVersionId: game.publishedVersionId!,
-        },
+  app.post<{ Params: { gameId: string } }>(
+    '/games/:gameId/launch',
+    { config: { rateLimit: rlPolicy('gameLaunch') } },
+    async (req) => {
+      const game = await prisma.game.findFirst({
+        where: { id: req.params.gameId, status: 'PUBLISHED', publishedVersionId: { not: null } },
+        select: { id: true, publishedVersionId: true },
       });
-      await tx.game.update({ where: { id: game.id }, data: { playsCount: { increment: 1 } } });
-      return session;
-    });
-    return {
-      sessionId: play.id,
-      gameUrl: `${new URL(env.GAME_ORIGIN).origin}/g/${game.id}/${game.publishedVersionId}/index.html`,
-      gameVersionId: game.publishedVersionId,
-      expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
-      permissions: ['fullscreen'],
-    };
-  });
+      if (!game?.publishedVersionId) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
+      const play = await prisma.$transaction(async (tx) => {
+        const session = await tx.playSession.create({
+          data: {
+            userId: req.currentUser?.id ?? null,
+            gameId: game.id,
+            gameVersionId: game.publishedVersionId!,
+          },
+        });
+        await tx.game.update({ where: { id: game.id }, data: { playsCount: { increment: 1 } } });
+        return session;
+      });
+      // One origin per published version (spec §24): the iframe gets a unique
+      // {versionId}.{gameId}.<game host base> origin and never a shared one.
+      const gameOrigin = publishedGameOrigin(
+        parseGameHostBase(env.GAME_ORIGIN),
+        game.id,
+        game.publishedVersionId,
+      );
+      return {
+        sessionId: play.id,
+        gameUrl: `${gameOrigin}/index.html`,
+        gameVersionId: game.publishedVersionId,
+        expiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+        permissions: ['fullscreen'],
+      };
+    },
+  );
 
   app.post<{ Params: { sessionId: string } }>(
     '/play-sessions/:sessionId/end',

@@ -147,6 +147,12 @@ export const gameHostEnvSchema = baseSchema
     GAME_HOST_PORT: z.coerce.number().int().default(8080),
     GAME_HOST_HOST: z.string().default('0.0.0.0'),
     WEB_ORIGIN: z.url(),
+    /**
+     * Base URL of the game host as seen by browsers, e.g.
+     * http://games.localhost:8080 or https://games-beta.vibeplayusercontent.example.
+     * Per-version content is served from {versionId}.{gameId}.<this host>.
+     */
+    GAME_ORIGIN: z.url(),
     PREVIEW_URL_SECRET: z.string().min(32),
     REDIS_URL: z.string().optional().default(''),
     /** Positive lookup cache TTL; hidden games stop serving within this window. */

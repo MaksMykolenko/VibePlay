@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { LaunchDescriptorDto } from '@vibeplay/shared';
+import { isAllowedGameLaunchUrl, type LaunchDescriptorDto } from '@vibeplay/shared';
 import { GameBridge } from '@vibeplay/sdk';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import { api } from '../lib/api';
-import { GAME_ORIGIN, IS_DEMO } from '../lib/appMode';
+import { GAME_ORIGIN } from '../lib/appMode';
+
+// Module-local static flag: import.meta.env.APP_MODE is folded by Vite at
+// build time, so every demo-only branch below (fake loading texts, canvas
+// simulation) is dead-code-eliminated from the real bundle.
+const IS_DEMO = import.meta.env.APP_MODE === 'demo';
 import {
   ArrowLeft,
   Maximize2,
@@ -77,8 +82,9 @@ export const GamePlayerPage: React.FC = () => {
     void api
       .launchGame(gameId)
       .then((descriptor) => {
-        const expectedOrigin = new URL(GAME_ORIGIN).origin;
-        if (new URL(descriptor.gameUrl).origin !== expectedOrigin) {
+        // The launch URL must be a unique per-version subdomain of the
+        // configured game host base — never the shared base origin itself.
+        if (!isAllowedGameLaunchUrl(descriptor.gameUrl, GAME_ORIGIN)) {
           throw new Error('The game launch origin does not match the configured game host.');
         }
         sessionId = descriptor.sessionId;

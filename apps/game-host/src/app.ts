@@ -2,14 +2,23 @@
  * VibePlay game host — the ONLY reader of published game files (spec §25–27, §30).
  *
  * Security model:
- * - runs on a separate origin (separate registrable domain in production);
- * - never sees or sets main-app auth cookies;
+ * - runs on a separate registrable domain from the main app, so main-app auth
+ *   cookies and site-scoped permissions can never cover game content;
+ * - every published version is served from its OWN origin
+ *   ({versionId}.{gameId}.<base>), so two games — and even two versions of the
+ *   same game — can never share localStorage / IndexedDB / Cache Storage /
+ *   Service Workers, even with `allow-same-origin` in the player iframe;
+ * - admin preview runs on {versionId}.preview.<base> and requires a
+ *   short-lived HMAC token embedded in the path (relative assets keep it);
  * - on every request validates against the database that the requested version
  *   is the currently published version of a PUBLISHED game (short TTL cache,
  *   invalidated via Redis pub/sub) → hiding a game kills new loads within
  *   ACCESS_CACHE_TTL_SECONDS;
- * - admin preview of READY_FOR_REVIEW builds requires a short-lived HMAC token;
+ * - requests to the bare base host or to unknown host shapes are refused;
  * - strict CSP: WebGL/WASM-friendly but no external network, no frames, no forms.
+ *
+ * Reserved paths on every game origin (cannot be shadowed by game files):
+ * /health/*, /sdk/*.
  */
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createRequire } from 'node:module';
@@ -18,7 +27,14 @@ import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import { Redis } from 'ioredis';
 import type { GameHostEnv } from '@vibeplay/config';
 import { createPrismaClient, type PrismaClient } from '@vibeplay/database';
-import { MIME_TYPES, checkArchivePath, fileExtension, storageKeys } from '@vibeplay/shared';
+import {
+  MIME_TYPES,
+  checkArchivePath,
+  fileExtension,
+  parseGameHostBase,
+  parseGameHostName,
+  storageKeys,
+} from '@vibeplay/shared';
 import { createFsStorage, createS3Storage, type ObjectStorage } from '@vibeplay/storage';
 
 export interface GameHostOptions {
@@ -58,6 +74,7 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
   const app = Fastify({
     logger: {
       level: env.LOG_LEVEL,
+      base: { service: 'game-host' },
       ...(env.NODE_ENV === 'development'
         ? { transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }
         : {}),
@@ -80,6 +97,7 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
 
   const accessCache = new Map<string, AccessEntry>();
   const csp = buildGameCsp(new URL(env.WEB_ORIGIN).origin);
+  const hostBase = parseGameHostBase(env.GAME_ORIGIN);
 
   // Redis invalidation (optional — without Redis we rely on the short TTL).
   let sub: Redis | null = null;
@@ -164,11 +182,22 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
     }
   }
 
-  // --- published game content ----------------------------------------------
-  app.get<{ Params: { gameId: string; versionId: string; '*': string } }>(
-    '/g/:gameId/:versionId/*',
-    async (req, reply) => {
-      const { gameId, versionId } = req.params;
+  // --- game content, routed by Host header (one origin per version) ---------
+  // {versionId}.{gameId}.<base>  → published, immutable content
+  // {versionId}.preview.<base>   → admin preview, token as first path segment
+  app.get<{ Params: { '*': string } }>('/*', async (req, reply) => {
+    const parsedHost = parseGameHostName(req.headers.host ?? '', hostBase.hostname);
+
+    if (!parsedHost || parsedHost.kind === 'base') {
+      // The bare base host serves nothing: there is intentionally no shared
+      // origin from which more than one game could ever be loaded.
+      setSecurityHeaders(reply, false);
+      await reply.status(404).send({ error: 'not found' });
+      return;
+    }
+
+    if (parsedHost.kind === 'published') {
+      const { gameId, versionId } = parsedHost;
       const rel = req.params['*'] || 'index.html';
       if (!(await isServablePublished(gameId, versionId))) {
         setSecurityHeaders(reply, false);
@@ -176,16 +205,16 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
         return;
       }
       await streamFile(reply, storageKeys.publishedPrefix(gameId, versionId), rel, true);
-    },
-  );
+      return;
+    }
 
-  // --- admin preview (short-lived HMAC token, no cookies on this origin) ----
-  app.get<{
-    Params: { versionId: string; token: string; '*': string };
-  }>('/preview/:versionId/:token/*', async (req, reply) => {
-    const { versionId, token } = req.params;
-    const rel = req.params['*'] || 'index.html';
-    if (!verifyPreviewToken(versionId, token, env.PREVIEW_URL_SECRET)) {
+    // kind === 'preview' — short-lived HMAC token, no cookies on this origin.
+    const { versionId } = parsedHost;
+    const raw = req.params['*'] || '';
+    const slash = raw.indexOf('/');
+    const token = decodeURIComponent(slash === -1 ? raw : raw.slice(0, slash));
+    const rel = slash === -1 ? 'index.html' : raw.slice(slash + 1) || 'index.html';
+    if (!token || !verifyPreviewToken(versionId, token, env.PREVIEW_URL_SECRET)) {
       setSecurityHeaders(reply, false);
       await reply.status(403).send({ error: 'invalid or expired preview token' });
       return;

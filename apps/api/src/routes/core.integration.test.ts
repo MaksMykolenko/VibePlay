@@ -230,7 +230,10 @@ describe('core MVP routes', () => {
       payload: {},
     });
     expect(launch.statusCode, launch.body).toBe(200);
-    expect(launch.json().gameUrl).toContain(`/g/${game.id}/${version.id}/index.html`);
+    // Per-version unique origin: {versionId}.{gameId}.<game host base>.
+    expect(launch.json().gameUrl).toBe(
+      `http://${version.id}.${game.id}.games.localhost:8080/index.html`,
+    );
   });
 
   it('blocks self-moderation and approval from invalid states', async () => {

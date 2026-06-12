@@ -6,3 +6,4 @@ export * from './schemas.js';
 export * from './dto.js';
 export * from './sdkProtocol.js';
 export * from './archive.js';
+export * from './gameOrigin.js';

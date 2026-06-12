@@ -8,6 +8,8 @@ import {
   createInviteSchema,
   errors,
   featureGameSchema,
+  parseGameHostBase,
+  previewGameOrigin,
   rejectVersionSchema,
   resolveReportSchema,
   suspendUserSchema,
@@ -23,6 +25,7 @@ import {
   toPublicUser,
   toReportDto,
 } from '../lib/serializers.js';
+import { rlPolicy } from '../lib/rateLimit.js';
 import { parse } from '../lib/validate.js';
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
@@ -68,6 +71,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { versionId: string } }>(
     '/game-versions/:versionId/approve',
+    { config: { rateLimit: rlPolicy('adminAction') } },
     async (req, reply) => {
       const admin = requireAdmin(req);
       const body = parse(approveVersionSchema, req.body);
@@ -136,6 +140,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { versionId: string } }>(
     '/game-versions/:versionId/reject',
+    { config: { rateLimit: rlPolicy('adminAction') } },
     async (req, reply) => {
       const admin = requireAdmin(req);
       const body = parse(rejectVersionSchema, req.body);
@@ -193,29 +198,37 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { versionId: string } }>(
     '/game-versions/:versionId/preview-url',
+    { config: { rateLimit: rlPolicy('adminAction') } },
     async (req) => {
       const version = await prisma.gameVersion.findUnique({ where: { id: req.params.versionId } });
       if (!version || version.status !== 'READY_FOR_REVIEW' || !version.publishedObjectPrefix) {
         throw errors.notFound('VERSION_NOT_FOUND', 'Previewable version not found');
       }
       const token = signExpiringValue(version.id, Date.now() + 5 * 60_000, env.PREVIEW_URL_SECRET);
+      // Preview gets its own {versionId}.preview.<base> origin so review
+      // sessions never share storage with published games (spec §25).
+      const origin = previewGameOrigin(parseGameHostBase(env.GAME_ORIGIN), version.id);
       return {
-        url: `${new URL(env.GAME_ORIGIN).origin}/preview/${version.id}/${encodeURIComponent(token)}/index.html`,
+        url: `${origin}/${encodeURIComponent(token)}/index.html`,
       };
     },
   );
 
-  app.post<{ Params: { gameId: string } }>('/games/:gameId/hide', async (req, reply) => {
-    const admin = requireAdmin(req);
-    await prisma.game.update({ where: { id: req.params.gameId }, data: { status: 'HIDDEN' } });
-    await audit(prisma, {
-      actorId: admin.id,
-      action: 'game.hidden',
-      targetType: 'GAME',
-      targetId: req.params.gameId,
-    });
-    reply.status(204).send();
-  });
+  app.post<{ Params: { gameId: string } }>(
+    '/games/:gameId/hide',
+    { config: { rateLimit: rlPolicy('adminAction') } },
+    async (req, reply) => {
+      const admin = requireAdmin(req);
+      await prisma.game.update({ where: { id: req.params.gameId }, data: { status: 'HIDDEN' } });
+      await audit(prisma, {
+        actorId: admin.id,
+        action: 'game.hidden',
+        targetType: 'GAME',
+        targetId: req.params.gameId,
+      });
+      reply.status(204).send();
+    },
+  );
 
   app.post<{ Params: { gameId: string } }>('/games/:gameId/restore', async (req, reply) => {
     const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
