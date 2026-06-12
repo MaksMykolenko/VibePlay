@@ -113,7 +113,6 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
       'camera=(), microphone=(), geolocation=(), payment=(), midi=(), usb=(), serial=(), bluetooth=(), display-capture=()',
     );
     reply.header('cross-origin-resource-policy', 'cross-origin');
-    reply.header('x-frame-options', undefined as unknown as string); // frame-ancestors in CSP governs framing
     reply.header('cache-control', immutable ? 'public, max-age=31536000, immutable' : 'no-store');
   }
 
@@ -197,7 +196,7 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
       where: { id: versionId },
       select: { gameId: true, status: true, publishedObjectPrefix: true },
     });
-    if (!version || !version.publishedObjectPrefix) {
+    if (!version || version.status !== 'READY_FOR_REVIEW' || !version.publishedObjectPrefix) {
       setSecurityHeaders(reply, false);
       await reply.status(404).send({ error: 'not found' });
       return;

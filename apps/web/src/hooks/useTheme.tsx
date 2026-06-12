@@ -15,13 +15,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (localStorage.getItem('vibeplay-theme') as Theme) || 'system';
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => {
-    const local = localStorage.getItem('vibeplay-theme') || 'system';
-    if (local === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-    return local as 'light' | 'dark';
-  });
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  );
+  const resolvedTheme = theme === 'system' ? systemTheme : theme;
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
@@ -30,31 +27,19 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
+
     const handleChange = () => {
-      if (theme === 'system') {
-        const systemTheme = mediaQuery.matches ? 'dark' : 'light';
-        setResolvedTheme(systemTheme);
-      }
+      setSystemTheme(mediaQuery.matches ? 'dark' : 'light');
     };
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, []);
 
   useEffect(() => {
-    let resolved: 'light' | 'dark' = 'dark';
-    if (theme === 'system') {
-      resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    } else {
-      resolved = theme as 'light' | 'dark';
-    }
-    
-    setResolvedTheme(resolved);
-
     // Apply data-theme attribute
-    document.documentElement.setAttribute('data-theme', resolved);
-    document.documentElement.style.colorScheme = resolved;
+    document.documentElement.setAttribute('data-theme', resolvedTheme);
+    document.documentElement.style.colorScheme = resolvedTheme;
 
     // Update meta theme-color
     let meta = document.querySelector('meta[name="theme-color"]');
@@ -63,8 +48,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       meta.setAttribute('name', 'theme-color');
       document.head.appendChild(meta);
     }
-    meta.setAttribute('content', resolved === 'dark' ? '#060606' : '#FFF9F4');
-  }, [theme]);
+    meta.setAttribute('content', resolvedTheme === 'dark' ? '#060606' : '#FFF9F4');
+  }, [resolvedTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>

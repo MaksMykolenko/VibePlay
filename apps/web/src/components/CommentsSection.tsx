@@ -4,7 +4,7 @@ import { useGames } from '../hooks/useGames';
 import type { Comment } from '../types';
 import { ThumbsUp, Trash2, AlertOctagon } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { toast } from './Toast';
+import { toast } from './toastEvents';
 
 interface CommentsSectionProps {
   gameId: string;
@@ -14,10 +14,10 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
   const { currentUser } = useAuth();
   const { comments, addComment, likeComment, deleteComment, submitReport } = useGames();
   const [newCommentText, setNewCommentText] = useState('');
-  
+
   // Filtering comments for this game only
   const gameComments = comments
-    .filter(c => c.gameId === gameId)
+    .filter((c) => c.gameId === gameId)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const handleCommentSubmit = (e: React.FormEvent) => {
@@ -36,13 +36,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
     }
 
     addComment(
-      gameId, 
-      currentUser.id, 
-      currentUser.displayName, 
-      currentUser.avatar, 
-      newCommentText.trim()
+      gameId,
+      currentUser.id,
+      currentUser.displayName,
+      currentUser.avatar,
+      newCommentText.trim(),
     );
-    
+
     setNewCommentText('');
     toast.success('Comment posted successfully!');
   };
@@ -75,7 +75,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
         'comment',
         comment.id,
         `Comment by @${comment.username}`,
-        reason.trim()
+        reason.trim(),
       );
       toast.success('Thank you. The comment has been flagged for admin review.');
     }
@@ -85,7 +85,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
     const date = new Date(dateString);
     const now = new Date();
     const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -115,48 +115,52 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
           </div>
           <div style={formFooterStyle}>
             <span style={charCountStyle}>{newCommentText.length} / 300</span>
-            <button type="submit" className="btn btn-primary btn-sm">Post Comment</button>
+            <button type="submit" className="btn btn-primary btn-sm">
+              Post Comment
+            </button>
           </div>
         </form>
       ) : (
         <div style={loginCTAStyle}>
           <p>Want to join the conversation?</p>
-          <Link to="/login" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Log in to comment</Link>
+          <Link to="/login" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>
+            Log in to comment
+          </Link>
         </div>
       )}
 
       {/* List comments */}
       <div style={listStyle}>
         {gameComments.length === 0 ? (
-          <div style={emptyCommentsStyle}>No comments yet. Be the first to share your thoughts!</div>
+          <div style={emptyCommentsStyle}>
+            No comments yet. Be the first to share your thoughts!
+          </div>
         ) : (
-          gameComments.map(c => (
+          gameComments.map((c) => (
             <div key={c.id} style={commentCardStyle} className="animate-fade">
-              
               <img src={c.userAvatar} alt={c.username} style={commentAvatarStyle} />
-              
+
               <div style={commentBodyStyle}>
-                
                 <div style={commentHeaderStyle}>
                   <div>
                     <span style={displayNameStyle}>{c.username}</span>
                     <span style={timestampStyle}>{timeAgo(c.timestamp)}</span>
                   </div>
-                  
+
                   {/* Actions */}
                   <div style={actionsContainerStyle}>
                     {currentUser && currentUser.id === c.userId ? (
-                      <button 
-                        onClick={() => handleDeleteClick(c.id)} 
-                        style={actionIconBtnDangerStyle} 
+                      <button
+                        onClick={() => handleDeleteClick(c.id)}
+                        style={actionIconBtnDangerStyle}
                         title="Delete comment"
                       >
                         <Trash2 size={14} />
                       </button>
                     ) : (
-                      <button 
-                        onClick={() => handleReportComment(c)} 
-                        style={actionIconBtnStyle} 
+                      <button
+                        onClick={() => handleReportComment(c)}
+                        style={actionIconBtnStyle}
                         title="Report comment"
                       >
                         <AlertOctagon size={14} />
@@ -169,25 +173,22 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
 
                 {/* Like button */}
                 <div style={commentFooterStyle}>
-                  <button 
-                    onClick={() => handleLikeClick(c.id)} 
+                  <button
+                    onClick={() => handleLikeClick(c.id)}
                     style={{
                       ...likeBtnStyle,
-                      color: c.userLiked ? 'var(--secondary)' : 'var(--text-secondary)'
+                      color: c.userLiked ? 'var(--secondary)' : 'var(--text-secondary)',
                     }}
                   >
                     <ThumbsUp size={12} fill={c.userLiked ? 'var(--secondary)' : 'none'} />
                     <span>{c.likes}</span>
                   </button>
                 </div>
-
               </div>
-
             </div>
           ))
         )}
       </div>
-
     </div>
   );
 };
@@ -197,12 +198,12 @@ const containerStyle: React.CSSProperties = {
   marginTop: '2rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: '1.25rem',
-  fontWeight: 700
+  fontWeight: 700,
 };
 
 const formStyle: React.CSSProperties = {
@@ -212,20 +213,20 @@ const formStyle: React.CSSProperties = {
   padding: '1.25rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.75rem'
+  gap: '0.75rem',
 };
 
 const inputContainerStyle: React.CSSProperties = {
   display: 'flex',
   gap: '1rem',
-  alignItems: 'flex-start'
+  alignItems: 'flex-start',
 };
 
 const avatarStyle: React.CSSProperties = {
   width: '40px',
   height: '40px',
   borderRadius: '50%',
-  objectFit: 'cover'
+  objectFit: 'cover',
 };
 
 const textareaStyle: React.CSSProperties = {
@@ -239,19 +240,19 @@ const textareaStyle: React.CSSProperties = {
   fontSize: '0.9rem',
   minHeight: '80px',
   resize: 'vertical',
-  outline: 'none'
+  outline: 'none',
 };
 
 const formFooterStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  paddingLeft: '52px' // Align with textarea start
+  paddingLeft: '52px', // Align with textarea start
 };
 
 const charCountStyle: React.CSSProperties = {
   fontSize: '0.75rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const loginCTAStyle: React.CSSProperties = {
@@ -261,20 +262,20 @@ const loginCTAStyle: React.CSSProperties = {
   padding: '2rem',
   textAlign: 'center',
   color: 'var(--text-secondary)',
-  fontSize: '0.9rem'
+  fontSize: '0.9rem',
 };
 
 const listStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const emptyCommentsStyle: React.CSSProperties = {
   textAlign: 'center',
   color: 'var(--text-secondary)',
   fontSize: '0.9rem',
-  padding: '2rem'
+  padding: '2rem',
 };
 
 const commentCardStyle: React.CSSProperties = {
@@ -282,39 +283,39 @@ const commentCardStyle: React.CSSProperties = {
   gap: '1rem',
   alignItems: 'flex-start',
   padding: '1rem 0',
-  borderBottom: '1px solid var(--border-color)'
+  borderBottom: '1px solid var(--border-color)',
 };
 
 const commentAvatarStyle: React.CSSProperties = {
   width: '36px',
   height: '36px',
   borderRadius: '50%',
-  objectFit: 'cover'
+  objectFit: 'cover',
 };
 
 const commentBodyStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.4rem'
+  gap: '0.4rem',
 };
 
 const commentHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const displayNameStyle: React.CSSProperties = {
   fontWeight: 600,
   fontSize: '0.9rem',
   color: 'var(--text-primary)',
-  marginRight: '0.5rem'
+  marginRight: '0.5rem',
 };
 
 const timestampStyle: React.CSSProperties = {
   fontSize: '0.75rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const contentStyle: React.CSSProperties = {
@@ -322,13 +323,13 @@ const contentStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   lineHeight: 1.5,
   whiteSpace: 'pre-wrap',
-  wordBreak: 'break-word'
+  wordBreak: 'break-word',
 };
 
 const commentFooterStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  marginTop: '0.25rem'
+  marginTop: '0.25rem',
 };
 
 const likeBtnStyle: React.CSSProperties = {
@@ -341,12 +342,12 @@ const likeBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   transition: 'color 0.2s',
   padding: '2px 6px',
-  marginLeft: '-6px'
+  marginLeft: '-6px',
 };
 
 const actionsContainerStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.5rem'
+  gap: '0.5rem',
 };
 
 const actionIconBtnStyle: React.CSSProperties = {
@@ -356,7 +357,7 @@ const actionIconBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   opacity: 0.5,
   transition: 'opacity 0.2s, color 0.2s',
-  padding: '4px'
+  padding: '4px',
 };
 
 // Hover rule managed by JS inline or CSS:
@@ -364,5 +365,5 @@ const actionIconBtnStyle: React.CSSProperties = {
 
 const actionIconBtnDangerStyle: React.CSSProperties = {
   ...actionIconBtnStyle,
-  color: 'var(--danger)'
+  color: 'var(--danger)',
 };

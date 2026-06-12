@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
-import { toast } from '../../components/Toast';
+import { toast } from '../../components/toastEvents';
 import { Save, ArrowLeft, AlertTriangle } from 'lucide-react';
 
 export const EditGame: React.FC = () => {
@@ -12,23 +12,25 @@ export const EditGame: React.FC = () => {
   const navigate = useNavigate();
 
   // Find game
-  const game = games.find(g => g.id === id);
+  const game = games.find((g) => g.id === id);
 
   // Form states
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState('Action');
-  const [shortDesc, setShortDesc] = useState('');
-  const [fullDesc, setFullDesc] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
-  const [coverUrl, setCoverUrl] = useState('');
-  const [screenshotUrl, setScreenshotUrl] = useState('');
-  const [deviceDesktop, setDeviceDesktop] = useState(true);
-  const [deviceMobile, setDeviceMobile] = useState(false);
-  const [deviceTablet, setDeviceTablet] = useState(false);
-  const [multiplayer, setMultiplayer] = useState(false);
-  const [aiDisclosure, setAiDisclosure] = useState<'no' | 'assisted' | 'generated'>('no');
-  const [aiTools, setAiTools] = useState<string[]>([]);
-  const [version, setVersion] = useState('1.0.0');
+  const [title, setTitle] = useState(() => game?.title ?? '');
+  const [category, setCategory] = useState(() => game?.category ?? 'Action');
+  const [shortDesc, setShortDesc] = useState(() => game?.shortDescription ?? '');
+  const [fullDesc, setFullDesc] = useState(() => game?.fullDescription ?? '');
+  const [tagsInput, setTagsInput] = useState(() => game?.tags.join(', ') ?? '');
+  const [coverUrl, setCoverUrl] = useState(() => game?.coverUrl ?? '');
+  const [screenshotUrl, setScreenshotUrl] = useState(() => game?.screenshots[0] ?? '');
+  const [deviceDesktop] = useState(() => game?.devices.includes('desktop') ?? true);
+  const [deviceMobile] = useState(() => game?.devices.includes('mobile') ?? false);
+  const [deviceTablet] = useState(() => game?.devices.includes('tablet') ?? false);
+  const [multiplayer] = useState(() => game?.multiplayer ?? false);
+  const [aiDisclosure] = useState<'no' | 'assisted' | 'generated'>(
+    () => game?.aiDisclosure ?? 'no',
+  );
+  const [aiTools] = useState<string[]>(() => game?.aiTools ?? []);
+  const [version, setVersion] = useState(() => game?.version ?? '1.0.0');
   const [changelogNotes, setChangelogNotes] = useState('');
 
   useEffect(() => {
@@ -37,23 +39,7 @@ export const EditGame: React.FC = () => {
       navigate('/creator/my-games');
       return;
     }
-
-    // Populate form
-    setTitle(game.title);
-    setCategory(game.category);
-    setShortDesc(game.shortDescription);
-    setFullDesc(game.fullDescription);
-    setTagsInput(game.tags.join(', '));
-    setCoverUrl(game.coverUrl);
-    setScreenshotUrl(game.screenshots[0] || '');
-    setDeviceDesktop(game.devices.includes('desktop'));
-    setDeviceMobile(game.devices.includes('mobile'));
-    setDeviceTablet(game.devices.includes('tablet'));
-    setMultiplayer(game.multiplayer);
-    setAiDisclosure(game.aiDisclosure);
-    setAiTools(game.aiTools);
-    setVersion(game.version);
-  }, [game]);
+  }, [game, navigate]);
 
   if (!game) return null;
 
@@ -62,8 +48,16 @@ export const EditGame: React.FC = () => {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
         <h2>Unauthorized</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>You do not have permission to edit this game.</p>
-        <button onClick={() => navigate('/creator/my-games')} className="btn btn-secondary" style={{ marginTop: '1rem' }}>Back to My Games</button>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          You do not have permission to edit this game.
+        </p>
+        <button
+          onClick={() => navigate('/creator/my-games')}
+          className="btn btn-secondary"
+          style={{ marginTop: '1rem' }}
+        >
+          Back to My Games
+        </button>
       </div>
     );
   }
@@ -72,7 +66,10 @@ export const EditGame: React.FC = () => {
     e.preventDefault();
 
     const tags = tagsInput
-      ? tagsInput.split(',').map(t => t.trim()).filter(t => t.length > 0)
+      ? tagsInput
+          .split(',')
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
       : game.tags;
 
     const devices = [];
@@ -86,14 +83,14 @@ export const EditGame: React.FC = () => {
       changelog.unshift({
         version: version || game.version,
         date: new Date().toISOString().split('T')[0],
-        notes: changelogNotes.trim()
+        notes: changelogNotes.trim(),
       });
     }
 
     // Update Game status - if published, major edit will push back to 'pending review' moderation
     let status = game.status;
     let statusMsg = 'Game details updated successfully!';
-    
+
     if (game.status === 'published' && title !== game.title) {
       status = 'pending';
       statusMsg = 'Details updated! Title changes flag the build for repeat moderation.';
@@ -113,7 +110,7 @@ export const EditGame: React.FC = () => {
       aiTools,
       version: version || game.version,
       changelog,
-      status
+      status,
     });
 
     toast.success(statusMsg);
@@ -122,7 +119,6 @@ export const EditGame: React.FC = () => {
 
   return (
     <div style={wrapperStyle} className="animate-fade">
-      
       {/* Back button header */}
       <div style={headerStyle}>
         <button onClick={() => navigate('/creator/my-games')} style={backLinkStyle}>
@@ -136,13 +132,13 @@ export const EditGame: React.FC = () => {
       <div style={noticeBoxStyle}>
         <AlertTriangle size={20} color="var(--warning)" style={{ flexShrink: 0 }} />
         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-          Notice: Significant edits (such as changing the title or swapping files) will flag this build for repeat moderation. The game status will return to Pending Review.
+          Notice: Significant edits (such as changing the title or swapping files) will flag this
+          build for repeat moderation. The game status will return to Pending Review.
         </span>
       </div>
 
       {/* Form Card */}
       <form onSubmit={handleFormSubmit} style={formCardStyle} className="bg-glass">
-        
         <div className="form-group">
           <label className="form-label">Game Title</label>
           <input
@@ -161,8 +157,19 @@ export const EditGame: React.FC = () => {
             onChange={(e) => setCategory(e.target.value)}
             className="form-input form-select"
           >
-            {['Action', 'Adventure', 'Horror', 'Simulator', 'Racing', 'Puzzle', 'Multiplayer', 'Experimental'].map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
+            {[
+              'Action',
+              'Adventure',
+              'Horror',
+              'Simulator',
+              'Racing',
+              'Puzzle',
+              'Multiplayer',
+              'Experimental',
+            ].map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
           </select>
         </div>
@@ -249,17 +256,15 @@ export const EditGame: React.FC = () => {
             <Save size={16} />
             <span>Save Changes</span>
           </button>
-          <button 
-            type="button" 
-            onClick={() => navigate('/creator/my-games')} 
+          <button
+            type="button"
+            onClick={() => navigate('/creator/my-games')}
             className="btn btn-secondary"
           >
             Cancel
           </button>
         </div>
-
       </form>
-
     </div>
   );
 };
@@ -271,13 +276,13 @@ const wrapperStyle: React.CSSProperties = {
   gap: '1.5rem',
   maxWidth: '700px',
   width: '100%',
-  margin: '0 auto'
+  margin: '0 auto',
 };
 
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '8px'
+  gap: '8px',
 };
 
 const backLinkStyle: React.CSSProperties = {
@@ -290,7 +295,7 @@ const backLinkStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   fontWeight: 600,
   cursor: 'pointer',
-  padding: 0
+  padding: 0,
 };
 
 const noticeBoxStyle: React.CSSProperties = {
@@ -300,7 +305,7 @@ const noticeBoxStyle: React.CSSProperties = {
   padding: '12px 18px',
   borderRadius: '8px',
   border: '1px solid var(--primary-border)',
-  backgroundColor: 'var(--warning-soft)'
+  backgroundColor: 'var(--warning-soft)',
 };
 
 const formCardStyle: React.CSSProperties = {
@@ -309,14 +314,14 @@ const formCardStyle: React.CSSProperties = {
   padding: '2.5rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.25rem'
+  gap: '1.25rem',
 };
 
 const helperStyle: React.CSSProperties = {
   display: 'block',
   fontSize: '0.75rem',
   color: 'var(--text-secondary)',
-  marginTop: '4px'
+  marginTop: '4px',
 };
 
 const footerRowStyle: React.CSSProperties = {
@@ -324,5 +329,5 @@ const footerRowStyle: React.CSSProperties = {
   gap: '12px',
   marginTop: '1.5rem',
   paddingTop: '1.5rem',
-  borderTop: '1px solid var(--border-color)'
+  borderTop: '1px solid var(--border-color)',
 };

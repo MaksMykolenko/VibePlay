@@ -1,7 +1,15 @@
 import React from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { LayoutDashboard, Gamepad2, PlusCircle, BarChart2, ArrowLeft, User, ShieldAlert } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Gamepad2,
+  PlusCircle,
+  BarChart2,
+  ArrowLeft,
+  User,
+  ShieldAlert,
+} from 'lucide-react';
 import { ToastContainer } from '../components/Toast';
 
 export const CreatorLayout: React.FC = () => {
@@ -18,8 +26,12 @@ export const CreatorLayout: React.FC = () => {
           You must be logged in as a Creator to access this dashboard.
         </p>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={() => navigate('/login')} className="btn btn-primary">Log In</button>
-          <button onClick={() => navigate('/')} className="btn btn-secondary">Go Home</button>
+          <button onClick={() => navigate('/login')} className="btn btn-primary">
+            Log In
+          </button>
+          <button onClick={() => navigate('/')} className="btn btn-secondary">
+            Go Home
+          </button>
         </div>
       </div>
     );
@@ -31,7 +43,6 @@ export const CreatorLayout: React.FC = () => {
 
       {/* Sidebar */}
       <aside style={sidebarStyle} className="creator-sidebar">
-        
         {/* Sidebar Header */}
         <div style={sidebarHeaderStyle}>
           <Link to="/" style={backBtnStyle}>
@@ -46,22 +57,51 @@ export const CreatorLayout: React.FC = () => {
 
         {/* Sidebar Navigation */}
         <nav style={navStyle}>
-          <NavLink to="/creator" end style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--success)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/creator"
+            end
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--success)' : 'var(--text-secondary)',
+            })}
+          >
             <LayoutDashboard size={18} />
             <span>Overview</span>
           </NavLink>
 
-          <NavLink to="/creator/my-games" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--success)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/creator/my-games"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--success)' : 'var(--text-secondary)',
+            })}
+          >
             <Gamepad2 size={18} />
             <span>My Games</span>
           </NavLink>
 
-          <NavLink to="/creator/publish" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--success)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/creator/publish"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--success)' : 'var(--text-secondary)',
+            })}
+          >
             <PlusCircle size={18} />
             <span>Publish Game</span>
           </NavLink>
 
-          <NavLink to="/creator/analytics" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--success)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/creator/analytics"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--success)' : 'var(--text-secondary)',
+            })}
+          >
             <BarChart2 size={18} />
             <span>Analytics</span>
           </NavLink>
@@ -71,16 +111,18 @@ export const CreatorLayout: React.FC = () => {
         <div style={sidebarFooterStyle}>
           <img src={currentUser.avatar} alt={currentUser.displayName} style={avatarStyle} />
           <div style={userInfoStyle}>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{currentUser.displayName}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Creator Account</div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+              {currentUser.displayName}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+              Creator Account
+            </div>
           </div>
         </div>
-
       </aside>
 
       {/* Main Content Area */}
       <div style={contentAreaStyle}>
-        
         {/* Top Mini Header */}
         <header style={topHeaderStyle}>
           <div style={{ fontWeight: 700, fontSize: '1.2rem', fontFamily: 'var(--font-display)' }}>
@@ -88,7 +130,11 @@ export const CreatorLayout: React.FC = () => {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span className="badge badge-success">Creator Mode</span>
-            <Link to={`/profile/${currentUser.username}`} className="btn btn-secondary btn-sm" style={{ gap: '6px' }}>
+            <Link
+              to={`/profile/${currentUser.username}`}
+              className="btn btn-secondary btn-sm"
+              style={{ gap: '6px' }}
+            >
               <User size={14} />
               Profile
             </Link>
@@ -99,9 +145,7 @@ export const CreatorLayout: React.FC = () => {
         <div style={outletWrapperStyle}>
           <Outlet />
         </div>
-
       </div>
-
     </div>
   );
 };
@@ -116,14 +160,14 @@ const unauthorizedContainerStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-main)',
   color: 'var(--text-primary)',
   padding: '2rem',
-  textAlign: 'center'
+  textAlign: 'center',
 };
 
 const dashboardWrapperStyle: React.CSSProperties = {
   display: 'flex',
   minHeight: '100vh',
   backgroundColor: 'var(--bg-main)',
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
 
 const sidebarStyle: React.CSSProperties = {
@@ -135,7 +179,7 @@ const sidebarStyle: React.CSSProperties = {
   position: 'sticky',
   top: 0,
   height: '100vh',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const sidebarHeaderStyle: React.CSSProperties = {
@@ -143,7 +187,7 @@ const sidebarHeaderStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-color)',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const backBtnStyle: React.CSSProperties = {
@@ -152,18 +196,18 @@ const backBtnStyle: React.CSSProperties = {
   gap: '6px',
   fontSize: '0.8rem',
   fontWeight: 600,
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const titleContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px'
+  gap: '8px',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '1.1rem',
-  fontWeight: 700
+  fontWeight: 700,
 };
 
 const navStyle: React.CSSProperties = {
@@ -171,7 +215,7 @@ const navStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '6px',
-  flex: 1
+  flex: 1,
 };
 
 const navLinkStyle: React.CSSProperties = {
@@ -182,7 +226,7 @@ const navLinkStyle: React.CSSProperties = {
   borderRadius: '8px',
   fontSize: '0.9rem',
   fontWeight: 500,
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const sidebarFooterStyle: React.CSSProperties = {
@@ -191,19 +235,19 @@ const sidebarFooterStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-  backgroundColor: 'rgba(255,255,255,0.01)'
+  backgroundColor: 'rgba(255,255,255,0.01)',
 };
 
 const avatarStyle: React.CSSProperties = {
   width: '36px',
   height: '36px',
   borderRadius: '50%',
-  objectFit: 'cover'
+  objectFit: 'cover',
 };
 
 const userInfoStyle: React.CSSProperties = {
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
 };
 
 const contentAreaStyle: React.CSSProperties = {
@@ -211,7 +255,7 @@ const contentAreaStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   minHeight: '100vh',
-  overflowX: 'hidden'
+  overflowX: 'hidden',
 };
 
 const topHeaderStyle: React.CSSProperties = {
@@ -221,12 +265,12 @@ const topHeaderStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '0 2rem',
-  backgroundColor: 'var(--bg-surface)'
+  backgroundColor: 'var(--bg-surface)',
 };
 
 const outletWrapperStyle: React.CSSProperties = {
   padding: '2rem',
   flex: 1,
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
 };

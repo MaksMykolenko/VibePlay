@@ -33,6 +33,16 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: [
+      'apps/web/src/hooks/useAuth.tsx',
+      'apps/web/src/hooks/useGames.tsx',
+      'apps/web/src/hooks/useTheme.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
   // SDK (browser, no react)
   {
     files: ['packages/sdk/**/*.ts'],

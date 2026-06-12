@@ -3,13 +3,40 @@ import { Outlet, Link, NavLink, useNavigate, useLocation, matchPath } from 'reac
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { ToastContainer } from '../components/Toast';
-import { toast } from '../components/Toast';
-import { 
-  Menu, X, Search, Plus, Bell, User as UserIcon, Settings, LogOut, 
-  HelpCircle, Home, Compass, Gamepad2, Layers, FolderHeart, History, 
-  ThumbsUp, LayoutDashboard, BarChart2, PlusCircle, Shield, Eye, Users, 
-  AlertTriangle, Star, ChevronLeft, ChevronRight, Check,
-  ChevronDown, Library as LibraryIcon, Sun, Moon, Monitor
+import { toast } from '../components/toastEvents';
+import {
+  Menu,
+  X,
+  Search,
+  Plus,
+  Bell,
+  User as UserIcon,
+  Settings,
+  LogOut,
+  HelpCircle,
+  Home,
+  Compass,
+  Gamepad2,
+  Layers,
+  FolderHeart,
+  History,
+  ThumbsUp,
+  LayoutDashboard,
+  BarChart2,
+  PlusCircle,
+  Shield,
+  Eye,
+  Users,
+  AlertTriangle,
+  Star,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  ChevronDown,
+  Library as LibraryIcon,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
@@ -23,7 +50,7 @@ const useIsMobile = () => {
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 767px)');
-    
+
     const handleMediaQueryChange = (e: MediaQueryListEvent) => {
       setIsMobile(e.matches);
     };
@@ -33,8 +60,6 @@ const useIsMobile = () => {
     } else {
       mediaQuery.addListener(handleMediaQueryChange);
     }
-
-    setIsMobile(mediaQuery.matches);
 
     return () => {
       if (mediaQuery.removeEventListener) {
@@ -49,9 +74,12 @@ const useIsMobile = () => {
 };
 
 export const AppShell: React.FC = () => {
-  const { currentUser, logout, becomeCreator, switchDemoRole } = useAuth();
+  const { currentUser, logout, becomeCreator, switchDemoRole, demoRolesEnabled, isDemo } =
+    useAuth();
   const { theme, setTheme } = useTheme();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser?.id);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(
+    currentUser?.id,
+  );
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -62,10 +90,21 @@ export const AppShell: React.FC = () => {
   });
 
   // Mobile Drawer state
-  const [isMobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
+  const [mobileDrawerPath, setMobileDrawerPath] = useState<string | null>(null);
 
   // Determine if viewport is mobile (< 768px)
   const isMobile = useIsMobile();
+  const isMobileDrawerOpen = isMobile && mobileDrawerPath === location.pathname;
+  const setMobileDrawerOpen = React.useCallback(
+    (next: React.SetStateAction<boolean>) => {
+      setMobileDrawerPath((openPath) => {
+        const currentlyOpen = isMobile && openPath === location.pathname;
+        const shouldOpen = typeof next === 'function' ? next(currentlyOpen) : next;
+        return shouldOpen ? location.pathname : null;
+      });
+    },
+    [isMobile, location.pathname],
+  );
 
   // Expandable submenu state for Library (saved in LocalStorage)
   const [isLibraryExpanded, setIsLibraryExpanded] = useState<boolean>(() => {
@@ -106,18 +145,6 @@ export const AppShell: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close mobile drawer and restore scroll when switching to desktop
-  useEffect(() => {
-    if (!isMobile) {
-      setMobileDrawerOpen(false);
-    }
-  }, [isMobile]);
-
-  // Close Mobile Drawer on route changes
-  useEffect(() => {
-    setMobileDrawerOpen(false);
-  }, [location.pathname]);
-
   // Click outside dropdowns listener
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -151,7 +178,7 @@ export const AppShell: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [setMobileDrawerOpen]);
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
@@ -184,9 +211,9 @@ export const AppShell: React.FC = () => {
     const getFocusableElements = () => {
       return Array.from(
         drawerElement.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter(el => el.offsetWidth > 0 && el.offsetHeight > 0);
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetWidth > 0 && el.offsetHeight > 0);
     };
 
     const handleFocusTrap = (e: KeyboardEvent) => {
@@ -230,9 +257,9 @@ export const AppShell: React.FC = () => {
   // Navigation toggling logic (desktop collapse / mobile drawer)
   const handleNavigationToggle = () => {
     if (isMobile) {
-      setMobileDrawerOpen(prev => !prev);
+      setMobileDrawerOpen((prev) => !prev);
     } else {
-      setSidebarCollapsed(prev => {
+      setSidebarCollapsed((prev) => {
         const nextState = !prev;
         localStorage.setItem('vibeplay.sidebar.collapsed', String(nextState));
         return nextState;
@@ -254,7 +281,9 @@ export const AppShell: React.FC = () => {
       toast.info('Please log in to publish a game.');
       navigate('/login');
     } else if (currentUser.role === 'player') {
-      toast.info('Please become a Creator to publish games! Click "Become a Creator" in the sidebar.');
+      toast.info(
+        'Please become a Creator to publish games! Click "Become a Creator" in the sidebar.',
+      );
     } else {
       navigate('/creator/publish');
     }
@@ -266,7 +295,12 @@ export const AppShell: React.FC = () => {
       navigate('/login');
       return;
     }
-    becomeCreator();
+    const notice = becomeCreator();
+    if (notice) {
+      // Real MVP: roles are server-controlled (invite-based creator access).
+      toast.info(notice);
+      return;
+    }
     toast.success('You are now a Creator! Access your Creator Dashboard to publish games.');
     navigate('/creator');
   };
@@ -284,7 +318,8 @@ export const AppShell: React.FC = () => {
   const isCreatorPath = location.pathname.startsWith('/creator');
   const isAdminPath = location.pathname.startsWith('/admin');
 
-  const hasCreatorAccess = currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin');
+  const hasCreatorAccess =
+    currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin');
   const hasAdminAccess = currentUser && currentUser.role === 'admin';
 
   interface NavItem {
@@ -315,7 +350,7 @@ export const AppShell: React.FC = () => {
           path: pattern,
           end: true, // Always match exactly to prevent sibling/overlap highlight issues
         },
-        currentPath
+        currentPath,
       );
       return !!match;
     });
@@ -327,10 +362,28 @@ export const AppShell: React.FC = () => {
       id: 'primary',
       items: [
         { id: 'home', label: 'Home', icon: Home, path: '/', matchPaths: ['/', '/home'] },
-        { id: 'discover', label: 'Discover', icon: Compass, path: '/discover', matchPaths: ['/discover'] },
-        { id: 'browse', label: 'Browse', icon: Gamepad2, path: '/games', matchPaths: ['/games', '/browse'] },
-        { id: 'categories', label: 'Categories', icon: Layers, path: '/categories', matchPaths: ['/categories'] },
-      ]
+        {
+          id: 'discover',
+          label: 'Discover',
+          icon: Compass,
+          path: '/discover',
+          matchPaths: ['/discover'],
+        },
+        {
+          id: 'browse',
+          label: 'Browse',
+          icon: Gamepad2,
+          path: '/games',
+          matchPaths: ['/games', '/browse'],
+        },
+        {
+          id: 'categories',
+          label: 'Categories',
+          icon: Layers,
+          path: '/categories',
+          matchPaths: ['/categories'],
+        },
+      ],
     },
     {
       id: 'library',
@@ -343,37 +396,108 @@ export const AppShell: React.FC = () => {
           path: '/library',
           matchPaths: ['/library', '/library/favorites', '/library/liked'],
           children: [
-            { id: 'favorites', label: 'Favorites', icon: Star, path: '/library/favorites', matchPaths: ['/library/favorites'] },
-            { id: 'liked', label: 'Liked Games', icon: ThumbsUp, path: '/library/liked', matchPaths: ['/library/liked'] }
-          ]
+            {
+              id: 'favorites',
+              label: 'Favorites',
+              icon: Star,
+              path: '/library/favorites',
+              matchPaths: ['/library/favorites'],
+            },
+            {
+              id: 'liked',
+              label: 'Liked Games',
+              icon: ThumbsUp,
+              path: '/library/liked',
+              matchPaths: ['/library/liked'],
+            },
+          ],
         },
-        { id: 'recent', label: 'Recently Played', icon: History, path: '/recently-played', matchPaths: ['/recent', '/recently-played'] }
-      ]
+        {
+          id: 'recent',
+          label: 'Recently Played',
+          icon: History,
+          path: '/recently-played',
+          matchPaths: ['/recent', '/recently-played'],
+        },
+      ],
     },
     {
       id: 'creator',
       label: 'Creator',
       items: [
-        { id: 'creator-overview', label: 'Overview', icon: LayoutDashboard, path: '/creator', matchPaths: ['/creator'] },
-        { id: 'creator-games', label: 'My Games', icon: Gamepad2, path: '/creator/my-games', matchPaths: ['/creator/my-games', '/creator/games', '/creator/games/:id', '/creator/games/:id/edit'] },
-        { id: 'creator-publish', label: 'Publish Game', icon: PlusCircle, path: '/creator/publish', matchPaths: ['/creator/publish'] },
-        { id: 'creator-analytics', label: 'Analytics', icon: BarChart2, path: '/creator/analytics', matchPaths: ['/creator/analytics'] }
-      ]
+        {
+          id: 'creator-overview',
+          label: 'Overview',
+          icon: LayoutDashboard,
+          path: '/creator',
+          matchPaths: ['/creator'],
+        },
+        {
+          id: 'creator-games',
+          label: 'My Games',
+          icon: Gamepad2,
+          path: '/creator/my-games',
+          matchPaths: [
+            '/creator/my-games',
+            '/creator/games',
+            '/creator/games/:id',
+            '/creator/games/:id/edit',
+          ],
+        },
+        {
+          id: 'creator-publish',
+          label: 'Publish Game',
+          icon: PlusCircle,
+          path: '/creator/publish',
+          matchPaths: ['/creator/publish'],
+        },
+        {
+          id: 'creator-analytics',
+          label: 'Analytics',
+          icon: BarChart2,
+          path: '/creator/analytics',
+          matchPaths: ['/creator/analytics'],
+        },
+      ],
     },
     {
       id: 'admin',
       label: 'Admin',
       items: [
-        { id: 'admin-overview', label: 'Overview', icon: Shield, path: '/admin', matchPaths: ['/admin'] },
-        { id: 'admin-moderation', label: 'Moderation', icon: Eye, path: '/admin/moderation', matchPaths: ['/admin/moderation', '/admin/moderation/:id'] },
-        { id: 'admin-users', label: 'Users', icon: Users, path: '/admin/users', matchPaths: ['/admin/users'] },
-        { id: 'admin-reports', label: 'Reports', icon: AlertTriangle, path: '/admin/reports', matchPaths: ['/admin/reports'] }
-      ]
-    }
+        {
+          id: 'admin-overview',
+          label: 'Overview',
+          icon: Shield,
+          path: '/admin',
+          matchPaths: ['/admin'],
+        },
+        {
+          id: 'admin-moderation',
+          label: 'Moderation',
+          icon: Eye,
+          path: '/admin/moderation',
+          matchPaths: ['/admin/moderation', '/admin/moderation/:id'],
+        },
+        {
+          id: 'admin-users',
+          label: 'Users',
+          icon: Users,
+          path: '/admin/users',
+          matchPaths: ['/admin/users'],
+        },
+        {
+          id: 'admin-reports',
+          label: 'Reports',
+          icon: AlertTriangle,
+          path: '/admin/reports',
+          matchPaths: ['/admin/reports'],
+        },
+      ],
+    },
   ];
 
   // Filtering sections based on role access
-  const filteredSections = navSections.filter(section => {
+  const filteredSections = navSections.filter((section) => {
     if (section.id === 'admin') {
       return hasAdminAccess;
     }
@@ -388,12 +512,12 @@ export const AppShell: React.FC = () => {
       const Icon = item.icon;
       const isActive = isNavigationItemActive(item);
       const isMyLibrary = item.id === 'library';
-      
+
       // Expandable Library Menu item
       if (isMyLibrary && item.children) {
         return (
           <div key={item.path} style={{ display: 'flex', flexDirection: 'column' }}>
-            <div 
+            <div
               onClick={() => {
                 if (!isSidebarCollapsed || isMobileOrDrawer) {
                   setIsLibraryExpanded(!isLibraryExpanded);
@@ -409,14 +533,17 @@ export const AppShell: React.FC = () => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   navigate('/library');
-                  if (!isSidebarCollapsed || isMobileOrDrawer) setIsLibraryExpanded(!isLibraryExpanded);
+                  if (!isSidebarCollapsed || isMobileOrDrawer)
+                    setIsLibraryExpanded(!isLibraryExpanded);
                 }
               }}
             >
               <Icon size={20} />
               {(!isSidebarCollapsed || isMobileOrDrawer) && (
                 <>
-                  <span style={{ marginLeft: '10px', flex: 1, fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
+                  <span style={{ marginLeft: '10px', flex: 1, fontWeight: isActive ? 600 : 500 }}>
+                    {item.label}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -442,8 +569,16 @@ export const AppShell: React.FC = () => {
 
             {/* Submenu items */}
             {isLibraryExpanded && (!isSidebarCollapsed || isMobileOrDrawer) && (
-              <div className="sidebar-submenu" style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '16px' }}>
-                {item.children.map(child => {
+              <div
+                className="sidebar-submenu"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  paddingLeft: '16px',
+                }}
+              >
+                {item.children.map((child) => {
                   const ChildIcon = child.icon;
                   const isChildActive = isNavigationItemActive(child);
                   return (
@@ -475,7 +610,9 @@ export const AppShell: React.FC = () => {
         >
           <Icon size={20} />
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
-            <span style={{ marginLeft: '10px', fontWeight: isActive ? 600 : 500 }}>{item.label}</span>
+            <span style={{ marginLeft: '10px', fontWeight: isActive ? 600 : 500 }}>
+              {item.label}
+            </span>
           )}
         </NavLink>
       );
@@ -483,71 +620,113 @@ export const AppShell: React.FC = () => {
   };
 
   const renderSidebarBottom = (isMobileOrDrawer = false) => {
-    const isNotificationsActive = isNavigationItemActive({ id: 'notifications', label: 'Notifications', path: '/notifications', matchPaths: ['/notifications'] } as NavItem);
-    const isSettingsActive = isNavigationItemActive({ id: 'settings', label: 'Settings', path: '/settings', matchPaths: ['/settings'] } as NavItem);
+    const isNotificationsActive = isNavigationItemActive({
+      id: 'notifications',
+      label: 'Notifications',
+      path: '/notifications',
+      matchPaths: ['/notifications'],
+    } as NavItem);
+    const isSettingsActive = isNavigationItemActive({
+      id: 'settings',
+      label: 'Settings',
+      path: '/settings',
+      matchPaths: ['/settings'],
+    } as NavItem);
 
     return (
       <div className="sidebar-bottom">
         {/* Quick Role Switch in Mobile Drawer */}
         {isMobileOrDrawer && currentUser && (
-          <div style={{ padding: '12px 14px', margin: '4px 8px 12px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+          <div
+            style={{
+              padding: '12px 14px',
+              margin: '4px 8px 12px',
+              borderRadius: '12px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--border-color)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '11px',
+                fontWeight: 700,
+                color: 'var(--text-secondary)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '8px',
+              }}
+            >
               Quick Role Switch
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-              <button 
+              <button
                 onClick={() => {
                   handleDemoSwitch('player');
                   setMobileDrawerOpen(false);
-                }} 
-                style={{ 
-                  padding: '6px 4px', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
-                  color: currentUser?.role === 'player' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  backgroundColor: currentUser?.role === 'player' ? 'var(--primary)' : 'transparent',
-                  border: '1px solid ' + (currentUser?.role === 'player' ? 'var(--primary)' : 'var(--border-color)'),
+                }}
+                style={{
+                  padding: '6px 4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color:
+                    currentUser?.role === 'player'
+                      ? 'var(--text-primary)'
+                      : 'var(--text-secondary)',
+                  backgroundColor:
+                    currentUser?.role === 'player' ? 'var(--primary)' : 'transparent',
+                  border:
+                    '1px solid ' +
+                    (currentUser?.role === 'player' ? 'var(--primary)' : 'var(--border-color)'),
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  textAlign: 'center'
+                  textAlign: 'center',
                 }}
               >
                 Player
               </button>
-              <button 
+              <button
                 onClick={() => {
                   handleDemoSwitch('creator');
                   setMobileDrawerOpen(false);
-                }} 
-                style={{ 
-                  padding: '6px 4px', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
-                  color: currentUser?.role === 'creator' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  backgroundColor: currentUser?.role === 'creator' ? 'var(--primary)' : 'transparent',
-                  border: '1px solid ' + (currentUser?.role === 'creator' ? 'var(--primary)' : 'var(--border-color)'),
+                }}
+                style={{
+                  padding: '6px 4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color:
+                    currentUser?.role === 'creator'
+                      ? 'var(--text-primary)'
+                      : 'var(--text-secondary)',
+                  backgroundColor:
+                    currentUser?.role === 'creator' ? 'var(--primary)' : 'transparent',
+                  border:
+                    '1px solid ' +
+                    (currentUser?.role === 'creator' ? 'var(--primary)' : 'var(--border-color)'),
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  textAlign: 'center'
+                  textAlign: 'center',
                 }}
               >
                 Creator
               </button>
-              <button 
+              <button
                 onClick={() => {
                   handleDemoSwitch('admin');
                   setMobileDrawerOpen(false);
-                }} 
-                style={{ 
-                  padding: '6px 4px', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
-                  color: currentUser?.role === 'admin' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+                style={{
+                  padding: '6px 4px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  color:
+                    currentUser?.role === 'admin' ? 'var(--text-primary)' : 'var(--text-secondary)',
                   backgroundColor: currentUser?.role === 'admin' ? 'var(--primary)' : 'transparent',
-                  border: '1px solid ' + (currentUser?.role === 'admin' ? 'var(--primary)' : 'var(--border-color)'),
+                  border:
+                    '1px solid ' +
+                    (currentUser?.role === 'admin' ? 'var(--primary)' : 'var(--border-color)'),
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  textAlign: 'center'
+                  textAlign: 'center',
                 }}
               >
                 Admin
@@ -560,41 +739,52 @@ export const AppShell: React.FC = () => {
         <NavLink
           to="/notifications"
           className={`sidebar-link ${isNotificationsActive ? 'sidebar-item--active' : ''}`}
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? "Notifications" : undefined}
+          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Notifications' : undefined}
           aria-current={isNotificationsActive ? 'page' : undefined}
         >
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <Bell size={20} />
             {isSidebarCollapsed && !isMobileOrDrawer && unreadCount > 0 && (
-              <span className="collapsed-badge-dot" style={{
-                position: 'absolute',
-                top: '-2px',
-                right: '-2px',
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--danger)'
-              }} />
+              <span
+                className="collapsed-badge-dot"
+                style={{
+                  position: 'absolute',
+                  top: '-2px',
+                  right: '-2px',
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--danger)',
+                }}
+              />
             )}
           </div>
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%', marginLeft: '10px' }}>
-              <span style={{ flex: 1, fontWeight: isNotificationsActive ? 600 : 500 }}>Notifications</span>
+            <div
+              style={{ display: 'flex', alignItems: 'center', width: '100%', marginLeft: '10px' }}
+            >
+              <span style={{ flex: 1, fontWeight: isNotificationsActive ? 600 : 500 }}>
+                Notifications
+              </span>
               {unreadCount > 0 && (
-                <span className="sidebar-badge" style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: '18px',
-                  height: '18px',
-                  padding: '0 4px',
-                  borderRadius: '9px',
-                  backgroundColor: 'var(--danger)',
-                  color: '#fff',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  marginLeft: 'auto'
-                }} aria-label={`${unreadCount} unread notifications`}>
+                <span
+                  className="sidebar-badge"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '18px',
+                    height: '18px',
+                    padding: '0 4px',
+                    borderRadius: '9px',
+                    backgroundColor: 'var(--danger)',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    marginLeft: 'auto',
+                  }}
+                  aria-label={`${unreadCount} unread notifications`}
+                >
                   {unreadCount}
                 </span>
               )}
@@ -606,12 +796,14 @@ export const AppShell: React.FC = () => {
         <NavLink
           to="/settings"
           className={`sidebar-link ${isSettingsActive ? 'sidebar-item--active' : ''}`}
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? "Settings" : undefined}
+          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Settings' : undefined}
           aria-current={isSettingsActive ? 'page' : undefined}
         >
           <Settings size={20} />
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
-            <span style={{ marginLeft: '10px', fontWeight: isSettingsActive ? 600 : 500 }}>Settings</span>
+            <span style={{ marginLeft: '10px', fontWeight: isSettingsActive ? 600 : 500 }}>
+              Settings
+            </span>
           )}
         </NavLink>
 
@@ -619,7 +811,7 @@ export const AppShell: React.FC = () => {
         <a
           href="#help"
           className="sidebar-link"
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? "Help Center" : undefined}
+          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Help Center' : undefined}
         >
           <HelpCircle size={20} />
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
@@ -633,9 +825,9 @@ export const AppShell: React.FC = () => {
             onClick={handleNavigationToggle}
             className="sidebar-link"
             style={{ cursor: 'pointer' }}
-            data-tooltip={isSidebarCollapsed ? "Expand Sidebar" : undefined}
+            data-tooltip={isSidebarCollapsed ? 'Expand Sidebar' : undefined}
             role="button"
-            aria-label={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
             aria-expanded={!isSidebarCollapsed}
             tabIndex={0}
             onKeyDown={(e) => {
@@ -652,56 +844,104 @@ export const AppShell: React.FC = () => {
 
         {/* Profile Block */}
         {currentUser && (
-          <div ref={sidebarProfileRef} style={{ position: 'relative', padding: '6px 8px', margin: '2px 8px' }}>
+          <div
+            ref={sidebarProfileRef}
+            style={{ position: 'relative', padding: '6px 8px', margin: '2px 8px' }}
+          >
             {/* Dropdown Menu (Flyout) */}
             {showSidebarProfileDropdown && (
-              <div className="sidebar-profile-dropdown" style={{
-                position: 'absolute',
-                bottom: '100%',
-                left: '0px',
-                width: '200px',
-                backgroundColor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '12px',
-                padding: '6px',
-                boxShadow: 'var(--shadow-lg)',
-                zIndex: 10000,
-                marginBottom: '8px',
-              }}>
+              <div
+                className="sidebar-profile-dropdown"
+                style={{
+                  position: 'absolute',
+                  bottom: '100%',
+                  left: '0px',
+                  width: '200px',
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '12px',
+                  padding: '6px',
+                  boxShadow: 'var(--shadow-lg)',
+                  zIndex: 10000,
+                  marginBottom: '8px',
+                }}
+              >
                 <div style={{ padding: '6px 10px' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{currentUser.displayName}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{currentUser.username}</div>
-                  <span className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`} style={{ marginTop: '6px', fontSize: '0.65rem' }}>
+                  <div
+                    style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                  >
+                    {currentUser.displayName}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    @{currentUser.username}
+                  </div>
+                  <span
+                    className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                    style={{ marginTop: '6px', fontSize: '0.65rem' }}
+                  >
                     {currentUser.role}
                   </span>
                 </div>
                 <hr style={hrStyle} />
-                <Link to={`/profile/${currentUser.username}`} onClick={() => setShowSidebarProfileDropdown(false)} style={profileDropdownItemStyle}>
+                <Link
+                  to={`/profile/${currentUser.username}`}
+                  onClick={() => setShowSidebarProfileDropdown(false)}
+                  style={profileDropdownItemStyle}
+                >
                   <UserIcon size={14} />
                   <span>My Profile</span>
                 </Link>
-                <Link to="/settings" onClick={() => setShowSidebarProfileDropdown(false)} style={profileDropdownItemStyle}>
+                <Link
+                  to="/settings"
+                  onClick={() => setShowSidebarProfileDropdown(false)}
+                  style={profileDropdownItemStyle}
+                >
                   <Settings size={14} />
                   <span>Settings</span>
                 </Link>
                 {hasCreatorAccess && (
-                  <Link to="/creator" onClick={() => setShowSidebarProfileDropdown(false)} style={profileDropdownItemStyle}>
+                  <Link
+                    to="/creator"
+                    onClick={() => setShowSidebarProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <LayoutDashboard size={14} />
                     <span>Creator Studio</span>
                   </Link>
                 )}
                 {hasAdminAccess && (
-                  <Link to="/admin" onClick={() => setShowSidebarProfileDropdown(false)} style={profileDropdownItemStyle}>
+                  <Link
+                    to="/admin"
+                    onClick={() => setShowSidebarProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <Shield size={14} />
                     <span>Admin Control</span>
                   </Link>
                 )}
                 <hr style={hrStyle} />
                 <div style={{ padding: '4px 8px 6px' }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Appearance</div>
-                  <div style={{ display: 'flex', gap: '3px', background: 'var(--surface-2)', padding: '2px', borderRadius: '6px' }}>
-                    <button 
-                      onClick={() => setTheme('light')} 
+                  <div
+                    style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      color: 'var(--text-muted)',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    Appearance
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '3px',
+                      background: 'var(--surface-2)',
+                      padding: '2px',
+                      borderRadius: '6px',
+                    }}
+                  >
+                    <button
+                      onClick={() => setTheme('light')}
                       style={{
                         flex: 1,
                         display: 'flex',
@@ -716,14 +956,14 @@ export const AppShell: React.FC = () => {
                         fontWeight: 500,
                         background: theme === 'light' ? 'var(--surface-1)' : 'transparent',
                         color: theme === 'light' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none'
+                        boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none',
                       }}
                     >
                       <Sun size={11} />
                       <span>Light</span>
                     </button>
-                    <button 
-                      onClick={() => setTheme('dark')} 
+                    <button
+                      onClick={() => setTheme('dark')}
                       style={{
                         flex: 1,
                         display: 'flex',
@@ -738,14 +978,14 @@ export const AppShell: React.FC = () => {
                         fontWeight: 500,
                         background: theme === 'dark' ? 'var(--surface-1)' : 'transparent',
                         color: theme === 'dark' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none'
+                        boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none',
                       }}
                     >
                       <Moon size={11} />
                       <span>Dark</span>
                     </button>
-                    <button 
-                      onClick={() => setTheme('system')} 
+                    <button
+                      onClick={() => setTheme('system')}
                       style={{
                         flex: 1,
                         display: 'flex',
@@ -760,7 +1000,7 @@ export const AppShell: React.FC = () => {
                         fontWeight: 500,
                         background: theme === 'system' ? 'var(--surface-1)' : 'transparent',
                         color: theme === 'system' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none'
+                        boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none',
                       }}
                     >
                       <Monitor size={11} />
@@ -769,14 +1009,22 @@ export const AppShell: React.FC = () => {
                   </div>
                 </div>
                 <hr style={hrStyle} />
-                <button 
+                <button
                   onClick={() => {
                     logout();
                     toast.success('Logged out successfully.');
                     navigate('/');
                     setShowSidebarProfileDropdown(false);
-                  }} 
-                  style={{ ...profileDropdownItemStyle, width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}
+                  }}
+                  style={{
+                    ...profileDropdownItemStyle,
+                    width: '100%',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: 'var(--danger)',
+                  }}
                 >
                   <LogOut size={14} />
                   <span>Log Out</span>
@@ -793,14 +1041,16 @@ export const AppShell: React.FC = () => {
                 width: '100%',
                 padding: '6px 8px',
                 borderRadius: '8px',
-                background: showSidebarProfileDropdown ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                background: showSidebarProfileDropdown
+                  ? 'rgba(255, 255, 255, 0.05)'
+                  : 'transparent',
                 border: 'none',
                 color: 'inherit',
                 cursor: 'pointer',
                 textAlign: 'left',
-                gap: '10px'
+                gap: '10px',
               }}
-              data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? "Profile Options" : undefined}
+              data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Profile Options' : undefined}
               aria-label="User Profile Options"
               aria-expanded={showSidebarProfileDropdown}
             >
@@ -813,15 +1063,32 @@ export const AppShell: React.FC = () => {
                   borderRadius: '50%',
                   objectFit: 'cover',
                   border: '1.5px solid var(--border-color)',
-                  flexShrink: 0
+                  flexShrink: 0,
                 }}
               />
               {(!isSidebarCollapsed || isMobileOrDrawer) && (
-                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div
+                  style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}
+                >
+                  <span
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     {currentUser.displayName}
                   </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'capitalize' }}>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--text-secondary)',
+                      textTransform: 'capitalize',
+                    }}
+                  >
                     {currentUser.role}
                   </span>
                 </div>
@@ -838,10 +1105,10 @@ export const AppShell: React.FC = () => {
       <>
         <div className="sidebar-scrollable">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {filteredSections.map(section => {
+            {filteredSections.map((section) => {
               const isCreatorSection = section.id === 'creator';
               const isPlayer = currentUser && currentUser.role === 'player';
-              
+
               return (
                 <div key={section.id} style={{ display: 'flex', flexDirection: 'column' }}>
                   {/* Section Title */}
@@ -851,17 +1118,31 @@ export const AppShell: React.FC = () => {
 
                   {/* If Creator Section and user is Player, render Become a Creator CTA */}
                   {isCreatorSection && isPlayer ? (
-                    <div style={{ padding: isSidebarCollapsed && !isMobileOrDrawer ? '4px' : '4px 8px' }}>
-                      {(!isSidebarCollapsed || isMobileOrDrawer) ? (
-                        <button onClick={handleBecomeCreatorClick} className="become-creator-sidebar-btn" style={{ width: 'calc(100% - 16px)', margin: '4px 8px' }}>
+                    <div
+                      style={{
+                        padding: isSidebarCollapsed && !isMobileOrDrawer ? '4px' : '4px 8px',
+                      }}
+                    >
+                      {!isSidebarCollapsed || isMobileOrDrawer ? (
+                        <button
+                          onClick={handleBecomeCreatorClick}
+                          className="become-creator-sidebar-btn"
+                          style={{ width: 'calc(100% - 16px)', margin: '4px 8px' }}
+                        >
                           <PlusCircle size={16} />
                           <span>Become a Creator</span>
                         </button>
                       ) : (
-                        <button 
-                          onClick={handleBecomeCreatorClick} 
+                        <button
+                          onClick={handleBecomeCreatorClick}
                           className="become-creator-sidebar-btn"
-                          style={{ width: '40px', height: '40px', padding: 0, borderRadius: '50%', margin: '4px auto' }}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            padding: 0,
+                            borderRadius: '50%',
+                            margin: '4px auto',
+                          }}
                           data-tooltip="Become a Creator"
                           aria-label="Become a Creator"
                         >
@@ -884,11 +1165,11 @@ export const AppShell: React.FC = () => {
 
   const toggleLabel = isMobile
     ? isMobileDrawerOpen
-      ? "Close navigation"
-      : "Open navigation"
+      ? 'Close navigation'
+      : 'Open navigation'
     : isSidebarCollapsed
-      ? "Expand sidebar"
-      : "Collapse sidebar";
+      ? 'Expand sidebar'
+      : 'Collapse sidebar';
 
   return (
     <div className={`app-shell ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -896,19 +1177,17 @@ export const AppShell: React.FC = () => {
 
       {/* Top Header */}
       <header className="top-header app-header">
-        
         {/* Left header group */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          
           {/* Hamburger Sidebar/Drawer Toggle */}
-          <button 
+          <button
             ref={hamburgerRef}
-            onClick={handleNavigationToggle} 
+            onClick={handleNavigationToggle}
             style={hamburgerBtnStyle}
             className="hamburger-toggle"
             aria-label={toggleLabel}
             aria-expanded={isMobile ? isMobileDrawerOpen : !isSidebarCollapsed}
-            aria-controls={isMobile ? "mobile-navigation-drawer" : "desktop-sidebar"}
+            aria-controls={isMobile ? 'mobile-navigation-drawer' : 'desktop-sidebar'}
           >
             {isMobile && isMobileDrawerOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -919,7 +1198,9 @@ export const AppShell: React.FC = () => {
               <span style={logoTextVStyle}>V</span>
               <div style={logoPlayStyle}></div>
             </div>
-            <span style={logoTextStyle} className="mobile-header__wordmark">Vibe<span style={{ color: 'var(--primary)' }}>Play</span></span>
+            <span style={logoTextStyle} className="mobile-header__wordmark">
+              Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+            </span>
           </Link>
 
           {/* Global Search (Desktop Only) */}
@@ -936,58 +1217,77 @@ export const AppShell: React.FC = () => {
               <Search size={14} color="var(--text-secondary)" />
             </button>
           </form>
-
         </div>
 
         {/* Right header group */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }} className="mobile-header__right-group">
-          
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
+          className="mobile-header__right-group"
+        >
           {/* Search Button (Mobile Only) */}
-          <button 
-            onClick={() => navigate('/search')} 
+          <button
+            onClick={() => navigate('/search')}
             className="mobile-only search-toggle-btn"
             style={{
               ...iconBtnStyle,
               display: 'none',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
             }}
             aria-label="Search"
           >
             <Search size={20} color="var(--text-primary)" />
           </button>
 
-          {/* Dev-only Demo dropdown */}
-          <div ref={demoRef} style={dropdownRelativeStyle} className="desktop-only">
-            <button 
-              onClick={() => setShowDemoDropdown(!showDemoDropdown)} 
-              style={demoBtnStyle} 
-              className="roles-button"
-              aria-label="Switch Demo User Role"
-            >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary)' }}></span>
-              <span>Roles</span>
-            </button>
-            {showDemoDropdown && (
-              <div style={demoDropdownContentStyle} className="animate-fade">
-                <div style={dropdownTitleStyle}>Quick Role Switch</div>
-                <button onClick={() => handleDemoSwitch('player')} style={dropdownItemBtnStyle}>
-                  Player {currentUser?.role === 'player' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
-                </button>
-                <button onClick={() => handleDemoSwitch('creator')} style={dropdownItemBtnStyle}>
-                  Creator {currentUser?.role === 'creator' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
-                </button>
-                <button onClick={() => handleDemoSwitch('admin')} style={dropdownItemBtnStyle}>
-                  Admin {currentUser?.role === 'admin' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
-                </button>
-              </div>
-            )}
-          </div>
+          {/* Demo-build-only role switcher (spec §12): never present in the real bundle */}
+          {demoRolesEnabled && (
+            <div ref={demoRef} style={dropdownRelativeStyle} className="desktop-only">
+              <button
+                onClick={() => setShowDemoDropdown(!showDemoDropdown)}
+                style={demoBtnStyle}
+                className="roles-button"
+                aria-label="Switch Demo User Role"
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--primary)',
+                  }}
+                ></span>
+                <span>Roles</span>
+              </button>
+              {showDemoDropdown && (
+                <div style={demoDropdownContentStyle} className="animate-fade">
+                  <div style={dropdownTitleStyle}>Quick Role Switch (demo)</div>
+                  <button onClick={() => handleDemoSwitch('player')} style={dropdownItemBtnStyle}>
+                    Player{' '}
+                    {currentUser?.role === 'player' && (
+                      <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                    )}
+                  </button>
+                  <button onClick={() => handleDemoSwitch('creator')} style={dropdownItemBtnStyle}>
+                    Creator{' '}
+                    {currentUser?.role === 'creator' && (
+                      <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                    )}
+                  </button>
+                  <button onClick={() => handleDemoSwitch('admin')} style={dropdownItemBtnStyle}>
+                    Admin{' '}
+                    {currentUser?.role === 'admin' && (
+                      <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Publish Action Button */}
-          <button 
-            onClick={handlePublishClick} 
-            className="btn btn-primary btn-sm publish-button" 
+          <button
+            onClick={handlePublishClick}
+            className="btn btn-primary btn-sm publish-button"
             style={{ gap: '4px' }}
           >
             <Plus size={16} />
@@ -997,48 +1297,71 @@ export const AppShell: React.FC = () => {
           {/* Notifications Dropdown */}
           {currentUser && (
             <div ref={notifRef} style={dropdownRelativeStyle}>
-              <button 
-                onClick={() => setShowNotifDropdown(!showNotifDropdown)} 
-                style={iconBtnStyle} 
+              <button
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                style={iconBtnStyle}
                 aria-label={`${unreadCount} notifications`}
                 aria-expanded={showNotifDropdown}
               >
                 <Bell size={20} color="var(--text-primary)" />
-                {unreadCount > 0 && <span style={badgeCountStyle} className="header-badge">{unreadCount}</span>}
+                {unreadCount > 0 && (
+                  <span style={badgeCountStyle} className="header-badge">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
-              
+
               {showNotifDropdown && (
                 <div style={notifDropdownStyle} className="animate-fade">
                   <div style={dropdownHeaderStyle}>
                     <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Notifications</h3>
                     {unreadCount > 0 && (
-                      <button onClick={markAllAsRead} style={textLinkStyle}>Mark all read</button>
+                      <button onClick={markAllAsRead} style={textLinkStyle}>
+                        Mark all read
+                      </button>
                     )}
                   </div>
                   <div style={notifListStyle}>
                     {notifications.length === 0 ? (
                       <div style={emptyNotifStyle}>No notifications</div>
                     ) : (
-                      notifications.slice(0, 5).map(n => (
-                        <div 
-                          key={n.id} 
+                      notifications.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
                           onClick={() => {
                             markAsRead(n.id);
                             if (n.relatedSlug) navigate(`/game/${n.relatedSlug}`);
                             setShowNotifDropdown(false);
-                          }} 
+                          }}
                           style={{
                             ...notifItemStyle,
-                            backgroundColor: n.isRead ? 'transparent' : 'rgba(124, 92, 255, 0.05)'
+                            backgroundColor: n.isRead ? 'transparent' : 'rgba(124, 92, 255, 0.05)',
                           }}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '0.8rem', marginBottom: '2px', color: 'var(--text-primary)' }}>{n.title}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{n.message}</div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              marginBottom: '2px',
+                              color: 'var(--text-primary)',
+                            }}
+                          >
+                            {n.title}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                            {n.message}
+                          </div>
                         </div>
                       ))
                     )}
                   </div>
-                  <Link to="/notifications" onClick={() => setShowNotifDropdown(false)} style={viewAllNotifStyle}>View all notifications</Link>
+                  <Link
+                    to="/notifications"
+                    onClick={() => setShowNotifDropdown(false)}
+                    style={viewAllNotifStyle}
+                  >
+                    View all notifications
+                  </Link>
                 </div>
               )}
             </div>
@@ -1047,41 +1370,74 @@ export const AppShell: React.FC = () => {
           {/* Profile Dropdown */}
           {currentUser ? (
             <div ref={profileRef} style={dropdownRelativeStyle}>
-              <button onClick={() => setShowProfileDropdown(!showProfileDropdown)} style={avatarBtnStyle} aria-expanded={showProfileDropdown}>
-                <img src={currentUser.avatar} alt={currentUser.displayName} style={avatarImgStyle} />
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                style={avatarBtnStyle}
+                aria-expanded={showProfileDropdown}
+              >
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.displayName}
+                  style={avatarImgStyle}
+                />
               </button>
 
               {showProfileDropdown && (
                 <div style={profileDropdownStyle} className="animate-fade">
                   <div style={userHeaderInfoStyle}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>{currentUser.displayName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{currentUser.username}</div>
-                    <span className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`} style={{ marginTop: '6px', fontSize: '0.65rem' }}>
+                    <div
+                      style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                    >
+                      {currentUser.displayName}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      @{currentUser.username}
+                    </div>
+                    <span
+                      className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                      style={{ marginTop: '6px', fontSize: '0.65rem' }}
+                    >
                       {currentUser.role}
                     </span>
                   </div>
-                  
+
                   <hr style={hrStyle} />
-                  
-                  <Link to={`/profile/${currentUser.username}`} onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+
+                  <Link
+                    to={`/profile/${currentUser.username}`}
+                    onClick={() => setShowProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <UserIcon size={14} />
                     <span>My Profile</span>
                   </Link>
 
-                  <Link to="/settings" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <Settings size={14} />
                     <span>Settings</span>
                   </Link>
 
                   {hasCreatorAccess && (
-                    <Link to="/creator" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                    <Link
+                      to="/creator"
+                      onClick={() => setShowProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
                       <LayoutDashboard size={14} />
                       <span>Creator Studio</span>
                     </Link>
                   )}
 
                   {hasAdminAccess && (
-                    <Link to="/admin" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
                       <Shield size={14} />
                       <span>Admin Control</span>
                     </Link>
@@ -1089,10 +1445,27 @@ export const AppShell: React.FC = () => {
 
                   <hr style={hrStyle} />
                   <div style={{ padding: '4px 8px 6px' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '6px' }}>Appearance</div>
-                    <div style={{ display: 'flex', gap: '3px', background: 'var(--surface-2)', padding: '2px', borderRadius: '6px' }}>
-                      <button 
-                        onClick={() => setTheme('light')} 
+                    <div
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: 'var(--text-muted)',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      Appearance
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '3px',
+                        background: 'var(--surface-2)',
+                        padding: '2px',
+                        borderRadius: '6px',
+                      }}
+                    >
+                      <button
+                        onClick={() => setTheme('light')}
                         style={{
                           flex: 1,
                           display: 'flex',
@@ -1107,14 +1480,14 @@ export const AppShell: React.FC = () => {
                           fontWeight: 500,
                           background: theme === 'light' ? 'var(--surface-1)' : 'transparent',
                           color: theme === 'light' ? 'var(--primary)' : 'var(--text-secondary)',
-                          boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none'
+                          boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none',
                         }}
                       >
                         <Sun size={11} />
                         <span>Light</span>
                       </button>
-                      <button 
-                        onClick={() => setTheme('dark')} 
+                      <button
+                        onClick={() => setTheme('dark')}
                         style={{
                           flex: 1,
                           display: 'flex',
@@ -1129,14 +1502,14 @@ export const AppShell: React.FC = () => {
                           fontWeight: 500,
                           background: theme === 'dark' ? 'var(--surface-1)' : 'transparent',
                           color: theme === 'dark' ? 'var(--primary)' : 'var(--text-secondary)',
-                          boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none'
+                          boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none',
                         }}
                       >
                         <Moon size={11} />
                         <span>Dark</span>
                       </button>
-                      <button 
-                        onClick={() => setTheme('system')} 
+                      <button
+                        onClick={() => setTheme('system')}
                         style={{
                           flex: 1,
                           display: 'flex',
@@ -1151,7 +1524,7 @@ export const AppShell: React.FC = () => {
                           fontWeight: 500,
                           background: theme === 'system' ? 'var(--surface-1)' : 'transparent',
                           color: theme === 'system' ? 'var(--primary)' : 'var(--text-secondary)',
-                          boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none'
+                          boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none',
                         }}
                       >
                         <Monitor size={11} />
@@ -1162,14 +1535,22 @@ export const AppShell: React.FC = () => {
 
                   <hr style={hrStyle} />
 
-                  <button 
+                  <button
                     onClick={() => {
                       logout();
                       toast.success('Logged out successfully.');
                       navigate('/');
                       setShowProfileDropdown(false);
-                    }} 
-                    style={{ ...profileDropdownItemStyle, width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}
+                    }}
+                    style={{
+                      ...profileDropdownItemStyle,
+                      width: '100%',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      color: 'var(--danger)',
+                    }}
                   >
                     <LogOut size={14} />
                     <span>Log Out</span>
@@ -1179,20 +1560,30 @@ export const AppShell: React.FC = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', gap: '8px' }}>
-              <Link to="/login" className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 0.8rem' }}>Log In</Link>
-              <Link to="/register" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 0.8rem' }}>Sign Up</Link>
+              <Link
+                to="/login"
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '0.4rem 0.8rem' }}
+              >
+                Log In
+              </Link>
+              <Link
+                to="/register"
+                className="btn btn-primary btn-sm"
+                style={{ padding: '0.4rem 0.8rem' }}
+              >
+                Sign Up
+              </Link>
             </div>
           )}
-
         </div>
-
       </header>
 
       {/* Left Sidebar (Desktop Only) */}
       {!isMobile && (
-        <aside 
+        <aside
           id="desktop-sidebar"
-          className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`} 
+          className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}
           aria-label="Main navigation"
         >
           {renderSidebarContent(false)}
@@ -1203,23 +1594,29 @@ export const AppShell: React.FC = () => {
       {isMobile && (
         <>
           {isMobileDrawerOpen && (
-            <div 
-              className="drawer-overlay" 
-              onClick={() => setMobileDrawerOpen(false)} 
+            <div
+              className="drawer-overlay"
+              onClick={() => setMobileDrawerOpen(false)}
               role="presentation"
             />
           )}
-          <div 
+          <div
             ref={drawerRef}
             id="mobile-navigation-drawer"
-            className={`mobile-drawer ${isMobileDrawerOpen ? 'open' : ''}`} 
+            className={`mobile-drawer ${isMobileDrawerOpen ? 'open' : ''}`}
             aria-label="Mobile navigation"
             role="dialog"
             aria-modal="true"
           >
             <div style={drawerHeaderStyle}>
-              <span style={logoTextStyle}>Vibe<span style={{ color: 'var(--primary)' }}>Play</span></span>
-              <button onClick={() => setMobileDrawerOpen(false)} style={closeDrawerBtnStyle} aria-label="Close menu">
+              <span style={logoTextStyle}>
+                Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+              </span>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                style={closeDrawerBtnStyle}
+                aria-label="Close menu"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -1231,16 +1628,44 @@ export const AppShell: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="main-content app-main">
-        
+        {/* Demo build banner (spec §43) — statically removed from real builds */}
+        {import.meta.env.APP_MODE === 'demo' && isDemo && (
+          <div
+            role="note"
+            style={{
+              padding: '8px 16px',
+              borderRadius: '10px',
+              marginBottom: '1rem',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              backgroundColor: 'rgba(255,184,0,0.12)',
+              border: '1px solid rgba(255,184,0,0.35)',
+              color: 'var(--text-primary)',
+              textAlign: 'center',
+            }}
+          >
+            Frontend Demo — data is not persistent. This GitHub Pages build stores everything in
+            your browser only; uploads, emails and moderation need the real VibePlay backend.
+          </div>
+        )}
+
         {/* Path Guards warning */}
         {isCreatorPath && !hasCreatorAccess && (
           <div style={accessDeniedContainerStyle} className="bg-glass">
             <ShieldAlertStyle />
             <h2>Access Denied</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem', textAlign: 'center' }}>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                margin: '0.5rem 0 1.5rem',
+                textAlign: 'center',
+              }}
+            >
               You must be registered as a Creator to access this dashboard.
             </p>
-            <button onClick={handleBecomeCreatorClick} className="btn btn-primary">Become a Creator</button>
+            <button onClick={handleBecomeCreatorClick} className="btn btn-primary">
+              Become a Creator
+            </button>
           </div>
         )}
 
@@ -1248,59 +1673,88 @@ export const AppShell: React.FC = () => {
           <div style={accessDeniedContainerStyle} className="bg-glass">
             <ShieldAlertStyle />
             <h2>Restricted Area</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem', textAlign: 'center' }}>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                margin: '0.5rem 0 1.5rem',
+                textAlign: 'center',
+              }}
+            >
               This section is restricted to VibePlay Platform Administrators only.
             </p>
-            <button onClick={() => navigate('/')} className="btn btn-secondary">Go Home</button>
+            <button onClick={() => navigate('/')} className="btn btn-secondary">
+              Go Home
+            </button>
           </div>
         )}
 
         {/* Render pages if path check passes */}
-        {(!isCreatorPath || hasCreatorAccess) && (!isAdminPath || hasAdminAccess) && (
-          <Outlet />
-        )}
-
+        {(!isCreatorPath || hasCreatorAccess) && (!isAdminPath || hasAdminAccess) && <Outlet />}
       </main>
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="mobile-bottom-nav mobile-only">
-        <NavLink to="/" end className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}>
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
+        >
           <Home className="mobile-bottom-nav__icon" />
           <span className="mobile-bottom-nav__label">Home</span>
         </NavLink>
-        <NavLink to="/games" className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}>
+        <NavLink
+          to="/games"
+          className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
+        >
           <Compass className="mobile-bottom-nav__icon" />
           <span className="mobile-bottom-nav__label">Discover</span>
         </NavLink>
-        <NavLink to="/search" className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}>
+        <NavLink
+          to="/search"
+          className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
+        >
           <Search className="mobile-bottom-nav__icon" />
           <span className="mobile-bottom-nav__label">Search</span>
         </NavLink>
-        <NavLink to="/library" className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}>
+        <NavLink
+          to="/library"
+          className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
+        >
           <FolderHeart className="mobile-bottom-nav__icon" />
           <span className="mobile-bottom-nav__label">Library</span>
         </NavLink>
-        <NavLink to={currentUser ? `/profile/${currentUser.username}` : '/login'} className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}>
+        <NavLink
+          to={currentUser ? `/profile/${currentUser.username}` : '/login'}
+          className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
+        >
           <UserIcon className="mobile-bottom-nav__icon" />
           <span className="mobile-bottom-nav__label">Profile</span>
         </NavLink>
       </nav>
-
     </div>
   );
 };
 
 // SVG warning icon for guard screens
 const ShieldAlertStyle = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '1rem' }}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <line x1="12" y1="8" x2="12" y2="12"/>
-    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  <svg
+    width="48"
+    height="48"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="var(--danger)"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    style={{ marginBottom: '1rem' }}
+  >
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    <line x1="12" y1="8" x2="12" y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
   </svg>
 );
 
 // Styles
-
 
 const hamburgerBtnStyle: React.CSSProperties = {
   background: 'none',
@@ -1311,14 +1765,14 @@ const hamburgerBtnStyle: React.CSSProperties = {
   alignItems: 'center',
   padding: '8px',
   borderRadius: '4px',
-  transition: 'background-color 0.2s'
+  transition: 'background-color 0.2s',
 };
 
 const logoContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '0.5rem',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const logoIconStyle: React.CSSProperties = {
@@ -1329,7 +1783,7 @@ const logoIconStyle: React.CSSProperties = {
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };
 
 const logoTextVStyle: React.CSSProperties = {
@@ -1338,7 +1792,7 @@ const logoTextVStyle: React.CSSProperties = {
   fontSize: '1rem',
   fontFamily: 'var(--font-display)',
   zIndex: 2,
-  transform: 'translateX(-2px)'
+  transform: 'translateX(-2px)',
 };
 
 const logoPlayStyle: React.CSSProperties = {
@@ -1350,7 +1804,7 @@ const logoPlayStyle: React.CSSProperties = {
   position: 'absolute',
   right: '8px',
   top: '11px',
-  zIndex: 1
+  zIndex: 1,
 };
 
 const logoTextStyle: React.CSSProperties = {
@@ -1358,13 +1812,13 @@ const logoTextStyle: React.CSSProperties = {
   fontSize: '1.25rem',
   fontWeight: 700,
   color: 'var(--text-primary)',
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const searchFormStyle: React.CSSProperties = {
   position: 'relative',
   marginLeft: '1rem',
-  width: '280px'
+  width: '280px',
 };
 
 const searchInputStyle: React.CSSProperties = {
@@ -1375,7 +1829,7 @@ const searchInputStyle: React.CSSProperties = {
   borderRadius: '999px',
   color: 'var(--text-primary)',
   fontSize: '0.85rem',
-  outline: 'none'
+  outline: 'none',
 };
 
 const searchButtonStyle: React.CSSProperties = {
@@ -1387,12 +1841,12 @@ const searchButtonStyle: React.CSSProperties = {
   border: 'none',
   cursor: 'pointer',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const dropdownRelativeStyle: React.CSSProperties = {
   position: 'relative',
-  display: 'inline-block'
+  display: 'inline-block',
 };
 
 const demoBtnStyle: React.CSSProperties = {
@@ -1407,7 +1861,7 @@ const demoBtnStyle: React.CSSProperties = {
   transition: 'all 0.2s',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '6px'
+  gap: '6px',
 };
 
 const demoDropdownContentStyle: React.CSSProperties = {
@@ -1424,7 +1878,7 @@ const demoDropdownContentStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '4px',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const dropdownTitleStyle: React.CSSProperties = {
@@ -1432,7 +1886,7 @@ const dropdownTitleStyle: React.CSSProperties = {
   fontSize: '0.7rem',
   fontWeight: 700,
   textTransform: 'uppercase',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const dropdownItemBtnStyle: React.CSSProperties = {
@@ -1447,7 +1901,7 @@ const dropdownItemBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   textAlign: 'left',
   transition: 'background-color 0.2s',
-  width: '100%'
+  width: '100%',
 };
 
 const iconBtnStyle: React.CSSProperties = {
@@ -1457,7 +1911,7 @@ const iconBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   padding: '4px',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const badgeCountStyle: React.CSSProperties = {
@@ -1471,10 +1925,8 @@ const badgeCountStyle: React.CSSProperties = {
   borderRadius: '999px',
   padding: '1px 4px',
   minWidth: '14px',
-  textAlign: 'center'
+  textAlign: 'center',
 };
-
-
 
 const notifDropdownStyle: React.CSSProperties = {
   position: 'absolute',
@@ -1487,7 +1939,7 @@ const notifDropdownStyle: React.CSSProperties = {
   borderRadius: '12px',
   boxShadow: 'var(--shadow-lg)',
   zIndex: 100,
-  overflow: 'hidden'
+  overflow: 'hidden',
 };
 
 const dropdownHeaderStyle: React.CSSProperties = {
@@ -1496,7 +1948,7 @@ const dropdownHeaderStyle: React.CSSProperties = {
   alignItems: 'center',
   padding: '10px 14px',
   borderBottom: '1px solid var(--border-color)',
-  backgroundColor: 'rgba(255,255,255,0.01)'
+  backgroundColor: 'rgba(255,255,255,0.01)',
 };
 
 const textLinkStyle: React.CSSProperties = {
@@ -1505,26 +1957,26 @@ const textLinkStyle: React.CSSProperties = {
   color: 'var(--secondary)',
   fontSize: '0.7rem',
   fontWeight: 600,
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const notifListStyle: React.CSSProperties = {
   maxHeight: '260px',
-  overflowY: 'auto'
+  overflowY: 'auto',
 };
 
 const notifItemStyle: React.CSSProperties = {
   padding: '10px 14px',
   borderBottom: '1px solid var(--border-color)',
   cursor: 'pointer',
-  transition: 'background-color 0.2s'
+  transition: 'background-color 0.2s',
 };
 
 const emptyNotifStyle: React.CSSProperties = {
   padding: '24px',
   textAlign: 'center',
   color: 'var(--text-secondary)',
-  fontSize: '0.8rem'
+  fontSize: '0.8rem',
 };
 
 const viewAllNotifStyle: React.CSSProperties = {
@@ -1535,7 +1987,7 @@ const viewAllNotifStyle: React.CSSProperties = {
   fontWeight: 600,
   color: 'var(--secondary)',
   borderTop: '1px solid var(--border-color)',
-  backgroundColor: 'rgba(255,255,255,0.01)'
+  backgroundColor: 'rgba(255,255,255,0.01)',
 };
 
 const avatarBtnStyle: React.CSSProperties = {
@@ -1547,7 +1999,7 @@ const avatarBtnStyle: React.CSSProperties = {
   overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };
 
 const avatarImgStyle: React.CSSProperties = {
@@ -1555,7 +2007,7 @@ const avatarImgStyle: React.CSSProperties = {
   height: '32px',
   objectFit: 'cover',
   borderRadius: '50%',
-  border: '1.5px solid var(--border-color)'
+  border: '1.5px solid var(--border-color)',
 };
 
 const profileDropdownStyle: React.CSSProperties = {
@@ -1569,17 +2021,17 @@ const profileDropdownStyle: React.CSSProperties = {
   borderRadius: '12px',
   padding: '6px',
   boxShadow: 'var(--shadow-lg)',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const userHeaderInfoStyle: React.CSSProperties = {
-  padding: '6px 10px'
+  padding: '6px 10px',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
   borderTop: '1px solid var(--border-color)',
-  margin: '6px 0'
+  margin: '6px 0',
 };
 
 const profileDropdownItemStyle: React.CSSProperties = {
@@ -1591,7 +2043,7 @@ const profileDropdownItemStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   color: 'var(--text-secondary)',
   transition: 'all 0.15s ease',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const drawerHeaderStyle: React.CSSProperties = {
@@ -1599,7 +2051,7 @@ const drawerHeaderStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '16px 20px',
-  height: '64px'
+  height: '64px',
 };
 
 const closeDrawerBtnStyle: React.CSSProperties = {
@@ -1609,7 +2061,7 @@ const closeDrawerBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
-  padding: '6px'
+  padding: '6px',
 };
 
 const accessDeniedContainerStyle: React.CSSProperties = {
@@ -1622,7 +2074,7 @@ const accessDeniedContainerStyle: React.CSSProperties = {
   margin: '2rem auto',
   maxWidth: '500px',
   border: '1px solid var(--border-color)',
-  animation: 'slideUp 0.3s ease forwards'
+  animation: 'slideUp 0.3s ease forwards',
 };
 
 /* mobileNavLinkStyle and mobileNavTextStyle removed to prevent unused locals compilation errors */

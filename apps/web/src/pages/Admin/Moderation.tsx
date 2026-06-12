@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { Game } from '../../types';
-import { toast } from '../../components/Toast';
+import { toast } from '../../components/toastEvents';
 import { Check, X, Cpu, Eye } from 'lucide-react';
 
 export const AdminModeration: React.FC = () => {
@@ -11,44 +11,27 @@ export const AdminModeration: React.FC = () => {
   const { games, approveGame, rejectGame } = useGames();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReasonText, setRejectReasonText] = useState('');
 
   // Moderation queue: Status is pending
-  const pendingGames = games.filter(g => g.status === 'pending');
+  const pendingGames = games.filter((g) => g.status === 'pending');
 
-  // Sync selection with search params e.g. ?game=id
-  useEffect(() => {
-    const gameId = searchParams.get('game');
-    if (gameId) {
-      const found = pendingGames.find(g => g.id === gameId);
-      if (found) {
-        setSelectedGame(found);
-        return;
-      }
-    }
-    
-    // Default selection
-    if (pendingGames.length > 0) {
-      setSelectedGame(pendingGames[0]);
-    } else {
-      setSelectedGame(null);
-    }
-  }, [searchParams, games]);
+  const selectedGame =
+    pendingGames.find((game) => game.id === searchParams.get('game')) ?? pendingGames[0] ?? null;
 
   const handleSelectGame = (game: Game) => {
-    setSelectedGame(game);
     setSearchParams({ game: game.id });
   };
 
   const handleApprove = () => {
     if (!selectedGame || !currentUser) return;
-    
-    if (window.confirm(`Approve "${selectedGame.title}" and publish it to the live VibePlay catalog?`)) {
+
+    if (
+      window.confirm(`Approve "${selectedGame.title}" and publish it to the live VibePlay catalog?`)
+    ) {
       approveGame(selectedGame.id, currentUser.id, currentUser.displayName);
       toast.success(`"${selectedGame.title}" approved and published!`);
-      setSelectedGame(null);
       setSearchParams({});
     }
   };
@@ -68,20 +51,27 @@ export const AdminModeration: React.FC = () => {
     rejectGame(selectedGame.id, rejectReasonText.trim(), currentUser.id, currentUser.displayName);
     toast.danger(`Build "${selectedGame.title}" was rejected.`);
     setShowRejectModal(false);
-    setSelectedGame(null);
     setSearchParams({});
   };
 
   return (
     <div style={containerStyle} className="animate-fade">
-      
       {/* Reject Modal */}
       {showRejectModal && selectedGame && (
         <div style={modalOverlayStyle}>
           <div style={modalStyle} className="bg-glass animate-slide-up">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Reject Submission</h3>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1.25rem' }}>
-              Specify why the build <strong>{selectedGame.title}</strong> is being rejected. The creator will see this note.
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+              Reject Submission
+            </h3>
+            <p
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '1.25rem',
+              }}
+            >
+              Specify why the build <strong>{selectedGame.title}</strong> is being rejected. The
+              creator will see this note.
             </p>
             <textarea
               placeholder="e.g. Asset check failed: Missing textures. File index.html is empty. Contains malicious script triggers..."
@@ -91,8 +81,15 @@ export const AdminModeration: React.FC = () => {
               style={{ minHeight: '100px', resize: 'vertical', marginBottom: '1.5rem' }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <button onClick={() => setShowRejectModal(false)} className="btn btn-secondary btn-sm">Cancel</button>
-              <button onClick={handleConfirmReject} className="btn btn-danger btn-sm">Confirm Rejection</button>
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+              <button onClick={handleConfirmReject} className="btn btn-danger btn-sm">
+                Confirm Rejection
+              </button>
             </div>
           </div>
         </div>
@@ -100,35 +97,42 @@ export const AdminModeration: React.FC = () => {
 
       {/* Main Grid split */}
       <div style={layoutGridStyle}>
-        
         {/* Left Side: Pending List */}
         <div style={listColStyle}>
           <h2 style={titleStyle}>Moderation Queue ({pendingGames.length})</h2>
-          
+
           <div style={listContainerStyle}>
             {pendingGames.length === 0 ? (
               <div style={emptyQueueStyle}>
                 <Check size={36} color="var(--success)" style={{ marginBottom: '0.5rem' }} />
                 <h3>Queue Empty</h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>All uploaded browser builds have been moderated.</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  All uploaded browser builds have been moderated.
+                </span>
               </div>
             ) : (
-              pendingGames.map(g => (
-                <div 
-                  key={g.id} 
+              pendingGames.map((g) => (
+                <div
+                  key={g.id}
                   onClick={() => handleSelectGame(g)}
                   style={{
                     ...queueCardStyle,
-                    backgroundColor: selectedGame?.id === g.id ? 'var(--bg-hover)' : 'var(--bg-card)',
-                    borderColor: selectedGame?.id === g.id ? 'var(--secondary)' : 'var(--border-color)'
+                    backgroundColor:
+                      selectedGame?.id === g.id ? 'var(--bg-hover)' : 'var(--bg-card)',
+                    borderColor:
+                      selectedGame?.id === g.id ? 'var(--secondary)' : 'var(--border-color)',
                   }}
                 >
                   <img src={g.coverUrl} alt="" style={coverStyle} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.title}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>by @{g.creatorName}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      by @{g.creatorName}
+                    </div>
                   </div>
-                  <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>Pending</span>
+                  <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
+                    Pending
+                  </span>
                 </div>
               ))
             )}
@@ -139,21 +143,31 @@ export const AdminModeration: React.FC = () => {
         <div style={detailColStyle}>
           {selectedGame ? (
             <div style={diagnosticsCardStyle} className="bg-glass">
-              
               {/* Game Meta Header */}
               <div style={diagnosticsHeaderStyle}>
                 <div>
                   <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{selectedGame.title}</h3>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                    Uploaded by <strong>@{selectedGame.creatorName}</strong> • Category: <strong>{selectedGame.category}</strong>
+                  <div
+                    style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}
+                  >
+                    Uploaded by <strong>@{selectedGame.creatorName}</strong> • Category:{' '}
+                    <strong>{selectedGame.category}</strong>
                   </div>
                 </div>
-                
+
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={handleApprove} className="btn btn-success btn-sm" style={{ gap: '4px' }}>
+                  <button
+                    onClick={handleApprove}
+                    className="btn btn-success btn-sm"
+                    style={{ gap: '4px' }}
+                  >
                     <Check size={14} /> Approve
                   </button>
-                  <button onClick={handleRejectClick} className="btn btn-danger btn-sm" style={{ gap: '4px' }}>
+                  <button
+                    onClick={handleRejectClick}
+                    className="btn btn-danger btn-sm"
+                    style={{ gap: '4px' }}
+                  >
                     <X size={14} /> Reject
                   </button>
                 </div>
@@ -166,21 +180,33 @@ export const AdminModeration: React.FC = () => {
                 <h4 style={sectionHeadingStyle}>Simulated Sandbox Scan Diagnostic</h4>
                 <div style={logsBoxStyle}>
                   <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Sandbox Checksum Verification: hash matches original bundle.
+                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Sandbox Checksum
+                    Verification: hash matches original bundle.
                   </div>
                   <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Entrypoint Validation: index.html found at root level.
+                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Entrypoint Validation:
+                    index.html found at root level.
                   </div>
                   <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Static Malware Scan: 0 files flagged.
+                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Static Malware Scan: 0
+                    files flagged.
                   </div>
                   <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Server Call Prevention: no active outbound API requests detected.
+                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Server Call Prevention:
+                    no active outbound API requests detected.
                   </div>
                   <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> WebGL Context initialization checks complete.
+                    <span style={{ color: 'var(--success)' }}>[PASS]</span> WebGL Context
+                    initialization checks complete.
                   </div>
-                  <div style={{ ...logLineStyle, fontWeight: 600, color: 'var(--success)', marginTop: '6px' }}>
+                  <div
+                    style={{
+                      ...logLineStyle,
+                      fontWeight: 600,
+                      color: 'var(--success)',
+                      marginTop: '6px',
+                    }}
+                  >
                     &gt; DIAGNOSTICS CODE SCANNER STATUS: SECURE FOR IFRAME SANDBOX RUN
                   </div>
                 </div>
@@ -188,10 +214,11 @@ export const AdminModeration: React.FC = () => {
 
               {/* Basic metadata */}
               <div style={infoGridStyle}>
-                
                 <div style={metaCardStyle}>
                   <strong>Archive File details:</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <div
+                    style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
+                  >
                     <div>ZIP Name: {selectedGame.fileName || 'robo-arena-v1.zip'}</div>
                     <div>ZIP Size: {selectedGame.fileSize || '18.3 MB'}</div>
                     <div>Build Version: v{selectedGame.version}</div>
@@ -200,20 +227,28 @@ export const AdminModeration: React.FC = () => {
 
                 <div style={metaCardStyle}>
                   <strong>AI Disclosure:</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <div
+                    style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
+                  >
                     <div>Type: {selectedGame.aiDisclosure.toUpperCase()}</div>
-                    <div>Tools: {selectedGame.aiTools.length > 0 ? selectedGame.aiTools.join(', ') : 'None listed'}</div>
+                    <div>
+                      Tools:{' '}
+                      {selectedGame.aiTools.length > 0
+                        ? selectedGame.aiTools.join(', ')
+                        : 'None listed'}
+                    </div>
                   </div>
                 </div>
 
                 <div style={metaCardStyle}>
                   <strong>Compatibilities:</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <div
+                    style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
+                  >
                     <div>Inputs: {selectedGame.devices.join(', ')}</div>
                     <div>Multiplayer: {selectedGame.multiplayer ? 'Yes' : 'No'}</div>
                   </div>
                 </div>
-
               </div>
 
               {/* Descriptions */}
@@ -229,12 +264,16 @@ export const AdminModeration: React.FC = () => {
 
               {/* Actions Preview link */}
               <div style={{ marginTop: '1rem' }}>
-                <Link to={`/game/${selectedGame.slug}`} target="_blank" className="btn btn-secondary btn-sm" style={{ gap: '6px' }}>
+                <Link
+                  to={`/game/${selectedGame.slug}`}
+                  target="_blank"
+                  className="btn btn-secondary btn-sm"
+                  style={{ gap: '6px' }}
+                >
                   <Eye size={14} />
                   <span>Launch Safe Preview Player</span>
                 </Link>
               </div>
-
             </div>
           ) : (
             <div style={emptyDetailStyle} className="bg-glass">
@@ -243,9 +282,7 @@ export const AdminModeration: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
-
     </div>
   );
 };
@@ -255,14 +292,14 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1.5rem',
-  height: '100%'
+  height: '100%',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '1.5rem',
   fontWeight: 700,
   fontFamily: 'var(--font-display)',
-  letterSpacing: '-0.01em'
+  letterSpacing: '-0.01em',
 };
 
 const modalOverlayStyle: React.CSSProperties = {
@@ -276,7 +313,7 @@ const modalOverlayStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   zIndex: 9999,
-  padding: '1.5rem'
+  padding: '1.5rem',
 };
 
 const modalStyle: React.CSSProperties = {
@@ -286,7 +323,7 @@ const modalStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   padding: '2rem',
   boxShadow: 'var(--shadow-lg)',
-  backgroundColor: 'var(--bg-card)'
+  backgroundColor: 'var(--bg-card)',
 };
 
 const layoutGridStyle: React.CSSProperties = {
@@ -294,20 +331,20 @@ const layoutGridStyle: React.CSSProperties = {
   gap: '2rem',
   alignItems: 'flex-start',
   flexWrap: 'wrap',
-  flex: 1
+  flex: 1,
 };
 
 const listColStyle: React.CSSProperties = {
   flex: '1 1 260px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const listContainerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '10px'
+  gap: '10px',
 };
 
 const emptyQueueStyle: React.CSSProperties = {
@@ -316,7 +353,7 @@ const emptyQueueStyle: React.CSSProperties = {
   borderRadius: '12px',
   padding: '4rem 1.5rem',
   textAlign: 'center',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const queueCardStyle: React.CSSProperties = {
@@ -327,7 +364,7 @@ const queueCardStyle: React.CSSProperties = {
   borderRadius: '8px',
   border: '1px solid var(--border-color)',
   cursor: 'pointer',
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const coverStyle: React.CSSProperties = {
@@ -335,11 +372,11 @@ const coverStyle: React.CSSProperties = {
   height: '30px',
   objectFit: 'cover',
   borderRadius: '4px',
-  backgroundColor: '#151928'
+  backgroundColor: '#151928',
 };
 
 const detailColStyle: React.CSSProperties = {
-  flex: '2.5 1 450px'
+  flex: '2.5 1 450px',
 };
 
 const diagnosticsCardStyle: React.CSSProperties = {
@@ -348,7 +385,7 @@ const diagnosticsCardStyle: React.CSSProperties = {
   padding: '2rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const diagnosticsHeaderStyle: React.CSSProperties = {
@@ -356,18 +393,18 @@ const diagnosticsHeaderStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
-  borderTop: '1px solid var(--border-color)'
+  borderTop: '1px solid var(--border-color)',
 };
 
 const scansSectionStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '8px'
+  gap: '8px',
 };
 
 const sectionHeadingStyle: React.CSSProperties = {
@@ -375,7 +412,7 @@ const sectionHeadingStyle: React.CSSProperties = {
   fontWeight: 700,
   textTransform: 'uppercase',
   color: 'var(--text-secondary)',
-  letterSpacing: '0.05em'
+  letterSpacing: '0.05em',
 };
 
 const logsBoxStyle: React.CSSProperties = {
@@ -384,7 +421,7 @@ const logsBoxStyle: React.CSSProperties = {
   padding: '1rem',
   fontFamily: 'Courier, monospace',
   fontSize: '0.75rem',
-  lineHeight: 1.6
+  lineHeight: 1.6,
 };
 
 const logLineStyle: React.CSSProperties = {};
@@ -392,7 +429,7 @@ const logLineStyle: React.CSSProperties = {};
 const infoGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const metaCardStyle: React.CSSProperties = {
@@ -400,14 +437,14 @@ const metaCardStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   padding: '10px 14px',
   borderRadius: '8px',
-  fontSize: '0.85rem'
+  fontSize: '0.85rem',
 };
 
 const descTextStyle: React.CSSProperties = {
   fontSize: '0.9rem',
   color: 'var(--text-secondary)',
   lineHeight: 1.5,
-  marginTop: '4px'
+  marginTop: '4px',
 };
 
 const emptyDetailStyle: React.CSSProperties = {
@@ -420,5 +457,5 @@ const emptyDetailStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };

@@ -15,7 +15,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
   title,
   gamesList,
   linkTo,
-  emptyText = 'No games found.'
+  emptyText = 'No games found.',
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
@@ -55,7 +55,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
     const scrollDistance = el.clientWidth * 0.85;
     el.scrollBy({
       left: direction === 'next' ? scrollDistance : -scrollDistance,
-      behavior: 'smooth'
+      behavior: 'smooth',
     });
   };
 
@@ -83,7 +83,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
     startX.current = e.pageX - el.offsetLeft;
     scrollLeftStart.current = el.scrollLeft;
     isDragged.current = false;
-    
+
     el.style.cursor = 'grabbing';
     el.style.userSelect = 'none';
     el.setPointerCapture(e.pointerId);
@@ -96,11 +96,11 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
 
     const x = e.pageX - el.offsetLeft;
     const walk = (x - startX.current) * 1.5; // Drag speed multiplier
-    
+
     if (Math.abs(walk) > 5) {
       isDragged.current = true;
     }
-    
+
     el.scrollLeft = scrollLeftStart.current - walk;
   };
 
@@ -171,18 +171,24 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
   }
 
   return (
-    <section className={`game-carousel ${title === 'Continue Playing' ? 'game-carousel--continue' : ''}`} aria-label={title}>
+    <section
+      className={`game-carousel ${title === 'Continue Playing' ? 'game-carousel--continue' : ''}`}
+      aria-label={title}
+    >
       <div className="game-carousel__header">
         <h2>{title}</h2>
         {linkTo && (
-          <Link to={linkTo} aria-label={title === 'Continue Playing' ? 'View history' : `See all ${title}`}>
+          <Link
+            to={linkTo}
+            aria-label={title === 'Continue Playing' ? 'View history' : `See all ${title}`}
+          >
             <span>{title === 'Continue Playing' ? 'View history' : 'See All'}</span>
             <ChevronRight size={14} />
           </Link>
         )}
       </div>
 
-      <div 
+      <div
         className={`game-carousel__body ${!atStart ? 'has-left-fade' : ''} ${!atEnd && showArrows ? 'has-right-fade' : ''}`}
       >
         {/* Previous Button */}
@@ -214,12 +220,15 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
         >
           <div className="game-carousel__track">
             {gamesList.map((game) => (
-              <div 
-                key={game.id} 
+              <div
+                key={game.id}
                 className="game-carousel__item"
                 onClickCapture={handleCardClickCapture}
               >
-                <GameCard game={game} variant={title === 'Continue Playing' ? 'continue' : 'default'} />
+                <GameCard
+                  game={game}
+                  variant={title === 'Continue Playing' ? 'continue' : 'default'}
+                />
               </div>
             ))}
           </div>

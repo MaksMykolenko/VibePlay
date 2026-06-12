@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { UserRole } from '../../types';
-import { toast } from '../../components/Toast';
+import { toast } from '../../components/toastEvents';
 import { ShieldAlert, Award, UserMinus, UserCheck } from 'lucide-react';
 
 export const AdminUsers: React.FC = () => {
@@ -12,7 +12,7 @@ export const AdminUsers: React.FC = () => {
   const [filterRole, setFilterRole] = useState<string>('all');
 
   const getGamesCount = (userId: string) => {
-    return games.filter(g => g.creatorId === userId).length;
+    return games.filter((g) => g.creatorId === userId).length;
   };
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
@@ -21,7 +21,7 @@ export const AdminUsers: React.FC = () => {
       return;
     }
 
-    const updatedUsers = users.map(u => {
+    const updatedUsers = users.map((u) => {
       if (u.id === userId) {
         return { ...u, role: newRole };
       }
@@ -40,7 +40,7 @@ export const AdminUsers: React.FC = () => {
     }
 
     // Toggle custom status in local storage user profiles
-    const updatedUsers = users.map(u => {
+    const updatedUsers = users.map((u) => {
       if (u.id === userId) {
         // Embed a mock status key directly
         return { ...u, isSuspended };
@@ -60,25 +60,26 @@ export const AdminUsers: React.FC = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => {
+  const filteredUsers = users.filter((u) => {
     if (filterRole === 'all') return true;
     return u.role === filterRole;
   });
 
   return (
     <div style={containerStyle} className="animate-fade">
-      
       {/* Header */}
       <div style={headerStyle}>
         <div>
           <h1>User Directory</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Auditing and managing roles, privileges, and platform bans.</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+            Auditing and managing roles, privileges, and platform bans.
+          </p>
         </div>
-        
-        <select 
-          value={filterRole} 
-          onChange={(e) => setFilterRole(e.target.value)} 
-          className="form-input form-select" 
+
+        <select
+          value={filterRole}
+          onChange={(e) => setFilterRole(e.target.value)}
+          className="form-input form-select"
           style={filterSelectStyle}
         >
           <option value="all">All Roles</option>
@@ -104,20 +105,21 @@ export const AdminUsers: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.map(user => {
+            {filteredUsers.map((user) => {
               // Simulated suspend status check
-              const isSuspended = (user as any).isSuspended === true;
+              const isSuspended = user.isSuspended === true;
 
               return (
                 <tr key={user.id} style={tableBodyRowStyle}>
-                  
                   {/* Avatar & username */}
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <img src={user.avatar} alt="" style={avatarStyle} />
                       <div>
                         <div style={{ fontWeight: 600, color: '#fff' }}>{user.displayName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{user.username}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          @{user.username}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -127,7 +129,9 @@ export const AdminUsers: React.FC = () => {
 
                   {/* Role Badge */}
                   <td style={tdStyle}>
-                    <span className={`badge ${user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}>
+                    <span
+                      className={`badge ${user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                    >
                       {user.role}
                     </span>
                   </td>
@@ -147,10 +151,9 @@ export const AdminUsers: React.FC = () => {
                   {/* Actions */}
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
                     <div style={actionsContainerStyle}>
-                      
                       {/* Change Role to Creator */}
                       {user.role === 'player' && (
-                        <button 
+                        <button
                           onClick={() => handleRoleChange(user.id, 'creator')}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
@@ -162,7 +165,7 @@ export const AdminUsers: React.FC = () => {
 
                       {/* Change Role to Player */}
                       {user.role === 'creator' && (
-                        <button 
+                        <button
                           onClick={() => handleRoleChange(user.id, 'player')}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
@@ -174,7 +177,7 @@ export const AdminUsers: React.FC = () => {
 
                       {/* Suspend / Restore */}
                       {isSuspended ? (
-                        <button 
+                        <button
                           onClick={() => handleStatusChange(user.id, false)}
                           className="btn btn-secondary btn-sm"
                           style={{ ...actionBtnStyle, color: 'var(--success)' }}
@@ -183,7 +186,7 @@ export const AdminUsers: React.FC = () => {
                           <UserCheck size={14} />
                         </button>
                       ) : (
-                        <button 
+                        <button
                           onClick={() => handleStatusChange(user.id, true)}
                           className="btn btn-danger btn-sm"
                           style={actionBtnStyle}
@@ -192,17 +195,14 @@ export const AdminUsers: React.FC = () => {
                           <ShieldAlert size={14} />
                         </button>
                       )}
-
                     </div>
                   </td>
-
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
-
     </div>
   );
 };
@@ -211,7 +211,7 @@ export const AdminUsers: React.FC = () => {
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const headerStyle: React.CSSProperties = {
@@ -219,36 +219,36 @@ const headerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: '12px'
+  gap: '12px',
 };
 
 const filterSelectStyle: React.CSSProperties = {
   width: '180px',
-  padding: '0.6rem 2.5rem 0.6rem 1rem'
+  padding: '0.6rem 2.5rem 0.6rem 1rem',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
   borderTop: '1px solid var(--border-color)',
-  margin: '0.25rem 0'
+  margin: '0.25rem 0',
 };
 
 const tableWrapperStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   borderRadius: '12px',
-  overflowX: 'auto'
+  overflowX: 'auto',
 };
 
 const tableStyle: React.CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   textAlign: 'left',
-  fontSize: '0.9rem'
+  fontSize: '0.9rem',
 };
 
 const tableHeaderRowStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-color)',
-  backgroundColor: 'var(--bg-surface)'
+  backgroundColor: 'var(--bg-surface)',
 };
 
 const thStyle: React.CSSProperties = {
@@ -257,17 +257,17 @@ const thStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   textTransform: 'uppercase',
   fontSize: '0.75rem',
-  letterSpacing: '0.05em'
+  letterSpacing: '0.05em',
 };
 
 const tableBodyRowStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-color)',
-  transition: 'background-color 0.2s'
+  transition: 'background-color 0.2s',
 };
 
 const tdStyle: React.CSSProperties = {
   padding: '1rem 1.25rem',
-  verticalAlign: 'middle'
+  verticalAlign: 'middle',
 };
 
 const avatarStyle: React.CSSProperties = {
@@ -275,13 +275,13 @@ const avatarStyle: React.CSSProperties = {
   height: '32px',
   borderRadius: '50%',
   objectFit: 'cover',
-  border: '1px solid var(--border-color)'
+  border: '1px solid var(--border-color)',
 };
 
 const actionsContainerStyle: React.CSSProperties = {
   display: 'flex',
   gap: '6px',
-  justifyContent: 'flex-end'
+  justifyContent: 'flex-end',
 };
 
 const actionBtnStyle: React.CSSProperties = {
@@ -289,5 +289,5 @@ const actionBtnStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: '6px'
+  borderRadius: '6px',
 };

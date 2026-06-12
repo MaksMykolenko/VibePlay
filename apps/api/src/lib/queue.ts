@@ -36,7 +36,6 @@ export function createValidationQueue(
           }
           // Fire and forget, like a real queue; errors surface via version status.
           void inlineProcessor(job).catch((err) => {
-            // eslint-disable-next-line no-console
             console.error('inline validation job failed', err);
           });
         },

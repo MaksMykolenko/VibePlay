@@ -2,12 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
-import { Search, Bell, Plus, User as UserIcon, Settings, LogOut, Shield, Layout, Check } from 'lucide-react';
-import { toast } from './Toast';
+import {
+  Search,
+  Bell,
+  Plus,
+  User as UserIcon,
+  Settings,
+  LogOut,
+  Shield,
+  Layout,
+  Check,
+} from 'lucide-react';
+import { toast } from './toastEvents';
 
 export const Navbar: React.FC = () => {
   const { currentUser, logout, switchDemoRole } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(currentUser?.id);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(
+    currentUser?.id,
+  );
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,25 +87,47 @@ export const Navbar: React.FC = () => {
   return (
     <header style={headerStyle} className="bg-glass">
       <div style={navContainerStyle}>
-        
         {/* Logo */}
         <Link to="/" style={logoContainerStyle}>
           <div style={logoIconStyle}>
             <span style={logoTextVStyle}>V</span>
             <div style={logoPlayStyle}></div>
           </div>
-          <span style={logoTextStyle}>Vibe<span style={{ color: 'var(--primary)' }}>Play</span></span>
+          <span style={logoTextStyle}>
+            Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+          </span>
         </Link>
 
         {/* Links */}
         <nav style={navLinksStyle}>
-          <Link to="/" className="nav-link" style={navLinkStyle}>Discover</Link>
-          <Link to="/games" className="nav-link" style={navLinkStyle}>Browse</Link>
+          <Link to="/" className="nav-link" style={navLinkStyle}>
+            Discover
+          </Link>
+          <Link to="/games" className="nav-link" style={navLinkStyle}>
+            Browse
+          </Link>
           <div className="nav-categories-container" style={dropdownHoverContainerStyle}>
-            <span className="nav-link" style={navLinkStyle}>Categories</span>
+            <span className="nav-link" style={navLinkStyle}>
+              Categories
+            </span>
             <div className="categories-dropdown" style={categoriesDropdownStyle}>
-              {['Action', 'Adventure', 'Horror', 'Simulator', 'Racing', 'Puzzle', 'Multiplayer', 'Experimental'].map(cat => (
-                <Link key={cat} to={`/games?category=${cat.toLowerCase()}`} style={dropdownItemStyle}>{cat}</Link>
+              {[
+                'Action',
+                'Adventure',
+                'Horror',
+                'Simulator',
+                'Racing',
+                'Puzzle',
+                'Multiplayer',
+                'Experimental',
+              ].map((cat) => (
+                <Link
+                  key={cat}
+                  to={`/games?category=${cat.toLowerCase()}`}
+                  style={dropdownItemStyle}
+                >
+                  {cat}
+                </Link>
               ))}
             </div>
           </div>
@@ -115,7 +149,6 @@ export const Navbar: React.FC = () => {
 
         {/* Right Section */}
         <div style={rightSectionStyle}>
-          
           {/* Quick Demo Switch */}
           <div ref={demoRef} style={dropdownRelativeStyle}>
             <button onClick={() => setShowDemoDropdown(!showDemoDropdown)} style={demoBtnStyle}>
@@ -125,20 +158,33 @@ export const Navbar: React.FC = () => {
               <div style={demoDropdownContentStyle}>
                 <div style={dropdownTitleStyle}>Quick Role Switch</div>
                 <button onClick={() => handleDemoSwitch('player')} style={dropdownItemBtnStyle}>
-                  Demo Player {currentUser?.role === 'player' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
+                  Demo Player{' '}
+                  {currentUser?.role === 'player' && (
+                    <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                  )}
                 </button>
                 <button onClick={() => handleDemoSwitch('creator')} style={dropdownItemBtnStyle}>
-                  Demo Creator {currentUser?.role === 'creator' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
+                  Demo Creator{' '}
+                  {currentUser?.role === 'creator' && (
+                    <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                  )}
                 </button>
                 <button onClick={() => handleDemoSwitch('admin')} style={dropdownItemBtnStyle}>
-                  Demo Admin {currentUser?.role === 'admin' && <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />}
+                  Demo Admin{' '}
+                  {currentUser?.role === 'admin' && (
+                    <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
+                  )}
                 </button>
               </div>
             )}
           </div>
 
           {/* Publish */}
-          <button onClick={handlePublishClick} className="btn btn-primary btn-sm" style={publishBtnStyle}>
+          <button
+            onClick={handlePublishClick}
+            className="btn btn-primary btn-sm"
+            style={publishBtnStyle}
+          >
             <Plus size={16} />
             <span>Publish</span>
           </button>
@@ -146,47 +192,66 @@ export const Navbar: React.FC = () => {
           {/* Notifications */}
           {currentUser && (
             <div ref={notifRef} style={dropdownRelativeStyle}>
-              <button 
-                onClick={() => setShowNotifDropdown(!showNotifDropdown)} 
-                style={iconBtnStyle} 
+              <button
+                onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+                style={iconBtnStyle}
                 aria-label={`${unreadCount} notifications`}
               >
                 <Bell size={20} color="var(--text-primary)" />
                 {unreadCount > 0 && <span style={badgeCountStyle}>{unreadCount}</span>}
               </button>
-              
+
               {showNotifDropdown && (
                 <div style={notifDropdownStyle}>
                   <div style={dropdownHeaderStyle}>
                     <h3>Notifications</h3>
                     {unreadCount > 0 && (
-                      <button onClick={markAllAsRead} style={textLinkStyle}>Mark all read</button>
+                      <button onClick={markAllAsRead} style={textLinkStyle}>
+                        Mark all read
+                      </button>
                     )}
                   </div>
                   <div style={notifListStyle}>
                     {notifications.length === 0 ? (
                       <div style={emptyNotifStyle}>No notifications</div>
                     ) : (
-                      notifications.slice(0, 5).map(n => (
-                        <div 
-                          key={n.id} 
+                      notifications.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
                           onClick={() => {
                             markAsRead(n.id);
                             if (n.relatedSlug) navigate(`/game/${n.relatedSlug}`);
                             setShowNotifDropdown(false);
-                          }} 
+                          }}
                           style={{
                             ...notifItemStyle,
-                            backgroundColor: n.isRead ? 'transparent' : 'rgba(124, 92, 255, 0.06)'
+                            backgroundColor: n.isRead ? 'transparent' : 'rgba(124, 92, 255, 0.06)',
                           }}
                         >
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '2px', color: 'var(--text-primary)' }}>{n.title}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{n.message}</div>
+                          <div
+                            style={{
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              marginBottom: '2px',
+                              color: 'var(--text-primary)',
+                            }}
+                          >
+                            {n.title}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            {n.message}
+                          </div>
                         </div>
                       ))
                     )}
                   </div>
-                  <Link to="/notifications" onClick={() => setShowNotifDropdown(false)} style={viewAllNotifStyle}>View all notifications</Link>
+                  <Link
+                    to="/notifications"
+                    onClick={() => setShowNotifDropdown(false)}
+                    style={viewAllNotifStyle}
+                  >
+                    View all notifications
+                  </Link>
                 </div>
               )}
             </div>
@@ -195,41 +260,71 @@ export const Navbar: React.FC = () => {
           {/* User Profile */}
           {currentUser ? (
             <div ref={profileRef} style={dropdownRelativeStyle}>
-              <button onClick={() => setShowProfileDropdown(!showProfileDropdown)} style={avatarBtnStyle}>
-                <img src={currentUser.avatar} alt={currentUser.displayName} style={avatarImgStyle} />
+              <button
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                style={avatarBtnStyle}
+              >
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.displayName}
+                  style={avatarImgStyle}
+                />
               </button>
 
               {showProfileDropdown && (
                 <div style={profileDropdownStyle}>
                   <div style={userHeaderInfoStyle}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{currentUser.displayName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>@{currentUser.username}</div>
-                    <span className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`} style={{ marginTop: '6px' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                      {currentUser.displayName}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      @{currentUser.username}
+                    </div>
+                    <span
+                      className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                      style={{ marginTop: '6px' }}
+                    >
                       {currentUser.role}
                     </span>
                   </div>
-                  
+
                   <hr style={hrStyle} />
-                  
-                  <Link to={`/profile/${currentUser.username}`} onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+
+                  <Link
+                    to={`/profile/${currentUser.username}`}
+                    onClick={() => setShowProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <UserIcon size={16} />
                     <span>My Profile</span>
                   </Link>
 
-                  <Link to="/settings" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                  <Link
+                    to="/settings"
+                    onClick={() => setShowProfileDropdown(false)}
+                    style={profileDropdownItemStyle}
+                  >
                     <Settings size={16} />
                     <span>Settings</span>
                   </Link>
 
                   {currentUser.role === 'creator' && (
-                    <Link to="/creator" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                    <Link
+                      to="/creator"
+                      onClick={() => setShowProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
                       <Layout size={16} />
                       <span>Creator Dashboard</span>
                     </Link>
                   )}
 
                   {currentUser.role === 'admin' && (
-                    <Link to="/admin" onClick={() => setShowProfileDropdown(false)} style={profileDropdownItemStyle}>
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
                       <Shield size={16} />
                       <span>Admin Panel</span>
                     </Link>
@@ -237,7 +332,18 @@ export const Navbar: React.FC = () => {
 
                   <hr style={hrStyle} />
 
-                  <button onClick={handleLogoutClick} style={{ ...profileDropdownItemStyle, width: '100%', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--danger)' }}>
+                  <button
+                    onClick={handleLogoutClick}
+                    style={{
+                      ...profileDropdownItemStyle,
+                      width: '100%',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      color: 'var(--danger)',
+                    }}
+                  >
                     <LogOut size={16} />
                     <span>Log Out</span>
                   </button>
@@ -246,13 +352,23 @@ export const Navbar: React.FC = () => {
             </div>
           ) : (
             <div style={authButtonsContainerStyle}>
-              <Link to="/login" className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 1rem' }}>Log In</Link>
-              <Link to="/register" className="btn btn-primary btn-sm" style={{ padding: '0.4rem 1rem' }}>Sign Up</Link>
+              <Link
+                to="/login"
+                className="btn btn-secondary btn-sm"
+                style={{ padding: '0.4rem 1rem' }}
+              >
+                Log In
+              </Link>
+              <Link
+                to="/register"
+                className="btn btn-primary btn-sm"
+                style={{ padding: '0.4rem 1rem' }}
+              >
+                Sign Up
+              </Link>
             </div>
           )}
-
         </div>
-
       </div>
     </header>
   );
@@ -267,7 +383,7 @@ const headerStyle: React.CSSProperties = {
   width: '100%',
   borderBottom: '1px solid var(--border-color)',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const navContainerStyle: React.CSSProperties = {
@@ -278,14 +394,14 @@ const navContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const logoContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '0.5rem',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const logoIconStyle: React.CSSProperties = {
@@ -296,7 +412,7 @@ const logoIconStyle: React.CSSProperties = {
   position: 'relative',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };
 
 const logoTextVStyle: React.CSSProperties = {
@@ -305,7 +421,7 @@ const logoTextVStyle: React.CSSProperties = {
   fontSize: '1.1rem',
   fontFamily: 'var(--font-display)',
   zIndex: 2,
-  transform: 'translateX(-3px)'
+  transform: 'translateX(-3px)',
 };
 
 const logoPlayStyle: React.CSSProperties = {
@@ -317,7 +433,7 @@ const logoPlayStyle: React.CSSProperties = {
   position: 'absolute',
   right: '8px',
   top: '11px',
-  zIndex: 1
+  zIndex: 1,
 };
 
 const logoTextStyle: React.CSSProperties = {
@@ -325,13 +441,13 @@ const logoTextStyle: React.CSSProperties = {
   fontSize: '1.3rem',
   fontWeight: 700,
   color: 'var(--text-primary)',
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const navLinksStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 // Hidden on mobile using CSS later or display none on screen width
@@ -339,12 +455,12 @@ const navLinkStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   fontWeight: 500,
   color: 'var(--text-secondary)',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const dropdownHoverContainerStyle: React.CSSProperties = {
   position: 'relative',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const categoriesDropdownStyle: React.CSSProperties = {
@@ -360,7 +476,7 @@ const categoriesDropdownStyle: React.CSSProperties = {
   boxShadow: 'var(--shadow-lg)',
   display: 'none', // Managed via CSS hover or simple CSS classes
   flexDirection: 'column',
-  zIndex: 100
+  zIndex: 100,
 };
 
 // In App.css we will add the hover logic to show it:
@@ -371,13 +487,13 @@ const dropdownItemStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   fontWeight: 500,
   color: 'var(--text-secondary)',
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const searchFormStyle: React.CSSProperties = {
   position: 'relative',
   flex: 1,
-  maxWidth: '320px'
+  maxWidth: '320px',
 };
 
 const searchInputStyle: React.CSSProperties = {
@@ -387,7 +503,7 @@ const searchInputStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   borderRadius: '999px',
   color: 'var(--text-primary)',
-  fontSize: '0.875rem'
+  fontSize: '0.875rem',
 };
 
 const searchButtonStyle: React.CSSProperties = {
@@ -397,18 +513,18 @@ const searchButtonStyle: React.CSSProperties = {
   transform: 'translateY(-50%)',
   background: 'none',
   border: 'none',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const rightSectionStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const dropdownRelativeStyle: React.CSSProperties = {
   position: 'relative',
-  display: 'inline-block'
+  display: 'inline-block',
 };
 
 const demoBtnStyle: React.CSSProperties = {
@@ -419,7 +535,7 @@ const demoBtnStyle: React.CSSProperties = {
   borderRadius: '6px',
   fontSize: '0.8rem',
   fontWeight: 600,
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const demoDropdownContentStyle: React.CSSProperties = {
@@ -436,7 +552,7 @@ const demoDropdownContentStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '4px',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const dropdownTitleStyle: React.CSSProperties = {
@@ -444,7 +560,7 @@ const dropdownTitleStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   fontWeight: 700,
   textTransform: 'uppercase',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const dropdownItemBtnStyle: React.CSSProperties = {
@@ -458,11 +574,11 @@ const dropdownItemBtnStyle: React.CSSProperties = {
   background: 'none',
   cursor: 'pointer',
   textAlign: 'left',
-  transition: 'background-color 0.2s'
+  transition: 'background-color 0.2s',
 };
 
 const publishBtnStyle: React.CSSProperties = {
-  gap: '4px'
+  gap: '4px',
 };
 
 const iconBtnStyle: React.CSSProperties = {
@@ -472,7 +588,7 @@ const iconBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   padding: '4px',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const badgeCountStyle: React.CSSProperties = {
@@ -486,7 +602,7 @@ const badgeCountStyle: React.CSSProperties = {
   borderRadius: '999px',
   padding: '1px 5px',
   minWidth: '16px',
-  textAlign: 'center'
+  textAlign: 'center',
 };
 
 const notifDropdownStyle: React.CSSProperties = {
@@ -500,7 +616,7 @@ const notifDropdownStyle: React.CSSProperties = {
   borderRadius: '12px',
   boxShadow: 'var(--shadow-lg)',
   zIndex: 100,
-  overflow: 'hidden'
+  overflow: 'hidden',
 };
 
 const dropdownHeaderStyle: React.CSSProperties = {
@@ -509,7 +625,7 @@ const dropdownHeaderStyle: React.CSSProperties = {
   alignItems: 'center',
   padding: '12px 16px',
   borderBottom: '1px solid var(--border-color)',
-  backgroundColor: 'var(--bg-surface)'
+  backgroundColor: 'var(--bg-surface)',
 };
 
 const textLinkStyle: React.CSSProperties = {
@@ -518,26 +634,26 @@ const textLinkStyle: React.CSSProperties = {
   color: 'var(--secondary)',
   fontSize: '0.75rem',
   fontWeight: 600,
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const notifListStyle: React.CSSProperties = {
   maxHeight: '260px',
-  overflowY: 'auto'
+  overflowY: 'auto',
 };
 
 const notifItemStyle: React.CSSProperties = {
   padding: '12px 16px',
   borderBottom: '1px solid var(--border-color)',
   cursor: 'pointer',
-  transition: 'background-color 0.2s'
+  transition: 'background-color 0.2s',
 };
 
 const emptyNotifStyle: React.CSSProperties = {
   padding: '24px',
   textAlign: 'center',
   color: 'var(--text-secondary)',
-  fontSize: '0.85rem'
+  fontSize: '0.85rem',
 };
 
 const viewAllNotifStyle: React.CSSProperties = {
@@ -548,7 +664,7 @@ const viewAllNotifStyle: React.CSSProperties = {
   fontWeight: 600,
   color: 'var(--secondary)',
   borderTop: '1px solid var(--border-color)',
-  backgroundColor: 'var(--bg-surface)'
+  backgroundColor: 'var(--bg-surface)',
 };
 
 const avatarBtnStyle: React.CSSProperties = {
@@ -560,14 +676,14 @@ const avatarBtnStyle: React.CSSProperties = {
   overflow: 'hidden',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };
 
 const avatarImgStyle: React.CSSProperties = {
   width: '36px',
   height: '36px',
   objectFit: 'cover',
-  borderRadius: '50%'
+  borderRadius: '50%',
 };
 
 const profileDropdownStyle: React.CSSProperties = {
@@ -581,17 +697,17 @@ const profileDropdownStyle: React.CSSProperties = {
   borderRadius: '12px',
   padding: '8px',
   boxShadow: 'var(--shadow-lg)',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const userHeaderInfoStyle: React.CSSProperties = {
-  padding: '8px 12px'
+  padding: '8px 12px',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
   borderTop: '1px solid var(--border-color)',
-  margin: '8px 0'
+  margin: '8px 0',
 };
 
 const profileDropdownItemStyle: React.CSSProperties = {
@@ -603,11 +719,11 @@ const profileDropdownItemStyle: React.CSSProperties = {
   fontSize: '0.9rem',
   color: 'var(--text-secondary)',
   transition: 'all 0.2s',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const authButtonsContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '0.75rem'
+  gap: '0.75rem',
 };

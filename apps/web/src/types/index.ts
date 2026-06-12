@@ -10,6 +10,7 @@ export interface User {
   avatar: string;
   joinDate: string;
   followersCount: number;
+  isSuspended?: boolean;
 }
 
 export type GameStatus = 'draft' | 'pending' | 'published' | 'rejected' | 'hidden';
@@ -64,12 +65,12 @@ export interface Comment {
   timestamp: string;
 }
 
-export type NotificationType = 
-  | 'game_approved' 
-  | 'game_rejected' 
-  | 'new_comment' 
-  | 'game_featured' 
-  | 'moderation_message' 
+export type NotificationType =
+  | 'game_approved'
+  | 'game_rejected'
+  | 'new_comment'
+  | 'game_featured'
+  | 'moderation_message'
   | 'platform_announcement';
 
 export interface Notification {

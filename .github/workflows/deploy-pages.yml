@@ -45,7 +45,7 @@ jobs:
       - name: Build web (demo mode)
         run: npm run build:demo -w @vibeplay/web
         env:
-          VITE_ENABLE_DEMO_ROLES: "true"
+          VITE_ENABLE_DEMO_ROLES: 'true'
 
       - name: Guard — demo bundle must not point at a real API
         run: |

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Search, RefreshCw, Gamepad, SlidersHorizontal, Check, X } from 'lucide-react';
-import { toast } from '../components/Toast';
+import { toast } from '../components/toastEvents';
 
 export const GamesPage: React.FC = () => {
   const { games } = useGames();
@@ -29,14 +29,6 @@ export const GamesPage: React.FC = () => {
   // Load more pagination
   const [visibleCount, setVisibleCount] = useState(12);
 
-  // Sync state with URL parameter updates
-  useEffect(() => {
-    setSelectedCategory(searchParams.get('category') || '');
-    if (searchParams.get('ai') === 'true') {
-      setSelectedAi('assisted');
-    }
-  }, [searchParams]);
-
   // Click outside listener for the "More Filters" popover
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,12 +41,12 @@ export const GamesPage: React.FC = () => {
   }, []);
 
   // Determine if any filter is active (to show the "Reset Filters" button)
-  const isAnyFilterActive = 
-    searchTerm !== '' || 
-    selectedCategory !== '' || 
-    selectedDevice !== 'all' || 
-    selectedAi !== 'all' || 
-    isMultiplayer || 
+  const isAnyFilterActive =
+    searchTerm !== '' ||
+    selectedCategory !== '' ||
+    selectedDevice !== 'all' ||
+    selectedAi !== 'all' ||
+    isMultiplayer ||
     sortBy !== 'trending';
 
   // Reset all filters
@@ -71,60 +63,63 @@ export const GamesPage: React.FC = () => {
 
   // Filtered games logic
   const filteredGames = games
-    .filter(g => g.status === 'published')
-    .filter(g => {
+    .filter((g) => g.status === 'published')
+    .filter((g) => {
       if (!searchTerm) return true;
       const term = searchTerm.toLowerCase();
       return (
         g.title.toLowerCase().includes(term) ||
         g.shortDescription.toLowerCase().includes(term) ||
         g.creatorName.toLowerCase().includes(term) ||
-        g.tags.some(t => t.toLowerCase().includes(term))
+        g.tags.some((t) => t.toLowerCase().includes(term))
       );
     })
-    .filter(g => {
+    .filter((g) => {
       if (!selectedCategory) return true;
       return g.category.toLowerCase() === selectedCategory.toLowerCase();
     })
-    .filter(g => {
+    .filter((g) => {
       if (selectedDevice === 'all') return true;
       return g.devices.includes(selectedDevice);
     })
-    .filter(g => {
+    .filter((g) => {
       if (selectedAi === 'all') return true;
       if (selectedAi === 'no') return g.aiDisclosure === 'no';
-      if (selectedAi === 'assisted') return g.aiDisclosure === 'assisted' || g.aiDisclosure === 'generated';
+      if (selectedAi === 'assisted')
+        return g.aiDisclosure === 'assisted' || g.aiDisclosure === 'generated';
       return g.aiDisclosure === 'generated';
     })
-    .filter(g => {
+    .filter((g) => {
       if (!isMultiplayer) return true;
       return g.multiplayer;
     })
     .sort((a, b) => {
       if (sortBy === 'plays') return b.plays - a.plays;
-      if (sortBy === 'newest') return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      if (sortBy === 'newest')
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       if (sortBy === 'rating') {
         const ratingA = a.likes + a.dislikes > 0 ? a.likes / (a.likes + a.dislikes) : 1;
         const ratingB = b.likes + b.dislikes > 0 ? b.likes / (b.likes + b.dislikes) : 1;
         return ratingB - ratingA;
       }
       // Trending (default sorting formula)
-      return (b.plays * 0.7 + b.likes * 10) - (a.plays * 0.7 + a.likes * 10);
+      return b.plays * 0.7 + b.likes * 10 - (a.plays * 0.7 + a.likes * 10);
     });
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 8);
+    setVisibleCount((prev) => prev + 8);
     toast.info('Loading next page...');
   };
 
   return (
     <div style={containerStyle}>
-      
       {/* Title & Description */}
       <div style={headerBlockStyle}>
         <div>
           <h1 style={titleStyle}>Browse Games</h1>
-          <p style={subtitleStyle}>Discover and launch browser creations instantly. No client required.</p>
+          <p style={subtitleStyle}>
+            Discover and launch browser creations instantly. No client required.
+          </p>
         </div>
 
         {/* Local Search and Sort dropdown */}
@@ -139,7 +134,11 @@ export const GamesPage: React.FC = () => {
               style={searchInputStyle}
             />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} style={clearSearchBtnStyle} aria-label="Clear search">
+              <button
+                onClick={() => setSearchTerm('')}
+                style={clearSearchBtnStyle}
+                aria-label="Clear search"
+              >
                 <X size={14} />
               </button>
             )}
@@ -149,25 +148,27 @@ export const GamesPage: React.FC = () => {
 
       {/* Horizontal Toolbar Filters */}
       <div style={toolbarStyle} className="bg-glass">
-        
         <div style={filtersGroupStyle}>
-          
           {/* Category Dropdown */}
-          <select 
-            value={selectedCategory} 
+          <select
+            value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="form-input form-select"
             style={filterSelectStyle}
           >
             <option value="">All Categories</option>
-            {['Action', 'Adventure', 'Horror', 'Simulator', 'Racing', 'Puzzle', 'Experimental'].map(cat => (
-              <option key={cat} value={cat.toLowerCase()}>{cat}</option>
-            ))}
+            {['Action', 'Adventure', 'Horror', 'Simulator', 'Racing', 'Puzzle', 'Experimental'].map(
+              (cat) => (
+                <option key={cat} value={cat.toLowerCase()}>
+                  {cat}
+                </option>
+              ),
+            )}
           </select>
 
           {/* Device Dropdown */}
-          <select 
-            value={selectedDevice} 
+          <select
+            value={selectedDevice}
             onChange={(e) => setSelectedDevice(e.target.value)}
             className="form-input form-select"
             style={filterSelectStyle}
@@ -179,8 +180,8 @@ export const GamesPage: React.FC = () => {
           </select>
 
           {/* AI Disclosure Dropdown */}
-          <select 
-            value={selectedAi} 
+          <select
+            value={selectedAi}
             onChange={(e) => setSelectedAi(e.target.value)}
             className="form-input form-select"
             style={filterSelectStyle}
@@ -191,13 +192,13 @@ export const GamesPage: React.FC = () => {
           </select>
 
           {/* Multiplayer Toggle */}
-          <button 
-            onClick={() => setIsMultiplayer(!isMultiplayer)} 
+          <button
+            onClick={() => setIsMultiplayer(!isMultiplayer)}
             style={{
               ...toggleBtnStyle,
               backgroundColor: isMultiplayer ? 'rgba(124, 92, 255, 0.15)' : 'transparent',
               borderColor: isMultiplayer ? 'var(--primary)' : 'var(--border-color)',
-              color: isMultiplayer ? 'var(--text-primary)' : 'var(--text-secondary)'
+              color: isMultiplayer ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}
           >
             <span>Multiplayer</span>
@@ -206,8 +207,8 @@ export const GamesPage: React.FC = () => {
 
           {/* More Filters Popover Trigger */}
           <div ref={moreRef} style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setShowMore(!showMore)} 
+            <button
+              onClick={() => setShowMore(!showMore)}
               className="btn btn-secondary btn-sm"
               style={moreBtnStyle}
             >
@@ -218,9 +219,11 @@ export const GamesPage: React.FC = () => {
             {showMore && (
               <div style={popoverStyle} className="bg-glass">
                 <div style={popoverItemStyle}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Sort By</label>
-                  <select 
-                    value={sortBy} 
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Sort By
+                  </label>
+                  <select
+                    value={sortBy}
                     onChange={(e) => setSortBy(e.target.value)}
                     className="form-input form-select"
                     style={{ fontSize: '0.8rem', padding: '0.4rem 2rem 0.4rem 0.8rem' }}
@@ -233,9 +236,11 @@ export const GamesPage: React.FC = () => {
                 </div>
 
                 <div style={popoverItemStyle}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>AI Strictness</label>
-                  <select 
-                    value={selectedAi} 
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    AI Strictness
+                  </label>
+                  <select
+                    value={selectedAi}
                     onChange={(e) => setSelectedAi(e.target.value)}
                     className="form-input form-select"
                     style={{ fontSize: '0.8rem', padding: '0.4rem 2rem 0.4rem 0.8rem' }}
@@ -248,7 +253,6 @@ export const GamesPage: React.FC = () => {
               </div>
             )}
           </div>
-
         </div>
 
         {/* Reset Active Filters Button */}
@@ -257,33 +261,51 @@ export const GamesPage: React.FC = () => {
             Reset Filters
           </button>
         )}
-
       </div>
 
       {/* Grid container (Fills available space) */}
       <div style={{ flex: 1 }}>
         {filteredGames.length === 0 ? (
           <div style={emptyContainerStyle}>
-            <Gamepad size={48} color="var(--text-secondary)" style={{ opacity: 0.3, marginBottom: '1rem' }} />
+            <Gamepad
+              size={48}
+              color="var(--text-secondary)"
+              style={{ opacity: 0.3, marginBottom: '1rem' }}
+            />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>No games matched your criteria</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '340px', margin: '0.5rem 0 1.5rem', lineHeight: 1.5 }}>
-              Try removing category filters, checking other compatibility modes, or search for another keyword.
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '0.85rem',
+                maxWidth: '340px',
+                margin: '0.5rem 0 1.5rem',
+                lineHeight: 1.5,
+              }}
+            >
+              Try removing category filters, checking other compatibility modes, or search for
+              another keyword.
             </p>
-            <button onClick={handleResetFilters} className="btn btn-primary btn-sm">Clear Active Filters</button>
+            <button onClick={handleResetFilters} className="btn btn-primary btn-sm">
+              Clear Active Filters
+            </button>
           </div>
         ) : (
           <>
             {/* Custom responsive minmax(210px, 1fr) grid */}
             <div style={responsiveGridStyle}>
-              {filteredGames.slice(0, visibleCount).map(game => (
+              {filteredGames.slice(0, visibleCount).map((game) => (
                 <GameCard key={game.id} game={game} />
               ))}
             </div>
-            
+
             {/* Load More Pagination */}
             {filteredGames.length > visibleCount && (
               <div style={loadMoreContainerStyle}>
-                <button onClick={handleLoadMore} className="btn btn-secondary" style={{ gap: '8px' }}>
+                <button
+                  onClick={handleLoadMore}
+                  className="btn btn-secondary"
+                  style={{ gap: '8px' }}
+                >
                   <RefreshCw size={16} />
                   <span>Load More Games</span>
                 </button>
@@ -292,7 +314,6 @@ export const GamesPage: React.FC = () => {
           </>
         )}
       </div>
-
     </div>
   );
 };
@@ -303,7 +324,7 @@ const containerStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: '1.5rem',
   width: '100%',
-  flex: 1
+  flex: 1,
 };
 
 const headerBlockStyle: React.CSSProperties = {
@@ -311,19 +332,19 @@ const headerBlockStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '1.75rem',
   fontWeight: 700,
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const subtitleStyle: React.CSSProperties = {
   fontSize: '0.9rem',
   color: 'var(--text-secondary)',
-  marginTop: '4px'
+  marginTop: '4px',
 };
 
 const searchRowStyle: React.CSSProperties = {
@@ -331,12 +352,12 @@ const searchRowStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: '0.5rem',
   width: '100%',
-  maxWidth: '320px'
+  maxWidth: '320px',
 };
 
 const inputContainerStyle: React.CSSProperties = {
   position: 'relative',
-  flex: 1
+  flex: 1,
 };
 
 const searchIconStyle: React.CSSProperties = {
@@ -345,7 +366,7 @@ const searchIconStyle: React.CSSProperties = {
   top: '50%',
   transform: 'translateY(-50%)',
   color: 'var(--text-secondary)',
-  pointerEvents: 'none'
+  pointerEvents: 'none',
 };
 
 const searchInputStyle: React.CSSProperties = {
@@ -356,7 +377,7 @@ const searchInputStyle: React.CSSProperties = {
   borderRadius: '8px',
   color: 'var(--text-primary)',
   fontSize: '0.85rem',
-  outline: 'none'
+  outline: 'none',
 };
 
 const clearSearchBtnStyle: React.CSSProperties = {
@@ -370,7 +391,7 @@ const clearSearchBtnStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   padding: '2px',
   display: 'flex',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const toolbarStyle: React.CSSProperties = {
@@ -381,14 +402,14 @@ const toolbarStyle: React.CSSProperties = {
   alignItems: 'center',
   flexWrap: 'wrap',
   gap: '1rem',
-  border: '1px solid var(--border-color)'
+  border: '1px solid var(--border-color)',
 };
 
 const filtersGroupStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '8px',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const filterSelectStyle: React.CSSProperties = {
@@ -398,7 +419,7 @@ const filterSelectStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   borderRadius: '6px',
   border: '1px solid var(--border-color)',
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const toggleBtnStyle: React.CSSProperties = {
@@ -411,7 +432,7 @@ const toggleBtnStyle: React.CSSProperties = {
   fontSize: '0.8rem',
   fontWeight: 600,
   cursor: 'pointer',
-  transition: 'all 0.15s ease'
+  transition: 'all 0.15s ease',
 };
 
 const moreBtnStyle: React.CSSProperties = {
@@ -422,7 +443,7 @@ const moreBtnStyle: React.CSSProperties = {
   fontSize: '0.8rem',
   fontWeight: 600,
   backgroundColor: 'var(--bg-card)',
-  borderColor: 'var(--border-color)'
+  borderColor: 'var(--border-color)',
 };
 
 const resetBtnStyle: React.CSSProperties = {
@@ -432,7 +453,7 @@ const resetBtnStyle: React.CSSProperties = {
   color: 'var(--secondary)',
   fontWeight: 600,
   cursor: 'pointer',
-  padding: '4px 8px'
+  padding: '4px 8px',
 };
 
 const popoverStyle: React.CSSProperties = {
@@ -448,20 +469,20 @@ const popoverStyle: React.CSSProperties = {
   zIndex: 100,
   display: 'flex',
   flexDirection: 'column',
-  gap: '10px'
+  gap: '10px',
 };
 
 const popoverItemStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '4px'
+  gap: '4px',
 };
 
 const responsiveGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
   gap: '1.25rem',
-  width: '100%'
+  width: '100%',
 };
 
 const emptyContainerStyle: React.CSSProperties = {
@@ -474,11 +495,11 @@ const emptyContainerStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   border: '1px dashed var(--border-color)',
   borderRadius: '12px',
-  margin: '1rem 0'
+  margin: '1rem 0',
 };
 
 const loadMoreContainerStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'center',
-  marginTop: '3rem'
+  marginTop: '3rem',
 };

@@ -1,6 +1,8 @@
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import React from 'react';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { GamesProvider } from './hooks/useGames';
+import { IS_DEMO } from './lib/appMode';
 
 // Layouts
 import { AppShell } from './layouts/AppShell';
@@ -10,7 +12,13 @@ import { LandingPage } from './pages/LandingPage';
 import { GamesPage } from './pages/GamesPage';
 import { GameDetailPage } from './pages/GameDetailPage';
 import { GamePlayerPage } from './pages/GamePlayerPage';
-import { LoginPage, RegisterPage, ForgotPasswordPage } from './pages/AuthPages';
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+  VerifyEmailPage,
+} from './pages/AuthPages';
 import { ProfilePage } from './pages/ProfilePage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LibraryPage } from './pages/LibraryPage';
@@ -34,65 +42,69 @@ import { AdminFeatured } from './pages/Admin/Featured';
 import { AdminActivityLog } from './pages/Admin/ActivityLog';
 import { ThemeProvider } from './hooks/useTheme';
 
+// The demo build (GitHub Pages) keeps HashRouter; the real app uses clean URLs.
+const Router: React.FC<{ children: React.ReactNode }> = ({ children }) =>
+  IS_DEMO ? <HashRouter>{children}</HashRouter> : <BrowserRouter>{children}</BrowserRouter>;
+
 function App() {
   return (
-    <HashRouter>
+    <Router>
       <ThemeProvider>
         <AuthProvider>
           <GamesProvider>
-          <Routes>
-            
-            {/* Auth Pages (Bypass AppShell) */}
-            <Route path="login" element={<LoginPage />} />
-            <Route path="register" element={<RegisterPage />} />
-            <Route path="forgot-password" element={<ForgotPasswordPage />} />
+            <Routes>
+              {/* Auth Pages (Bypass AppShell) */}
+              <Route path="login" element={<LoginPage />} />
+              <Route path="register" element={<RegisterPage />} />
+              <Route path="forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
+              <Route path="verify-email" element={<VerifyEmailPage />} />
 
-            {/* Immersive Play Theatre */}
-            <Route path="/play/:slug" element={<GamePlayerPage />} />
+              {/* Immersive Play Theatre */}
+              <Route path="/play/:slug" element={<GamePlayerPage />} />
 
-            {/* Main Unified AppShell Layout */}
-            <Route path="/" element={<AppShell />}>
-              <Route index element={<LandingPage />} />
-              <Route path="home" element={<LandingPage />} />
-              <Route path="discover" element={<LandingPage />} />
-              <Route path="games" element={<GamesPage />} />
-              <Route path="browse" element={<GamesPage />} />
-              <Route path="categories" element={<GamesPage />} />
-              <Route path="game/:slug" element={<GameDetailPage />} />
-              <Route path="profile/:username" element={<ProfilePage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="library" element={<LibraryPage />} />
-              <Route path="library/favorites" element={<LibraryPage />} />
-              <Route path="library/liked" element={<LibraryPage />} />
-              <Route path="recent" element={<LibraryPage />} />
-              <Route path="recently-played" element={<LibraryPage />} />
-              <Route path="search" element={<SearchPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              
-              {/* Creator Studio Routes */}
-              <Route path="creator" element={<CreatorOverview />} />
-              <Route path="creator/my-games" element={<MyGames />} />
-              <Route path="creator/publish" element={<PublishGame />} />
-              <Route path="creator/analytics" element={<CreatorAnalytics />} />
-              <Route path="creator/games/:id/edit" element={<EditGame />} />
+              {/* Main Unified AppShell Layout */}
+              <Route path="/" element={<AppShell />}>
+                <Route index element={<LandingPage />} />
+                <Route path="home" element={<LandingPage />} />
+                <Route path="discover" element={<LandingPage />} />
+                <Route path="games" element={<GamesPage />} />
+                <Route path="browse" element={<GamesPage />} />
+                <Route path="categories" element={<GamesPage />} />
+                <Route path="game/:slug" element={<GameDetailPage />} />
+                <Route path="profile/:username" element={<ProfilePage />} />
+                <Route path="settings" element={<SettingsPage />} />
+                <Route path="library" element={<LibraryPage />} />
+                <Route path="library/favorites" element={<LibraryPage />} />
+                <Route path="library/liked" element={<LibraryPage />} />
+                <Route path="recent" element={<LibraryPage />} />
+                <Route path="recently-played" element={<LibraryPage />} />
+                <Route path="search" element={<SearchPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
 
-              {/* Admin Panel Routes */}
-              <Route path="admin" element={<AdminDashboard />} />
-              <Route path="admin/moderation" element={<AdminModeration />} />
-              <Route path="admin/users" element={<AdminUsers />} />
-              <Route path="admin/reports" element={<AdminReports />} />
-              <Route path="admin/featured" element={<AdminFeatured />} />
-              <Route path="admin/logs" element={<AdminActivityLog />} />
+                {/* Creator Studio Routes */}
+                <Route path="creator" element={<CreatorOverview />} />
+                <Route path="creator/my-games" element={<MyGames />} />
+                <Route path="creator/publish" element={<PublishGame />} />
+                <Route path="creator/analytics" element={<CreatorAnalytics />} />
+                <Route path="creator/games/:id/edit" element={<EditGame />} />
 
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
+                {/* Admin Panel Routes */}
+                <Route path="admin" element={<AdminDashboard />} />
+                <Route path="admin/moderation" element={<AdminModeration />} />
+                <Route path="admin/users" element={<AdminUsers />} />
+                <Route path="admin/reports" element={<AdminReports />} />
+                <Route path="admin/featured" element={<AdminFeatured />} />
+                <Route path="admin/logs" element={<AdminActivityLog />} />
 
-          </Routes>
-        </GamesProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </HashRouter>
-);
+                <Route path="*" element={<NotFoundPage />} />
+              </Route>
+            </Routes>
+          </GamesProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Router>
+  );
 }
 
 export default App;

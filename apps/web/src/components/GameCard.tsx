@@ -17,16 +17,17 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
     return plays.toString();
   };
 
-  const likeRatio = game.likes + game.dislikes > 0 
-    ? Math.round((game.likes / (game.likes + game.dislikes)) * 100)
-    : 100;
+  const likeRatio =
+    game.likes + game.dislikes > 0
+      ? Math.round((game.likes / (game.likes + game.dislikes)) * 100)
+      : 100;
 
   // Single badge priority logic: Featured > New > AI-assisted > Multiplayer
   const getBadge = () => {
     if (game.isFeatured) {
       return { text: 'Featured', className: 'badge-primary' };
     }
-    
+
     // Check if updated in the last 30 days
     const gameDate = new Date(game.updatedAt).getTime();
     const now = new Date().getTime();
@@ -49,26 +50,30 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
   const badge = getBadge();
 
   return (
-    <div style={cardStyle} className={`game-card animate-fade ${variant === 'continue' ? 'game-card--continue' : ''}`}>
-      
+    <div
+      style={cardStyle}
+      className={`game-card animate-fade ${variant === 'continue' ? 'game-card--continue' : ''}`}
+    >
       {/* Cover Image Container (16:9 aspect ratio) */}
       <div style={coverWrapperStyle} className="game-card__cover-wrapper">
         {imgError ? (
           <div style={fallbackContainerStyle} className="game-card__fallback">
             <Gamepad size={32} color="rgba(255, 255, 255, 0.25)" />
-            <span style={fallbackTitleStyle} className="game-card__fallback-title">{game.title}</span>
+            <span style={fallbackTitleStyle} className="game-card__fallback-title">
+              {game.title}
+            </span>
           </div>
         ) : (
-          <img 
-            src={game.coverUrl} 
-            alt={game.title} 
-            style={coverImgStyle} 
+          <img
+            src={game.coverUrl}
+            alt={game.title}
+            style={coverImgStyle}
             className="game-card__cover"
-            loading="lazy" 
+            loading="lazy"
             onError={() => setImgError(true)}
           />
         )}
-        
+
         {/* Play Hover Overlay */}
         <Link to={`/game/${game.slug}`} style={overlayStyle} className="game-card-overlay">
           <div style={playBtnCircleStyle}>
@@ -79,7 +84,10 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
         {/* Badge Overlay */}
         {badge && (
           <div style={badgeWrapperStyle} className="game-card__badge-wrapper">
-            <span className={`badge ${badge.className}`} style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}>
+            <span
+              className={`badge ${badge.className}`}
+              style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem' }}
+            >
               {badge.text}
             </span>
           </div>
@@ -88,10 +96,15 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
 
       {/* Simplified Info Area */}
       <div style={infoContainerStyle} className="game-card__info">
-        <Link to={`/game/${game.slug}`} style={titleStyle} className="game-card__title" title={game.title}>
+        <Link
+          to={`/game/${game.slug}`}
+          style={titleStyle}
+          className="game-card__title"
+          title={game.title}
+        >
           {game.title}
         </Link>
-        
+
         {variant === 'continue' ? (
           <div className="game-card__continue-action-row">
             <span className="game-card__last-played mobile-only">Active play</span>
@@ -110,12 +123,15 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
               <ThumbsUp size={11} style={{ marginRight: '3px' }} />
               {likeRatio}%
             </span>
-            <span style={dotDividerStyle} className="game-card__divider">•</span>
-            <span style={playsStyle} className="game-card__plays">{formatPlays(game.plays)} plays</span>
+            <span style={dotDividerStyle} className="game-card__divider">
+              •
+            </span>
+            <span style={playsStyle} className="game-card__plays">
+              {formatPlays(game.plays)} plays
+            </span>
           </div>
         )}
       </div>
-
     </div>
   );
 };
@@ -130,7 +146,7 @@ const cardStyle: React.CSSProperties = {
   flexDirection: 'column',
   transition: 'transform 0.2s ease, border-color 0.2s ease',
   position: 'relative',
-  height: '100%'
+  height: '100%',
 };
 
 const coverWrapperStyle: React.CSSProperties = {
@@ -138,7 +154,7 @@ const coverWrapperStyle: React.CSSProperties = {
   paddingTop: '56.25%', // Strict 16:9 Aspect Ratio
   position: 'relative',
   overflow: 'hidden',
-  backgroundColor: '#0c0e17'
+  backgroundColor: '#0c0e17',
 };
 
 const coverImgStyle: React.CSSProperties = {
@@ -148,7 +164,7 @@ const coverImgStyle: React.CSSProperties = {
   width: '100%',
   height: '100%',
   objectFit: 'cover',
-  transition: 'transform 0.25s ease'
+  transition: 'transform 0.25s ease',
 };
 
 const fallbackContainerStyle: React.CSSProperties = {
@@ -164,7 +180,7 @@ const fallbackContainerStyle: React.CSSProperties = {
   gap: '8px',
   padding: '1rem',
   background: 'linear-gradient(135deg, #151928 0%, #080a12 100%)',
-  textAlign: 'center'
+  textAlign: 'center',
 };
 
 const fallbackTitleStyle: React.CSSProperties = {
@@ -174,7 +190,7 @@ const fallbackTitleStyle: React.CSSProperties = {
   maxWidth: '90%',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap'
+  whiteSpace: 'nowrap',
 };
 
 const overlayStyle: React.CSSProperties = {
@@ -190,7 +206,7 @@ const overlayStyle: React.CSSProperties = {
   opacity: 0,
   transition: 'opacity 0.2s ease',
   cursor: 'pointer',
-  zIndex: 3
+  zIndex: 3,
 };
 
 const playBtnCircleStyle: React.CSSProperties = {
@@ -203,14 +219,14 @@ const playBtnCircleStyle: React.CSSProperties = {
   justifyContent: 'center',
   boxShadow: 'var(--shadow-accent)',
   transform: 'scale(0.9)',
-  transition: 'transform 0.2s ease'
+  transition: 'transform 0.2s ease',
 };
 
 const badgeWrapperStyle: React.CSSProperties = {
   position: 'absolute',
   top: '8px',
   left: '8px',
-  zIndex: 4
+  zIndex: 4,
 };
 
 const infoContainerStyle: React.CSSProperties = {
@@ -218,7 +234,7 @@ const infoContainerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.25rem',
-  flex: 1
+  flex: 1,
 };
 
 const titleStyle: React.CSSProperties = {
@@ -229,28 +245,28 @@ const titleStyle: React.CSSProperties = {
   WebkitLineClamp: 1,
   WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
-  lineHeight: 1.3
+  lineHeight: 1.3,
 };
 
 const metaRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   fontSize: '0.75rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const ratingStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   fontWeight: 600,
-  color: 'var(--success)'
+  color: 'var(--success)',
 };
 
 const dotDividerStyle: React.CSSProperties = {
   margin: '0 6px',
-  opacity: 0.5
+  opacity: 0.5,
 };
 
 const playsStyle: React.CSSProperties = {
-  fontWeight: 500
+  fontWeight: 500,
 };

@@ -1,7 +1,17 @@
 import React from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Shield, Eye, Users, AlertTriangle, Star, Scroll, ArrowLeft, LogOut, ShieldCheck } from 'lucide-react';
+import {
+  Shield,
+  Eye,
+  Users,
+  AlertTriangle,
+  Star,
+  Scroll,
+  ArrowLeft,
+  LogOut,
+  ShieldCheck,
+} from 'lucide-react';
 import { ToastContainer } from '../components/Toast';
 
 export const AdminLayout: React.FC = () => {
@@ -18,8 +28,12 @@ export const AdminLayout: React.FC = () => {
           This area is restricted to VibePlay Platform Administrators.
         </p>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={() => navigate('/login')} className="btn btn-primary">Log In as Admin</button>
-          <button onClick={() => navigate('/')} className="btn btn-secondary">Go Home</button>
+          <button onClick={() => navigate('/login')} className="btn btn-primary">
+            Log In as Admin
+          </button>
+          <button onClick={() => navigate('/')} className="btn btn-secondary">
+            Go Home
+          </button>
         </div>
       </div>
     );
@@ -31,7 +45,6 @@ export const AdminLayout: React.FC = () => {
 
       {/* Sidebar */}
       <aside style={sidebarStyle}>
-        
         {/* Sidebar Header */}
         <div style={sidebarHeaderStyle}>
           <Link to="/" style={backBtnStyle}>
@@ -46,32 +59,75 @@ export const AdminLayout: React.FC = () => {
 
         {/* Sidebar Navigation */}
         <nav style={navStyle}>
-          <NavLink to="/admin" end style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin"
+            end
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <Shield size={18} />
             <span>Dashboard</span>
           </NavLink>
 
-          <NavLink to="/admin/moderation" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin/moderation"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <Eye size={18} />
             <span>Moderation</span>
           </NavLink>
 
-          <NavLink to="/admin/users" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin/users"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <Users size={18} />
             <span>Users</span>
           </NavLink>
 
-          <NavLink to="/admin/reports" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin/reports"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <AlertTriangle size={18} />
             <span>Reports</span>
           </NavLink>
 
-          <NavLink to="/admin/featured" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin/featured"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <Star size={18} />
             <span>Featured</span>
           </NavLink>
 
-          <NavLink to="/admin/logs" style={({ isActive }) => ({ ...navLinkStyle, backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent', color: isActive ? 'var(--danger)' : 'var(--text-secondary)' })}>
+          <NavLink
+            to="/admin/logs"
+            style={({ isActive }) => ({
+              ...navLinkStyle,
+              backgroundColor: isActive ? 'var(--bg-hover)' : 'transparent',
+              color: isActive ? 'var(--danger)' : 'var(--text-secondary)',
+            })}
+          >
             <Scroll size={18} />
             <span>Activity Log</span>
           </NavLink>
@@ -81,29 +137,40 @@ export const AdminLayout: React.FC = () => {
         <div style={sidebarFooterStyle}>
           <img src={currentUser.avatar} alt={currentUser.displayName} style={avatarStyle} />
           <div style={userInfoStyle}>
-            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{currentUser.displayName}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--danger)', fontWeight: 600 }}>Administrator</div>
+            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+              {currentUser.displayName}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--danger)', fontWeight: 600 }}>
+              Administrator
+            </div>
           </div>
         </div>
-
       </aside>
 
       {/* Main Content Area */}
       <div style={contentAreaStyle}>
-        
         {/* Top Mini Header */}
         <header style={topHeaderStyle}>
-          <div style={{ fontWeight: 700, fontSize: '1.2rem', fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: '1.2rem',
+              fontFamily: 'var(--font-display)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
             Platform Operations Centre
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span className="badge badge-danger">ROOT Privilege</span>
-            <button 
+            <button
               onClick={() => {
                 logout();
                 navigate('/');
-              }} 
-              className="btn btn-secondary btn-sm" 
+              }}
+              className="btn btn-secondary btn-sm"
               style={{ gap: '6px', color: 'var(--danger)' }}
             >
               <LogOut size={14} />
@@ -116,9 +183,7 @@ export const AdminLayout: React.FC = () => {
         <div style={outletWrapperStyle}>
           <Outlet />
         </div>
-
       </div>
-
     </div>
   );
 };
@@ -133,14 +198,14 @@ const unauthorizedContainerStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-main)',
   color: 'var(--text-primary)',
   padding: '2rem',
-  textAlign: 'center'
+  textAlign: 'center',
 };
 
 const dashboardWrapperStyle: React.CSSProperties = {
   display: 'flex',
   minHeight: '100vh',
   backgroundColor: 'var(--bg-main)',
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
 
 const sidebarStyle: React.CSSProperties = {
@@ -152,7 +217,7 @@ const sidebarStyle: React.CSSProperties = {
   position: 'sticky',
   top: 0,
   height: '100vh',
-  zIndex: 100
+  zIndex: 100,
 };
 
 const sidebarHeaderStyle: React.CSSProperties = {
@@ -160,7 +225,7 @@ const sidebarHeaderStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-color)',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const backBtnStyle: React.CSSProperties = {
@@ -169,18 +234,18 @@ const backBtnStyle: React.CSSProperties = {
   gap: '6px',
   fontSize: '0.8rem',
   fontWeight: 600,
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const titleContainerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '8px'
+  gap: '8px',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '1.1rem',
-  fontWeight: 700
+  fontWeight: 700,
 };
 
 const navStyle: React.CSSProperties = {
@@ -188,7 +253,7 @@ const navStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '6px',
-  flex: 1
+  flex: 1,
 };
 
 const navLinkStyle: React.CSSProperties = {
@@ -199,7 +264,7 @@ const navLinkStyle: React.CSSProperties = {
   borderRadius: '8px',
   fontSize: '0.9rem',
   fontWeight: 500,
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const sidebarFooterStyle: React.CSSProperties = {
@@ -208,19 +273,19 @@ const sidebarFooterStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
-  backgroundColor: 'rgba(255,255,255,0.01)'
+  backgroundColor: 'rgba(255,255,255,0.01)',
 };
 
 const avatarStyle: React.CSSProperties = {
   width: '36px',
   height: '36px',
   borderRadius: '50%',
-  objectFit: 'cover'
+  objectFit: 'cover',
 };
 
 const userInfoStyle: React.CSSProperties = {
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
 };
 
 const contentAreaStyle: React.CSSProperties = {
@@ -228,7 +293,7 @@ const contentAreaStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   minHeight: '100vh',
-  overflowX: 'hidden'
+  overflowX: 'hidden',
 };
 
 const topHeaderStyle: React.CSSProperties = {
@@ -238,12 +303,12 @@ const topHeaderStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: '0 2rem',
-  backgroundColor: 'var(--bg-surface)'
+  backgroundColor: 'var(--bg-surface)',
 };
 
 const outletWrapperStyle: React.CSSProperties = {
   padding: '2rem',
   flex: 1,
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
 };

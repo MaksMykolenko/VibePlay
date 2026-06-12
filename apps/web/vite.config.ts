@@ -8,7 +8,9 @@ export default defineConfig(({ mode }) => ({
   plugins: [react()],
   base: mode === 'demo' ? '/VibePlay/' : '/',
   define: {
-    __APP_MODE__: JSON.stringify(mode === 'demo' ? 'demo' : 'real'),
+    // Statically folded per importing module → guaranteed dead-code elimination
+    // of all demo-only paths in the real bundle (verified by CI).
+    'import.meta.env.APP_MODE': JSON.stringify(mode === 'demo' ? 'demo' : 'real'),
   },
   build: {
     sourcemap: false,

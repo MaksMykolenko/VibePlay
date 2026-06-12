@@ -15,20 +15,20 @@ export const SearchPage: React.FC = () => {
 
   // Perform search queries
   const matchedGames = games
-    .filter(g => g.status === 'published')
-    .filter(g => {
+    .filter((g) => g.status === 'published')
+    .filter((g) => {
       const term = query.toLowerCase();
       return (
         g.title.toLowerCase().includes(term) ||
         g.shortDescription.toLowerCase().includes(term) ||
         g.category.toLowerCase().includes(term) ||
-        g.tags.some(t => t.toLowerCase().includes(term))
+        g.tags.some((t) => t.toLowerCase().includes(term))
       );
     });
 
   const matchedCreators = users
-    .filter(u => u.role === 'creator')
-    .filter(u => {
+    .filter((u) => u.role === 'creator')
+    .filter((u) => {
       const term = query.toLowerCase();
       return (
         u.displayName.toLowerCase().includes(term) ||
@@ -41,44 +41,45 @@ export const SearchPage: React.FC = () => {
 
   return (
     <div style={containerStyle}>
-      
       {/* Title */}
       <div style={headerStyle}>
         <Search size={28} color="var(--secondary)" />
         <h1 style={titleStyle}>Search Results</h1>
       </div>
-      <p style={subtitleStyle}>Showing results for "<strong>{query}</strong>" ({totalResults} matches found)</p>
+      <p style={subtitleStyle}>
+        Showing results for "<strong>{query}</strong>" ({totalResults} matches found)
+      </p>
 
       {/* Tabs */}
       <div style={tabsContainerStyle}>
-        <button 
+        <button
           onClick={() => setActiveTab('all')}
           style={{
             ...tabItemStyle,
             borderBottomColor: activeTab === 'all' ? 'var(--secondary)' : 'transparent',
-            color: activeTab === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)'
+            color: activeTab === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
           All Results ({totalResults})
         </button>
 
-        <button 
+        <button
           onClick={() => setActiveTab('games')}
           style={{
             ...tabItemStyle,
             borderBottomColor: activeTab === 'games' ? 'var(--secondary)' : 'transparent',
-            color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)'
+            color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
           Games ({matchedGames.length})
         </button>
 
-        <button 
+        <button
           onClick={() => setActiveTab('creators')}
           style={{
             ...tabItemStyle,
             borderBottomColor: activeTab === 'creators' ? 'var(--secondary)' : 'transparent',
-            color: activeTab === 'creators' ? 'var(--text-primary)' : 'var(--text-secondary)'
+            color: activeTab === 'creators' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
           Creators ({matchedCreators.length})
@@ -87,24 +88,34 @@ export const SearchPage: React.FC = () => {
 
       {/* Result list panels */}
       <div style={resultsAreaStyle} className="animate-fade">
-        
         {totalResults === 0 ? (
           <div style={emptyContainerStyle}>
             <Search size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
             <h3>No results found</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem', marginBottom: '1.5rem' }}>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '0.9rem',
+                marginTop: '0.25rem',
+                marginBottom: '1.5rem',
+              }}
+            >
               We couldn't find any games or creators matching "{query}".
             </p>
-            <Link to="/games" className="btn btn-primary btn-sm">Explore All Games</Link>
+            <Link to="/games" className="btn btn-primary btn-sm">
+              Explore All Games
+            </Link>
           </div>
         ) : (
           <>
             {/* Games block */}
             {(activeTab === 'all' || activeTab === 'games') && matchedGames.length > 0 && (
               <div style={sectionStyle}>
-                {activeTab === 'all' && <h2 style={sectionTitleStyle}>Games ({matchedGames.length})</h2>}
+                {activeTab === 'all' && (
+                  <h2 style={sectionTitleStyle}>Games ({matchedGames.length})</h2>
+                )}
                 <div className="games-grid">
-                  {matchedGames.map(game => (
+                  {matchedGames.map((game) => (
                     <GameCard key={game.id} game={game} />
                   ))}
                 </div>
@@ -114,18 +125,26 @@ export const SearchPage: React.FC = () => {
             {/* Creators block */}
             {(activeTab === 'all' || activeTab === 'creators') && matchedCreators.length > 0 && (
               <div style={{ ...sectionStyle, marginTop: activeTab === 'all' ? '3rem' : '0' }}>
-                {activeTab === 'all' && <h2 style={sectionTitleStyle}>Creators ({matchedCreators.length})</h2>}
+                {activeTab === 'all' && (
+                  <h2 style={sectionTitleStyle}>Creators ({matchedCreators.length})</h2>
+                )}
                 <div style={creatorsGridStyle}>
-                  {matchedCreators.map(user => (
+                  {matchedCreators.map((user) => (
                     <div key={user.id} style={creatorCardStyle} className="bg-glass">
                       <img src={user.avatar} alt={user.displayName} style={creatorAvatarStyle} />
                       <div style={creatorInfoStyle}>
-                        <Link to={`/profile/${user.username}`} style={creatorNameStyle}>{user.displayName}</Link>
+                        <Link to={`/profile/${user.username}`} style={creatorNameStyle}>
+                          {user.displayName}
+                        </Link>
                         <div style={creatorUsernameStyle}>@{user.username}</div>
                         <p style={creatorBioStyle}>{user.bio}</p>
                         <div style={creatorFollowersStyle}>{user.followersCount} followers</div>
                       </div>
-                      <Link to={`/profile/${user.username}`} className="btn btn-secondary btn-sm" style={{ alignSelf: 'center' }}>
+                      <Link
+                        to={`/profile/${user.username}`}
+                        className="btn btn-secondary btn-sm"
+                        style={{ alignSelf: 'center' }}
+                      >
                         View Profile
                       </Link>
                     </div>
@@ -135,9 +154,7 @@ export const SearchPage: React.FC = () => {
             )}
           </>
         )}
-
       </div>
-
     </div>
   );
 };
@@ -151,32 +168,32 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1.5rem',
-  minHeight: '400px'
+  minHeight: '400px',
 };
 
 const headerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '12px'
+  gap: '12px',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '2rem',
   fontWeight: 700,
   fontFamily: 'var(--font-display)',
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const subtitleStyle: React.CSSProperties = {
   fontSize: '0.95rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const tabsContainerStyle: React.CSSProperties = {
   display: 'flex',
   gap: '1.5rem',
   borderBottom: '1px solid var(--border-color)',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const tabItemStyle: React.CSSProperties = {
@@ -187,11 +204,11 @@ const tabItemStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   fontWeight: 600,
   cursor: 'pointer',
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const resultsAreaStyle: React.CSSProperties = {
-  marginTop: '1rem'
+  marginTop: '1rem',
 };
 
 const emptyContainerStyle: React.CSSProperties = {
@@ -203,13 +220,13 @@ const emptyContainerStyle: React.CSSProperties = {
   textAlign: 'center',
   backgroundColor: 'var(--bg-card)',
   border: '1px dashed var(--border-color)',
-  borderRadius: '12px'
+  borderRadius: '12px',
 };
 
 const sectionStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const sectionTitleStyle: React.CSSProperties = {
@@ -217,13 +234,13 @@ const sectionTitleStyle: React.CSSProperties = {
   fontWeight: 700,
   borderBottom: '1px solid var(--border-color)',
   paddingBottom: '0.5rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const creatorsGridStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const creatorCardStyle: React.CSSProperties = {
@@ -232,14 +249,14 @@ const creatorCardStyle: React.CSSProperties = {
   padding: '1.25rem',
   borderRadius: '12px',
   border: '1px solid var(--border-color)',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const creatorAvatarStyle: React.CSSProperties = {
   width: '56px',
   height: '56px',
   borderRadius: '50%',
-  objectFit: 'cover'
+  objectFit: 'cover',
 };
 
 const creatorInfoStyle: React.CSSProperties = {
@@ -247,19 +264,19 @@ const creatorInfoStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '2px',
-  minWidth: '200px'
+  minWidth: '200px',
 };
 
 const creatorNameStyle: React.CSSProperties = {
   fontSize: '1.1rem',
   fontWeight: 700,
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
 
 const creatorUsernameStyle: React.CSSProperties = {
   fontSize: '0.8rem',
   color: 'var(--text-secondary)',
-  fontWeight: 500
+  fontWeight: 500,
 };
 
 const creatorBioStyle: React.CSSProperties = {
@@ -270,11 +287,11 @@ const creatorBioStyle: React.CSSProperties = {
   display: '-webkit-box',
   WebkitLineClamp: 2,
   WebkitBoxOrient: 'vertical',
-  overflow: 'hidden'
+  overflow: 'hidden',
 };
 
 const creatorFollowersStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   color: 'var(--secondary)',
-  fontWeight: 600
+  fontWeight: 600,
 };

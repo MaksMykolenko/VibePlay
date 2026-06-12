@@ -14,18 +14,18 @@ export const AdminActivityLog: React.FC = () => {
 
   return (
     <div style={containerStyle} className="animate-fade">
-      
       {/* Header */}
       <div>
         <h1>Security & Operations Log</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>Immutable audit trails detailing administrative mod actions.</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
+          Immutable audit trails detailing administrative mod actions.
+        </p>
       </div>
 
       <hr style={hrStyle} />
 
       {/* Console log list */}
       <div style={consoleWrapperStyle} className="bg-glass">
-        
         <div style={consoleHeaderStyle}>
           <Terminal size={14} color="var(--text-secondary)" />
           <span>VibePlay Platform System Console Logs</span>
@@ -35,14 +35,16 @@ export const AdminActivityLog: React.FC = () => {
           {activityLogs.length === 0 ? (
             <div style={emptyTextStyle}>No logs recorded in this session.</div>
           ) : (
-            activityLogs.map(log => (
+            activityLogs.map((log) => (
               <div key={log.id} style={logItemStyle}>
                 <div style={logMetaRowStyle}>
                   <span style={timestampStyle}>[{new Date(log.timestamp).toISOString()}]</span>
                   <span style={operatorStyle}>operator: @{log.adminName}</span>
-                  <span style={{ ...actionStyle, color: getActionColor(log.action) }}>action: {log.action.toUpperCase()}</span>
+                  <span style={{ ...actionStyle, color: getActionColor(log.action) }}>
+                    action: {log.action.toUpperCase()}
+                  </span>
                 </div>
-                
+
                 <div style={logBodyRowStyle}>
                   &gt; Target: {log.targetType.toUpperCase()} ({log.targetName} : ID {log.targetId})
                   {log.details && <div style={detailsStyle}>&gt; Diagnostics: {log.details}</div>}
@@ -51,9 +53,7 @@ export const AdminActivityLog: React.FC = () => {
             ))
           )}
         </div>
-
       </div>
-
     </div>
   );
 };
@@ -62,13 +62,13 @@ export const AdminActivityLog: React.FC = () => {
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem'
+  gap: '1.5rem',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
   borderTop: '1px solid var(--border-color)',
-  margin: '0.25rem 0'
+  margin: '0.25rem 0',
 };
 
 const consoleWrapperStyle: React.CSSProperties = {
@@ -77,7 +77,7 @@ const consoleWrapperStyle: React.CSSProperties = {
   overflow: 'hidden',
   display: 'flex',
   flexDirection: 'column',
-  backgroundColor: '#05070D'
+  backgroundColor: '#05070D',
 };
 
 const consoleHeaderStyle: React.CSSProperties = {
@@ -90,7 +90,7 @@ const consoleHeaderStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   color: 'var(--text-secondary)',
   fontWeight: 600,
-  fontFamily: 'Courier, monospace'
+  fontFamily: 'Courier, monospace',
 };
 
 const logsContainerStyle: React.CSSProperties = {
@@ -102,45 +102,45 @@ const logsContainerStyle: React.CSSProperties = {
   fontSize: '0.8rem',
   maxHeight: '450px',
   overflowY: 'auto',
-  lineHeight: 1.5
+  lineHeight: 1.5,
 };
 
 const emptyTextStyle: React.CSSProperties = {
   textAlign: 'center',
   color: 'var(--text-secondary)',
-  padding: '2rem'
+  padding: '2rem',
 };
 
 const logItemStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '4px'
+  gap: '4px',
 };
 
 const logMetaRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: '12px',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const timestampStyle: React.CSSProperties = {
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const operatorStyle: React.CSSProperties = {
-  color: 'var(--secondary)'
+  color: 'var(--secondary)',
 };
 
 const actionStyle: React.CSSProperties = {
-  fontWeight: 600
+  fontWeight: 600,
 };
 
 const logBodyRowStyle: React.CSSProperties = {
   paddingLeft: '1rem',
-  color: '#c9d1d9'
+  color: '#c9d1d9',
 };
 
 const detailsStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
-  marginTop: '2px'
+  marginTop: '2px',
 };

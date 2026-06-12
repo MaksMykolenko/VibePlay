@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { Bell, Check, ArrowRight, ShieldAlert, Sparkles, Cpu, AlertTriangle } from 'lucide-react';
-import { toast } from '../components/Toast';
+import { toast } from '../components/toastEvents';
 
 export const NotificationsPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -18,7 +18,9 @@ export const NotificationsPage: React.FC = () => {
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
           Please authenticate to access your notifications stream.
         </p>
-        <button onClick={() => navigate('/login')} className="btn btn-primary">Log In</button>
+        <button onClick={() => navigate('/login')} className="btn btn-primary">
+          Log In
+        </button>
       </div>
     );
   }
@@ -30,11 +32,16 @@ export const NotificationsPage: React.FC = () => {
 
   const getNotifIcon = (type: string) => {
     switch (type) {
-      case 'game_approved': return <ShieldCheckStyle color="var(--success)" />;
-      case 'game_rejected': return <ShieldAlertIconStyle color="var(--danger)" />;
-      case 'game_featured': return <Sparkles size={20} color="var(--primary)" />;
-      case 'new_comment': return <Cpu size={20} color="var(--secondary)" />;
-      default: return <Bell size={20} color="var(--text-secondary)" />;
+      case 'game_approved':
+        return <ShieldCheckStyle color="var(--success)" />;
+      case 'game_rejected':
+        return <ShieldAlertIconStyle color="var(--danger)" />;
+      case 'game_featured':
+        return <Sparkles size={20} color="var(--primary)" />;
+      case 'new_comment':
+        return <Cpu size={20} color="var(--secondary)" />;
+      default:
+        return <Bell size={20} color="var(--text-secondary)" />;
     }
   };
 
@@ -43,21 +50,24 @@ export const NotificationsPage: React.FC = () => {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
   return (
     <div style={containerStyle}>
-      
       {/* Header */}
       <div style={headerStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Bell size={28} color="var(--secondary)" />
           <h1 style={titleStyle}>Notifications</h1>
         </div>
-        {notifications.some(n => !n.isRead) && (
-          <button onClick={handleMarkAllRead} className="btn btn-secondary btn-sm" style={{ gap: '6px' }}>
+        {notifications.some((n) => !n.isRead) && (
+          <button
+            onClick={handleMarkAllRead}
+            className="btn btn-secondary btn-sm"
+            style={{ gap: '6px' }}
+          >
             <Check size={14} />
             <span>Mark all read</span>
           </button>
@@ -77,29 +87,35 @@ export const NotificationsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          notifications.map(n => (
-            <div 
-              key={n.id} 
+          notifications.map((n) => (
+            <div
+              key={n.id}
               style={{
                 ...notifCardStyle,
                 borderLeft: n.isRead ? '4px solid transparent' : '4px solid var(--secondary)',
-                backgroundColor: n.isRead ? 'var(--bg-card)' : 'rgba(0, 207, 255, 0.02)'
+                backgroundColor: n.isRead ? 'var(--bg-card)' : 'rgba(0, 207, 255, 0.02)',
               }}
               className="animate-fade"
             >
-              <div style={iconBoxStyle}>
-                {getNotifIcon(n.type)}
-              </div>
+              <div style={iconBoxStyle}>{getNotifIcon(n.type)}</div>
 
               <div style={bodyStyle}>
                 <div style={titleRowStyle}>
-                  <strong style={{ fontSize: '1rem', color: n.isRead ? 'var(--text-primary)' : '#fff' }}>{n.title}</strong>
+                  <strong
+                    style={{ fontSize: '1rem', color: n.isRead ? 'var(--text-primary)' : '#fff' }}
+                  >
+                    {n.title}
+                  </strong>
                   <span style={timeStyle}>{formatTime(n.timestamp)}</span>
                 </div>
                 <p style={descStyle}>{n.message}</p>
-                
+
                 {n.relatedSlug && (
-                  <Link to={`/game/${n.relatedSlug}`} onClick={() => markAsRead(n.id)} style={linkStyle}>
+                  <Link
+                    to={`/game/${n.relatedSlug}`}
+                    onClick={() => markAsRead(n.id)}
+                    style={linkStyle}
+                  >
                     <span>View Game Details</span>
                     <ArrowRight size={12} />
                   </Link>
@@ -107,8 +123,8 @@ export const NotificationsPage: React.FC = () => {
               </div>
 
               {!n.isRead && (
-                <button 
-                  onClick={() => markAsRead(n.id)} 
+                <button
+                  onClick={() => markAsRead(n.id)}
                   style={markReadBtnStyle}
                   title="Mark as read"
                 >
@@ -119,20 +135,33 @@ export const NotificationsPage: React.FC = () => {
           ))
         )}
       </div>
-
     </div>
   );
 };
 
 // Notification helper icons
 const ShieldCheckStyle: React.FC<{ color: string }> = ({ color }) => (
-  <div style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(61,220,151,0.1)' }}>
+  <div
+    style={{
+      display: 'inline-flex',
+      padding: '6px',
+      borderRadius: '50%',
+      backgroundColor: 'rgba(61,220,151,0.1)',
+    }}
+  >
     <Check size={18} color={color} />
   </div>
 );
 
 const ShieldAlertIconStyle: React.FC<{ color: string }> = ({ color }) => (
-  <div style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', backgroundColor: 'rgba(255,93,115,0.1)' }}>
+  <div
+    style={{
+      display: 'inline-flex',
+      padding: '6px',
+      borderRadius: '50%',
+      backgroundColor: 'rgba(255,93,115,0.1)',
+    }}
+  >
     <AlertTriangle size={18} color={color} />
   </div>
 );
@@ -145,7 +174,7 @@ const unauthContainerStyle: React.CSSProperties = {
   justifyContent: 'center',
   minHeight: 'calc(100vh - 140px)',
   textAlign: 'center',
-  padding: '2rem'
+  padding: '2rem',
 };
 
 const containerStyle: React.CSSProperties = {
@@ -156,7 +185,7 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1.5rem',
-  minHeight: '400px'
+  minHeight: '400px',
 };
 
 const headerStyle: React.CSSProperties = {
@@ -164,26 +193,26 @@ const headerStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: '12px'
+  gap: '12px',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '2rem',
   fontWeight: 700,
   fontFamily: 'var(--font-display)',
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const hrStyle: React.CSSProperties = {
   border: 'none',
   borderTop: '1px solid var(--border-color)',
-  margin: '0.25rem 0'
+  margin: '0.25rem 0',
 };
 
 const listAreaStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem'
+  gap: '1rem',
 };
 
 const emptyContainerStyle: React.CSSProperties = {
@@ -195,7 +224,7 @@ const emptyContainerStyle: React.CSSProperties = {
   textAlign: 'center',
   backgroundColor: 'var(--bg-card)',
   border: '1px dashed var(--border-color)',
-  borderRadius: '12px'
+  borderRadius: '12px',
 };
 
 const notifCardStyle: React.CSSProperties = {
@@ -204,20 +233,20 @@ const notifCardStyle: React.CSSProperties = {
   padding: '1.5rem',
   borderRadius: '12px',
   border: '1px solid var(--border-color)',
-  position: 'relative'
+  position: 'relative',
 };
 
 const iconBoxStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
-  paddingTop: '2px'
+  paddingTop: '2px',
 };
 
 const bodyStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
   flexDirection: 'column',
-  gap: '4px'
+  gap: '4px',
 };
 
 const titleRowStyle: React.CSSProperties = {
@@ -225,18 +254,18 @@ const titleRowStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   flexWrap: 'wrap',
-  gap: '8px'
+  gap: '8px',
 };
 
 const timeStyle: React.CSSProperties = {
   fontSize: '0.75rem',
-  color: 'var(--text-secondary)'
+  color: 'var(--text-secondary)',
 };
 
 const descStyle: React.CSSProperties = {
   fontSize: '0.9rem',
   color: 'var(--text-secondary)',
-  lineHeight: 1.4
+  lineHeight: 1.4,
 };
 
 const linkStyle: React.CSSProperties = {
@@ -247,7 +276,7 @@ const linkStyle: React.CSSProperties = {
   color: 'var(--secondary)',
   fontWeight: 600,
   marginTop: '0.5rem',
-  alignSelf: 'flex-start'
+  alignSelf: 'flex-start',
 };
 
 const markReadBtnStyle: React.CSSProperties = {
@@ -262,7 +291,7 @@ const markReadBtnStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'center',
   cursor: 'pointer',
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 // Hover managed in CSS

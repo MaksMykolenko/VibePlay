@@ -2,8 +2,35 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
-import { ArrowLeft, Maximize2, Minimize2, RotateCcw, Volume2, VolumeX, ShieldCheck, AlertCircle } from 'lucide-react';
-import { toast } from '../components/Toast';
+import {
+  ArrowLeft,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  ShieldCheck,
+  AlertCircle,
+} from 'lucide-react';
+import { toast } from '../components/toastEvents';
+
+const LOADING_TEXTS = [
+  'Securing browser sandbox environment...',
+  'Performing static scanning on files...',
+  'Extracting game assets from ZIP...',
+  'Validating index.html entrance...',
+  'Injecting sandboxed canvas APIs...',
+  'Initializing audio drivers and WebGL...',
+  'VibePlay Player Ready!',
+];
+
+interface WebkitFullscreenElement extends HTMLElement {
+  webkitRequestFullscreen?: () => Promise<void> | void;
+}
+
+interface WebkitFullscreenDocument extends Document {
+  webkitExitFullscreen?: () => Promise<void> | void;
+}
 
 export const GamePlayerPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -21,19 +48,9 @@ export const GamePlayerPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  const game = games.find(g => g.slug === slug);
+  const game = games.find((g) => g.slug === slug);
 
   // Loading Steps Text Simulation
-  const loadingTexts = [
-    'Securing browser sandbox environment...',
-    'Performing static scanning on files...',
-    'Extracting game assets from ZIP...',
-    'Validating index.html entrance...',
-    'Injecting sandboxed canvas APIs...',
-    'Initializing audio drivers and WebGL...',
-    'VibePlay Player Ready!'
-  ];
-
   // Guard: Game exist check
   useEffect(() => {
     if (!game) {
@@ -46,10 +63,10 @@ export const GamePlayerPage: React.FC = () => {
   useEffect(() => {
     if (!game) return;
 
-    let timer: any;
-    if (loadingStep < loadingTexts.length - 1) {
+    let timer: ReturnType<typeof setTimeout>;
+    if (loadingStep < LOADING_TEXTS.length - 1) {
       timer = setTimeout(() => {
-        setLoadingStep(prev => prev + 1);
+        setLoadingStep((prev) => prev + 1);
       }, 600);
     } else {
       timer = setTimeout(() => {
@@ -63,7 +80,7 @@ export const GamePlayerPage: React.FC = () => {
     }
 
     return () => clearTimeout(timer);
-  }, [loadingStep, game]);
+  }, [addRecentlyPlayed, currentUser, game, loadingStep]);
 
   // Synthwave Canvas game simulation loop
   useEffect(() => {
@@ -73,19 +90,19 @@ export const GamePlayerPage: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    let width = canvas.width = 800;
-    let height = canvas.height = 450;
+    const width = (canvas.width = 800);
+    const height = (canvas.height = 450);
 
     let time = 0;
-    let stars: { x: number; y: number; size: number; speed: number }[] = [];
-    
+    const stars: { x: number; y: number; size: number; speed: number }[] = [];
+
     // Initialize stars
     for (let i = 0; i < 60; i++) {
       stars.push({
         x: Math.random() * width,
         y: Math.random() * (height / 2),
         size: Math.random() * 2,
-        speed: Math.random() * 0.2 + 0.05
+        speed: Math.random() * 0.2 + 0.05,
       });
     }
 
@@ -99,7 +116,7 @@ export const GamePlayerPage: React.FC = () => {
 
       // 1. Draw space stars
       ctx.fillStyle = '#ffffff';
-      stars.forEach(s => {
+      stars.forEach((s) => {
         ctx.fillRect(s.x, s.y, s.size, s.size);
         s.x -= s.speed;
         if (s.x < 0) s.x = width;
@@ -124,15 +141,14 @@ export const GamePlayerPage: React.FC = () => {
       // 3. Draw grid (roads)
       time += 1.5;
 
-
       ctx.strokeStyle = '#D98257'; // brand-peach-600
       ctx.lineWidth = 2;
 
       // Draw horizontal vanishing lines
       for (let i = 0; i < gridRows; i++) {
         // Perspective ratio formula
-        const py = horizon + (Math.pow(i / gridRows, 2) * (height - horizon));
-        
+        const py = horizon + Math.pow(i / gridRows, 2) * (height - horizon);
+
         ctx.strokeStyle = `rgba(217, 130, 87, ${0.15 + (i / gridRows) * 0.7})`;
         ctx.beginPath();
         ctx.moveTo(0, py);
@@ -145,7 +161,7 @@ export const GamePlayerPage: React.FC = () => {
       for (let i = 0; i <= rays; i++) {
         const pxStart = (width / rays) * i;
         const pxVanishing = width / 2;
-        
+
         ctx.strokeStyle = 'rgba(246, 177, 122, 0.4)'; // Peach soft
         ctx.beginPath();
         ctx.moveTo(pxVanishing, horizon);
@@ -158,7 +174,12 @@ export const GamePlayerPage: React.FC = () => {
       const playerY = height - 60;
 
       // Draw "Player Cube" car
-      const playerGradient = ctx.createLinearGradient(playerX - 25, playerY, playerX + 25, playerY + 30);
+      const playerGradient = ctx.createLinearGradient(
+        playerX - 25,
+        playerY,
+        playerX + 25,
+        playerY + 30,
+      );
       playerGradient.addColorStop(0, '#FFC28F'); // Peach-400
       playerGradient.addColorStop(1, '#D98257'); // Peach-600
       ctx.fillStyle = playerGradient;
@@ -217,15 +238,15 @@ export const GamePlayerPage: React.FC = () => {
     if (!isFullscreen) {
       if (container.requestFullscreen) {
         container.requestFullscreen();
-      } else if ((container as any).webkitRequestFullscreen) {
-        (container as any).webkitRequestFullscreen();
+      } else {
+        void (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
       }
       setIsFullscreen(true);
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen();
-      } else if ((document as any).webkitExitFullscreen) {
-        (document as any).webkitExitFullscreen();
+      } else {
+        void (document as WebkitFullscreenDocument).webkitExitFullscreen?.();
       }
       setIsFullscreen(false);
     }
@@ -259,7 +280,6 @@ export const GamePlayerPage: React.FC = () => {
 
   return (
     <div style={playerPageWrapperStyle}>
-      
       {/* Sandbox Warning header */}
       <div style={warningsHeaderStyle}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -275,28 +295,40 @@ export const GamePlayerPage: React.FC = () => {
       </div>
 
       {/* Main Play Area */}
-      <div ref={containerRef} style={{ ...theaterContainerStyle, padding: isFullscreen ? '0' : '2rem' }}>
-        
+      <div
+        ref={containerRef}
+        style={{ ...theaterContainerStyle, padding: isFullscreen ? '0' : '2rem' }}
+      >
         {/* Top Control Bar */}
         <div style={controlBarStyle}>
           <button onClick={handleExit} style={controlBtnStyle}>
             <ArrowLeft size={16} />
             <span>Exit Game</span>
           </button>
-          
+
           <div style={gameTitleBlockStyle}>
             <span style={{ fontWeight: 700 }}>{game.title}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>by @{game.creatorName}</span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              by @{game.creatorName}
+            </span>
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
             <button onClick={handleRestart} style={controlIconBtnStyle} title="Restart Game">
               <RotateCcw size={16} />
             </button>
-            <button onClick={() => setIsMuted(!isMuted)} style={controlIconBtnStyle} title={isMuted ? 'Unmute Audio' : 'Mute Audio'}>
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              style={controlIconBtnStyle}
+              title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+            >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
             </button>
-            <button onClick={toggleFullscreen} style={controlIconBtnStyle} title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
+            <button
+              onClick={toggleFullscreen}
+              style={controlIconBtnStyle}
+              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
           </div>
@@ -304,30 +336,31 @@ export const GamePlayerPage: React.FC = () => {
 
         {/* Display Wrapper */}
         <div style={displayWrapperStyle}>
-          
           {/* Loading Layer */}
           {loading && (
             <div style={loadingLayerStyle}>
               <div style={spinnerStyle}></div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em' }}>Launching Game Build</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em' }}>
+                Launching Game Build
+              </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
-                {loadingTexts[loadingStep]}
+                {LOADING_TEXTS[loadingStep]}
               </p>
               <div style={progressOuterStyle}>
-                <div style={{ ...progressInnerStyle, width: `${((loadingStep + 1) / loadingTexts.length) * 100}%` }}></div>
+                <div
+                  style={{
+                    ...progressInnerStyle,
+                    width: `${((loadingStep + 1) / LOADING_TEXTS.length) * 100}%`,
+                  }}
+                ></div>
               </div>
             </div>
           )}
 
           {/* Interactive Simulated Game Canvas */}
-          {!loading && isPlaying && (
-            <canvas ref={canvasRef} style={canvasStyle}></canvas>
-          )}
-
+          {!loading && isPlaying && <canvas ref={canvasRef} style={canvasStyle}></canvas>}
         </div>
-
       </div>
-
     </div>
   );
 };
@@ -337,7 +370,7 @@ const playerPageWrapperStyle: React.CSSProperties = {
   backgroundColor: '#05070D',
   minHeight: '100vh',
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
 };
 
 const warningsHeaderStyle: React.CSSProperties = {
@@ -348,7 +381,7 @@ const warningsHeaderStyle: React.CSSProperties = {
   borderBottom: '1px solid var(--border-color)',
   backgroundColor: 'var(--bg-main)',
   flexWrap: 'wrap',
-  gap: '8px'
+  gap: '8px',
 };
 
 const sandboxBadgeStyle: React.CSSProperties = {
@@ -359,7 +392,7 @@ const sandboxBadgeStyle: React.CSSProperties = {
   borderRadius: '4px',
   backgroundColor: 'rgba(61, 220, 151, 0.1)',
   fontSize: '0.75rem',
-  fontWeight: 600
+  fontWeight: 600,
 };
 
 const theaterContainerStyle: React.CSSProperties = {
@@ -369,7 +402,7 @@ const theaterContainerStyle: React.CSSProperties = {
   justifyContent: 'center',
   alignItems: 'center',
   backgroundColor: '#000000',
-  position: 'relative'
+  position: 'relative',
 };
 
 const controlBarStyle: React.CSSProperties = {
@@ -385,7 +418,7 @@ const controlBarStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '0 1rem',
-  zIndex: 10
+  zIndex: 10,
 };
 
 const controlBtnStyle: React.CSSProperties = {
@@ -397,7 +430,7 @@ const controlBtnStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   fontSize: '0.85rem',
   fontWeight: 600,
-  cursor: 'pointer'
+  cursor: 'pointer',
 };
 
 const gameTitleBlockStyle: React.CSSProperties = {
@@ -405,7 +438,7 @@ const gameTitleBlockStyle: React.CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   fontSize: '0.85rem',
-  lineHeight: 1.2
+  lineHeight: 1.2,
 };
 
 const controlIconBtnStyle: React.CSSProperties = {
@@ -416,7 +449,7 @@ const controlIconBtnStyle: React.CSSProperties = {
   padding: '4px',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center'
+  justifyContent: 'center',
 };
 
 const displayWrapperStyle: React.CSSProperties = {
@@ -429,7 +462,7 @@ const displayWrapperStyle: React.CSSProperties = {
   borderBottomRightRadius: '8px',
   overflow: 'hidden',
   position: 'relative',
-  boxShadow: 'var(--shadow-lg)'
+  boxShadow: 'var(--shadow-lg)',
 };
 
 const loadingLayerStyle: React.CSSProperties = {
@@ -443,7 +476,7 @@ const loadingLayerStyle: React.CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 20
+  zIndex: 20,
 };
 
 const spinnerStyle: React.CSSProperties = {
@@ -453,7 +486,7 @@ const spinnerStyle: React.CSSProperties = {
   border: '3px solid rgba(124, 92, 255, 0.1)',
   borderTopColor: 'var(--primary)',
   animation: 'pulse 1s infinite linear', // Handled simple spinner or keyframe in CSS
-  marginBottom: '1rem'
+  marginBottom: '1rem',
 };
 
 const progressOuterStyle: React.CSSProperties = {
@@ -462,18 +495,18 @@ const progressOuterStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-hover)',
   borderRadius: '2px',
   marginTop: '1.25rem',
-  overflow: 'hidden'
+  overflow: 'hidden',
 };
 
 const progressInnerStyle: React.CSSProperties = {
   height: '100%',
   backgroundColor: 'var(--secondary)',
-  transition: 'width 0.3s ease'
+  transition: 'width 0.3s ease',
 };
 
 const canvasStyle: React.CSSProperties = {
   width: '100%',
   height: '100%',
   display: 'block',
-  cursor: 'crosshair'
+  cursor: 'crosshair',
 };

@@ -35,7 +35,7 @@ const layoutWrapperStyle: React.CSSProperties = {
   flexDirection: 'column',
   minHeight: '100vh',
   backgroundColor: 'var(--bg-main)',
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
 
 const mainContentStyle: React.CSSProperties = {

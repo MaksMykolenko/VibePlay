@@ -8,27 +8,57 @@ export const MobileNavbar: React.FC = () => {
 
   return (
     <nav style={mobileNavStyle} className="bg-glass">
-      <NavLink to="/" style={({ isActive }) => ({ ...itemStyle, color: isActive ? 'var(--secondary)' : 'var(--text-secondary)' })}>
+      <NavLink
+        to="/"
+        style={({ isActive }) => ({
+          ...itemStyle,
+          color: isActive ? 'var(--secondary)' : 'var(--text-secondary)',
+        })}
+      >
         <Home size={20} />
         <span style={textStyle}>Home</span>
       </NavLink>
-      
-      <NavLink to="/games" style={({ isActive }) => ({ ...itemStyle, color: isActive ? 'var(--secondary)' : 'var(--text-secondary)' })}>
+
+      <NavLink
+        to="/games"
+        style={({ isActive }) => ({
+          ...itemStyle,
+          color: isActive ? 'var(--secondary)' : 'var(--text-secondary)',
+        })}
+      >
         <Compass size={20} />
         <span style={textStyle}>Discover</span>
       </NavLink>
 
-      <NavLink to="/search" style={({ isActive }) => ({ ...itemStyle, color: isActive ? 'var(--secondary)' : 'var(--text-secondary)' })}>
+      <NavLink
+        to="/search"
+        style={({ isActive }) => ({
+          ...itemStyle,
+          color: isActive ? 'var(--secondary)' : 'var(--text-secondary)',
+        })}
+      >
         <Search size={20} />
         <span style={textStyle}>Search</span>
       </NavLink>
 
-      <NavLink to={currentUser ? '/library' : '/login'} style={({ isActive }) => ({ ...itemStyle, color: isActive ? 'var(--secondary)' : 'var(--text-secondary)' })}>
+      <NavLink
+        to={currentUser ? '/library' : '/login'}
+        style={({ isActive }) => ({
+          ...itemStyle,
+          color: isActive ? 'var(--secondary)' : 'var(--text-secondary)',
+        })}
+      >
         <BookOpen size={20} />
         <span style={textStyle}>Library</span>
       </NavLink>
 
-      <NavLink to={currentUser ? `/profile/${currentUser.username}` : '/login'} style={({ isActive }) => ({ ...itemStyle, color: isActive ? 'var(--secondary)' : 'var(--text-secondary)' })}>
+      <NavLink
+        to={currentUser ? `/profile/${currentUser.username}` : '/login'}
+        style={({ isActive }) => ({
+          ...itemStyle,
+          color: isActive ? 'var(--secondary)' : 'var(--text-secondary)',
+        })}
+      >
         <User size={20} />
         <span style={textStyle}>Profile</span>
       </NavLink>
@@ -47,7 +77,7 @@ const mobileNavStyle: React.CSSProperties = {
   justifyContent: 'space-around',
   alignItems: 'center',
   zIndex: 1000,
-  paddingBottom: 'safe-area-inset-bottom' // Safe area for modern phones
+  paddingBottom: 'safe-area-inset-bottom', // Safe area for modern phones
 };
 
 const itemStyle: React.CSSProperties = {
@@ -58,9 +88,9 @@ const itemStyle: React.CSSProperties = {
   fontSize: '0.65rem',
   fontWeight: 600,
   textTransform: 'uppercase',
-  letterSpacing: '0.05em'
+  letterSpacing: '0.05em',
 };
 
 const textStyle: React.CSSProperties = {
-  marginTop: '2px'
+  marginTop: '2px',
 };

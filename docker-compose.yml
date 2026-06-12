@@ -23,7 +23,7 @@ x-storage-env: &storage-env
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-vibeplay-minio-secret}
   S3_QUARANTINE_BUCKET: vibeplay-quarantine
   S3_PUBLISHED_BUCKET: vibeplay-published
-  S3_FORCE_PATH_STYLE: "true"
+  S3_FORCE_PATH_STYLE: 'true'
 
 services:
   postgres:
@@ -33,24 +33,24 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vibeplay}
       POSTGRES_DB: vibeplay
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vibeplay -d vibeplay"]
+      test: ['CMD-SHELL', 'pg_isready -U vibeplay -d vibeplay']
       interval: 5s
       timeout: 3s
       retries: 10
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -62,12 +62,12 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-vibeplay}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-vibeplay-minio-secret}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     volumes:
       - miniodata:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -89,11 +89,11 @@ services:
   clamav:
     image: clamav/clamav:1.4
     ports:
-      - "3310:3310"
+      - '3310:3310'
     volumes:
       - clamavdata:/var/lib/clamav
     healthcheck:
-      test: ["CMD", "/usr/local/bin/clamdcheck.sh"]
+      test: ['CMD', '/usr/local/bin/clamdcheck.sh']
       interval: 30s
       timeout: 10s
       retries: 10
@@ -102,10 +102,10 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - '1025:1025'
+      - '8025:8025'
     healthcheck:
-      test: ["CMD", "/mailpit", "readyz"]
+      test: ['CMD', '/mailpit', 'readyz']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -120,7 +120,7 @@ services:
     environment:
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD:-vibeplay}@postgres:5432/vibeplay
     working_dir: /repo/packages/database
-    command: ["npx", "prisma", "migrate", "deploy"]
+    command: ['npx', 'prisma', 'migrate', 'deploy']
 
   api:
     build:
@@ -144,20 +144,24 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8088}
       API_ORIGIN: ${API_ORIGIN:-http://localhost:8088}
       GAME_ORIGIN: ${GAME_ORIGIN:-http://games.localhost:8080}
-      API_PORT: "3000"
-      TRUST_PROXY: "true"
+      API_PORT: '3000'
+      TRUST_PROXY: 'true'
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD:-vibeplay}@postgres:5432/vibeplay
       REDIS_URL: redis://redis:6379
       SCAN_DRIVER: clamav
       CLAMAV_HOST: clamav
-      CLAMAV_PORT: "3310"
+      CLAMAV_PORT: '3310'
       EMAIL_DRIVER: smtp
       SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      SMTP_FROM: "VibePlay <no-reply@vibeplay.local>"
+      SMTP_PORT: '1025'
+      SMTP_FROM: 'VibePlay <no-reply@vibeplay.local>'
       INVITE_ONLY: ${INVITE_ONLY:-true}
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health/live').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3000/api/health/live'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -185,10 +189,14 @@ services:
       REDIS_URL: redis://redis:6379
       SCAN_DRIVER: clamav
       CLAMAV_HOST: clamav
-      CLAMAV_PORT: "3310"
-      WORKER_HEALTH_PORT: "3002"
+      CLAMAV_PORT: '3310'
+      WORKER_HEALTH_PORT: '3002'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3002/health/ready').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:3002/health/ready'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 10
@@ -208,13 +216,17 @@ services:
       <<: [*dev-secrets, *storage-env]
       NODE_ENV: production
       LOG_LEVEL: info
-      GAME_HOST_PORT: "8080"
+      GAME_HOST_PORT: '8080'
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8088}
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD:-vibeplay}@postgres:5432/vibeplay
       REDIS_URL: redis://redis:6379
-      ACCESS_CACHE_TTL_SECONDS: "15"
+      ACCESS_CACHE_TTL_SECONDS: '15'
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/health/live').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://localhost:8080/health/live'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -235,8 +247,8 @@ services:
       - web
       - game-host
     ports:
-      - "8088:80"
-      - "8080:8080"
+      - '8088:80'
+      - '8080:8080'
     volumes:
       - ./infra/caddy/proxy.Caddyfile:/etc/caddy/Caddyfile:ro
 

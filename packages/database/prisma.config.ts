@@ -9,5 +9,8 @@ export default defineConfig({
   datasource: {
     // Only used by Prisma CLI (migrate/seed). The runtime client uses @prisma/adapter-pg.
     url: process.env.DATABASE_URL ?? 'postgresql://vibeplay:vibeplay@localhost:5432/vibeplay',
+    shadowDatabaseUrl:
+      process.env.SHADOW_DATABASE_URL ??
+      'postgresql://vibeplay:vibeplay@localhost:5432/vibeplay_shadow',
   },
 });

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Calendar, UserCheck, Edit3, ShieldAlert, Sparkles } from 'lucide-react';
-import { toast } from '../components/Toast';
+import { toast } from '../components/toastEvents';
 
 export const ProfilePage: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -12,19 +12,24 @@ export const ProfilePage: React.FC = () => {
   const { games, library } = useGames();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<'games' | 'favorites' | 'recently' | 'about'>('about');
-  const [isFollowed, setIsFollowed] = useState(false);
-
   // Find user by username
-  const profileUser = users.find(u => u.username.toLowerCase() === username?.toLowerCase());
+  const profileUser = users.find((u) => u.username.toLowerCase() === username?.toLowerCase());
+  const [activeTab, setActiveTab] = useState<'games' | 'favorites' | 'recently' | 'about'>(
+    profileUser?.role === 'creator' ? 'games' : 'favorites',
+  );
+  const [isFollowed, setIsFollowed] = useState(false);
 
   if (!profileUser) {
     return (
       <div style={notFoundContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
         <h2 style={{ marginTop: '1rem' }}>User Not Found</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>The profile you are looking for does not exist or has been suspended.</p>
-        <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>Back to Home</Link>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          The profile you are looking for does not exist or has been suspended.
+        </p>
+        <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
+          Back to Home
+        </Link>
       </div>
     );
   }
@@ -32,12 +37,16 @@ export const ProfilePage: React.FC = () => {
   const isOwnProfile = currentUser?.id === profileUser.id;
 
   // Filter games created by this user
-  const creatorGames = games.filter(g => g.creatorId === profileUser.id && g.status === 'published');
+  const creatorGames = games.filter(
+    (g) => g.creatorId === profileUser.id && g.status === 'published',
+  );
   // Filter creator draft/pending games (show only to self)
-  const creatorPrivateGames = games.filter(g => g.creatorId === profileUser.id && g.status !== 'published');
+  const creatorPrivateGames = games.filter(
+    (g) => g.creatorId === profileUser.id && g.status !== 'published',
+  );
 
   // Filter favorites
-  const favoriteGames = games.filter(g => {
+  const favoriteGames = games.filter((g) => {
     // If own profile, load from library. If another user, simulate some favorite games
     if (isOwnProfile) {
       return library.favorites.includes(g.id);
@@ -46,77 +55,70 @@ export const ProfilePage: React.FC = () => {
   });
 
   // Filter recently played
-  const recentlyPlayed = games.filter(g => {
+  const recentlyPlayed = games.filter((g) => {
     if (isOwnProfile) {
-      return library.recentlyPlayed.some(item => item.id === g.id);
+      return library.recentlyPlayed.some((item) => item.id === g.id);
     }
     return g.plays > 10000 && g.plays < 20000; // Simulated recently played
   });
 
   // Aggregate statistics
   const totalPlays = games
-    .filter(g => g.creatorId === profileUser.id)
+    .filter((g) => g.creatorId === profileUser.id)
     .reduce((sum, g) => sum + g.plays, 0);
 
   const totalLikes = games
-    .filter(g => g.creatorId === profileUser.id)
+    .filter((g) => g.creatorId === profileUser.id)
     .reduce((sum, g) => sum + g.likes, 0);
 
-  // Default tab handling
-  React.useEffect(() => {
-    if (profileUser.role === 'creator') {
-      setActiveTab('games');
-    } else {
-      setActiveTab('favorites');
-    }
-  }, [profileUser]);
-
   const handleFollowClick = () => {
-    setIsFollowed(!isFollowed);
     if (!isFollowed) {
-      profileUser.followersCount += 1;
       toast.success(`You are now following @${profileUser.username}!`);
     } else {
-      profileUser.followersCount -= 1;
       toast.info(`You unfollowed @${profileUser.username}.`);
     }
+    setIsFollowed((followed) => !followed);
   };
 
   const handleBecomeCreator = () => {
     becomeCreator();
-    toast.success("Congratulations! You are now a Creator. Open Creator Hub to upload games.");
+    toast.success('Congratulations! You are now a Creator. Open Creator Hub to upload games.');
     setActiveTab('games');
     navigate('/creator');
   };
 
   return (
     <div style={wrapperStyle}>
-      
       {/* Banner / Header Box */}
       <div style={headerCardStyle} className="bg-glass animate-fade">
         <div style={headerFlexStyle}>
-          
           <img src={profileUser.avatar} alt={profileUser.displayName} style={avatarStyle} />
-          
+
           <div style={metaStyle}>
             <div style={nameRowStyle}>
               <h1 style={displayNameStyle}>{profileUser.displayName}</h1>
-              <span className={`badge ${profileUser.role === 'admin' ? 'badge-danger' : profileUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}>
+              <span
+                className={`badge ${profileUser.role === 'admin' ? 'badge-danger' : profileUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+              >
                 {profileUser.role}
               </span>
             </div>
-            
+
             <div style={usernameStyle}>@{profileUser.username}</div>
-            
+
             <div style={joinDateStyle}>
               <Calendar size={14} style={{ marginRight: '6px' }} />
-              Joined {new Date(profileUser.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
+              Joined{' '}
+              {new Date(profileUser.joinDate).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+              })}
             </div>
 
             {/* Basic Info Bar */}
             <div style={statsRowStyle}>
               <div style={statItemStyle}>
-                <strong>{profileUser.followersCount}</strong>
+                <strong>{profileUser.followersCount + (isFollowed ? 1 : 0)}</strong>
                 <span>followers</span>
               </div>
               {profileUser.role === 'creator' && (
@@ -145,15 +147,19 @@ export const ProfilePage: React.FC = () => {
                   Edit Profile
                 </Link>
                 {profileUser.role === 'player' && (
-                  <button onClick={handleBecomeCreator} className="btn btn-primary btn-sm" style={{ gap: '6px' }}>
+                  <button
+                    onClick={handleBecomeCreator}
+                    className="btn btn-primary btn-sm"
+                    style={{ gap: '6px' }}
+                  >
                     <Sparkles size={14} />
                     Become a Creator
                   </button>
                 )}
               </div>
             ) : (
-              <button 
-                onClick={handleFollowClick} 
+              <button
+                onClick={handleFollowClick}
                 className={isFollowed ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
                 style={{ gap: '6px', width: '120px' }}
               >
@@ -162,35 +168,50 @@ export const ProfilePage: React.FC = () => {
               </button>
             )}
           </div>
-
         </div>
       </div>
 
       {/* Tabs Menu */}
       <div style={tabsContainerStyle}>
         {profileUser.role === 'creator' && (
-          <button 
-            onClick={() => setActiveTab('games')} 
-            style={{ ...tabItemStyle, borderBottomColor: activeTab === 'games' ? 'var(--secondary)' : 'transparent', color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+          <button
+            onClick={() => setActiveTab('games')}
+            style={{
+              ...tabItemStyle,
+              borderBottomColor: activeTab === 'games' ? 'var(--secondary)' : 'transparent',
+              color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)',
+            }}
           >
             Games
           </button>
         )}
-        <button 
-          onClick={() => setActiveTab('favorites')} 
-          style={{ ...tabItemStyle, borderBottomColor: activeTab === 'favorites' ? 'var(--secondary)' : 'transparent', color: activeTab === 'favorites' ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+        <button
+          onClick={() => setActiveTab('favorites')}
+          style={{
+            ...tabItemStyle,
+            borderBottomColor: activeTab === 'favorites' ? 'var(--secondary)' : 'transparent',
+            color: activeTab === 'favorites' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          }}
         >
           Favorites
         </button>
-        <button 
-          onClick={() => setActiveTab('recently')} 
-          style={{ ...tabItemStyle, borderBottomColor: activeTab === 'recently' ? 'var(--secondary)' : 'transparent', color: activeTab === 'recently' ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+        <button
+          onClick={() => setActiveTab('recently')}
+          style={{
+            ...tabItemStyle,
+            borderBottomColor: activeTab === 'recently' ? 'var(--secondary)' : 'transparent',
+            color: activeTab === 'recently' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          }}
         >
           Recently Played
         </button>
-        <button 
-          onClick={() => setActiveTab('about')} 
-          style={{ ...tabItemStyle, borderBottomColor: activeTab === 'about' ? 'var(--secondary)' : 'transparent', color: activeTab === 'about' ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+        <button
+          onClick={() => setActiveTab('about')}
+          style={{
+            ...tabItemStyle,
+            borderBottomColor: activeTab === 'about' ? 'var(--secondary)' : 'transparent',
+            color: activeTab === 'about' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          }}
         >
           About
         </button>
@@ -198,7 +219,6 @@ export const ProfilePage: React.FC = () => {
 
       {/* Tab Panels */}
       <div style={tabPanelStyle}>
-        
         {/* Games Panel */}
         {activeTab === 'games' && (
           <div className="animate-fade">
@@ -207,7 +227,7 @@ export const ProfilePage: React.FC = () => {
               <div style={emptyPanelStyle}>This creator hasn't published any games yet.</div>
             ) : (
               <div className="games-grid">
-                {creatorGames.map(game => (
+                {creatorGames.map((game) => (
                   <GameCard key={game.id} game={game} />
                 ))}
               </div>
@@ -215,9 +235,11 @@ export const ProfilePage: React.FC = () => {
 
             {isOwnProfile && creatorPrivateGames.length > 0 && (
               <div style={{ marginTop: '3rem' }}>
-                <h2 style={{ ...panelTitleStyle, color: 'var(--warning)' }}>My Drafts & Moderation Queue</h2>
+                <h2 style={{ ...panelTitleStyle, color: 'var(--warning)' }}>
+                  My Drafts & Moderation Queue
+                </h2>
                 <div className="games-grid">
-                  {creatorPrivateGames.map(game => (
+                  {creatorPrivateGames.map((game) => (
                     <GameCard key={game.id} game={game} />
                   ))}
                 </div>
@@ -232,14 +254,22 @@ export const ProfilePage: React.FC = () => {
             <h2 style={panelTitleStyle}>Favorite Games</h2>
             {favoriteGames.length === 0 ? (
               <div style={emptyPanelStyle}>
-                {isOwnProfile ? "You haven't added any games to your favorites yet." : "This user doesn't have any favorite games."}
+                {isOwnProfile
+                  ? "You haven't added any games to your favorites yet."
+                  : "This user doesn't have any favorite games."}
                 {isOwnProfile && (
-                  <Link to="/games" className="btn btn-secondary btn-sm" style={{ marginTop: '1rem' }}>Browse games</Link>
+                  <Link
+                    to="/games"
+                    className="btn btn-secondary btn-sm"
+                    style={{ marginTop: '1rem' }}
+                  >
+                    Browse games
+                  </Link>
                 )}
               </div>
             ) : (
               <div className="games-grid">
-                {favoriteGames.map(game => (
+                {favoriteGames.map((game) => (
                   <GameCard key={game.id} game={game} />
                 ))}
               </div>
@@ -253,14 +283,22 @@ export const ProfilePage: React.FC = () => {
             <h2 style={panelTitleStyle}>Recently Played</h2>
             {recentlyPlayed.length === 0 ? (
               <div style={emptyPanelStyle}>
-                {isOwnProfile ? "You haven't played any games recently." : "This user hasn't played recently."}
+                {isOwnProfile
+                  ? "You haven't played any games recently."
+                  : "This user hasn't played recently."}
                 {isOwnProfile && (
-                  <Link to="/games" className="btn btn-secondary btn-sm" style={{ marginTop: '1rem' }}>Play some games</Link>
+                  <Link
+                    to="/games"
+                    className="btn btn-secondary btn-sm"
+                    style={{ marginTop: '1rem' }}
+                  >
+                    Play some games
+                  </Link>
                 )}
               </div>
             ) : (
               <div className="games-grid">
-                {recentlyPlayed.map(game => (
+                {recentlyPlayed.map((game) => (
                   <GameCard key={game.id} game={game} />
                 ))}
               </div>
@@ -272,13 +310,21 @@ export const ProfilePage: React.FC = () => {
         {activeTab === 'about' && (
           <div style={aboutCardStyle} className="animate-fade">
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Biography</h2>
-            <p style={bioTextStyle}>
-              {profileUser.bio || "No biography provided yet."}
-            </p>
+            <p style={bioTextStyle}>{profileUser.bio || 'No biography provided yet.'}</p>
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '1.5rem 0' }} />
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid var(--border-color)',
+                margin: '1.5rem 0',
+              }}
+            />
 
-            <h3 style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Platform Stats</h3>
+            <h3
+              style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}
+            >
+              Platform Stats
+            </h3>
             <div style={aboutStatsGridStyle}>
               <div style={aboutStatBoxStyle}>
                 <div style={aboutStatValStyle}>{profileUser.role.toUpperCase()}</div>
@@ -303,9 +349,7 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
         )}
-
       </div>
-
     </div>
   );
 };
@@ -318,7 +362,7 @@ const notFoundContainerStyle: React.CSSProperties = {
   justifyContent: 'center',
   minHeight: 'calc(100vh - 140px)',
   textAlign: 'center',
-  padding: '2rem'
+  padding: '2rem',
 };
 
 const wrapperStyle: React.CSSProperties = {
@@ -328,20 +372,20 @@ const wrapperStyle: React.CSSProperties = {
   padding: '0 1.5rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '2rem'
+  gap: '2rem',
 };
 
 const headerCardStyle: React.CSSProperties = {
   borderRadius: '16px',
   padding: '2.5rem',
-  border: '1px solid var(--border-color)'
+  border: '1px solid var(--border-color)',
 };
 
 const headerFlexStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '2.5rem',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const avatarStyle: React.CSSProperties = {
@@ -349,7 +393,7 @@ const avatarStyle: React.CSSProperties = {
   height: '120px',
   borderRadius: '50%',
   objectFit: 'cover',
-  border: '3px solid rgba(255,255,255,0.08)'
+  border: '3px solid rgba(255,255,255,0.08)',
 };
 
 const metaStyle: React.CSSProperties = {
@@ -357,27 +401,27 @@ const metaStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '0.4rem',
-  minWidth: '250px'
+  minWidth: '250px',
 };
 
 const nameRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '12px',
-  flexWrap: 'wrap'
+  flexWrap: 'wrap',
 };
 
 const displayNameStyle: React.CSSProperties = {
   fontSize: '2rem',
   fontWeight: 700,
   letterSpacing: '-0.02em',
-  lineHeight: 1.2
+  lineHeight: 1.2,
 };
 
 const usernameStyle: React.CSSProperties = {
   fontSize: '1rem',
   color: 'var(--text-secondary)',
-  fontWeight: 500
+  fontWeight: 500,
 };
 
 const joinDateStyle: React.CSSProperties = {
@@ -385,39 +429,39 @@ const joinDateStyle: React.CSSProperties = {
   alignItems: 'center',
   fontSize: '0.85rem',
   color: 'var(--text-secondary)',
-  marginTop: '0.25rem'
+  marginTop: '0.25rem',
 };
 
 const statsRowStyle: React.CSSProperties = {
   display: 'flex',
   gap: '1.5rem',
   marginTop: '1rem',
-  alignItems: 'center'
+  alignItems: 'center',
 };
 
 const statItemStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  fontSize: '0.9rem'
+  fontSize: '0.9rem',
 };
 
 const statDividerStyle: React.CSSProperties = {
   width: '1px',
   height: '24px',
-  backgroundColor: 'var(--border-color)'
+  backgroundColor: 'var(--border-color)',
 };
 
 const actionColStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'flex-end',
-  minWidth: '150px'
+  minWidth: '150px',
 };
 
 const tabsContainerStyle: React.CSSProperties = {
   display: 'flex',
   gap: '2rem',
-  borderBottom: '1px solid var(--border-color)'
+  borderBottom: '1px solid var(--border-color)',
 };
 
 const tabItemStyle: React.CSSProperties = {
@@ -428,17 +472,17 @@ const tabItemStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   fontWeight: 600,
   cursor: 'pointer',
-  transition: 'all 0.2s'
+  transition: 'all 0.2s',
 };
 
 const tabPanelStyle: React.CSSProperties = {
-  minHeight: '200px'
+  minHeight: '200px',
 };
 
 const panelTitleStyle: React.CSSProperties = {
   fontSize: '1.4rem',
   fontWeight: 700,
-  marginBottom: '1.5rem'
+  marginBottom: '1.5rem',
 };
 
 const emptyPanelStyle: React.CSSProperties = {
@@ -448,28 +492,28 @@ const emptyPanelStyle: React.CSSProperties = {
   padding: '4rem 2rem',
   textAlign: 'center',
   color: 'var(--text-secondary)',
-  fontSize: '0.95rem'
+  fontSize: '0.95rem',
 };
 
 const aboutCardStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-card)',
   border: '1px solid var(--border-color)',
   borderRadius: '12px',
-  padding: '2rem'
+  padding: '2rem',
 };
 
 const bioTextStyle: React.CSSProperties = {
   fontSize: '0.95rem',
   lineHeight: 1.6,
   color: 'var(--text-primary)',
-  whiteSpace: 'pre-wrap'
+  whiteSpace: 'pre-wrap',
 };
 
 const aboutStatsGridStyle: React.CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: '1rem',
-  marginTop: '1rem'
+  marginTop: '1rem',
 };
 
 const aboutStatBoxStyle: React.CSSProperties = {
@@ -479,18 +523,18 @@ const aboutStatBoxStyle: React.CSSProperties = {
   borderRadius: '8px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '4px'
+  gap: '4px',
 };
 
 const aboutStatValStyle: React.CSSProperties = {
   fontSize: '1.2rem',
   fontWeight: 700,
-  color: 'var(--secondary)'
+  color: 'var(--secondary)',
 };
 
 const aboutStatLblStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   color: 'var(--text-secondary)',
   textTransform: 'uppercase',
-  fontWeight: 600
+  fontWeight: 600,
 };

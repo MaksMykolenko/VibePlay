@@ -8,8 +8,10 @@ export const mockGames: Game[] = [
     creatorId: 'user_creator',
     creatorName: 'Demo Creator',
     creatorAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-    shortDescription: 'Adrenaline-fueled synthwave racing game with procedural neon highways and dynamic retro-electro tracks.',
-    fullDescription: 'Experience the ultimate browser racing sensation! Neon Drift combines responsive arcade physics with beautiful WebGL rendering to bring you a fast-paced time-trial drift racer. Choose your cyberpunk vehicle, master drift controls, and survive procedurally generated futuristic tracks. Built by creators using three.js and vanilla WebGL shaders.',
+    shortDescription:
+      'Adrenaline-fueled synthwave racing game with procedural neon highways and dynamic retro-electro tracks.',
+    fullDescription:
+      'Experience the ultimate browser racing sensation! Neon Drift combines responsive arcade physics with beautiful WebGL rendering to bring you a fast-paced time-trial drift racer. Choose your cyberpunk vehicle, master drift controls, and survive procedurally generated futuristic tracks. Built by creators using three.js and vanilla WebGL shaders.',
     category: 'Racing',
     tags: ['WebGL', 'Three.js', 'Synthwave', '3D', 'Drift'],
     plays: 24200,
@@ -19,7 +21,7 @@ export const mockGames: Game[] = [
     screenshots: [
       'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800',
       'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'
+      'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
     ],
     devices: ['desktop', 'keyboard', 'gamepad'],
     controls: ['W/A/S/D or Arrow keys to steer', 'Space for Handbrake', 'C to change camera view'],
@@ -33,10 +35,19 @@ export const mockGames: Game[] = [
     updatedAt: '2026-06-01',
     fileSize: '8.4 MB',
     changelog: [
-      { version: '1.2.0', date: '2026-06-01', notes: 'Added 2 new neon supercar models. Optimized shader performance on mobile devices. Custom music track selection added.' },
-      { version: '1.1.0', date: '2026-05-15', notes: 'Improved drift physics and handbrake responsiveness. Added leaderboard tracking.' },
-      { version: '1.0.0', date: '2026-04-20', notes: 'Initial public launch on VibePlay.' }
-    ]
+      {
+        version: '1.2.0',
+        date: '2026-06-01',
+        notes:
+          'Added 2 new neon supercar models. Optimized shader performance on mobile devices. Custom music track selection added.',
+      },
+      {
+        version: '1.1.0',
+        date: '2026-05-15',
+        notes: 'Improved drift physics and handbrake responsiveness. Added leaderboard tracking.',
+      },
+      { version: '1.0.0', date: '2026-04-20', notes: 'Initial public launch on VibePlay.' },
+    ],
   },
   {
     id: 'game_tiny_kingdom',
@@ -45,8 +56,10 @@ export const mockGames: Game[] = [
     creatorId: 'user_pixel_craft',
     creatorName: 'PixelCraft Labs',
     creatorAvatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150',
-    shortDescription: 'Build, defend, and expand your pixelated medieval fortress in this cozy isometric real-time simulator.',
-    fullDescription: 'Command loyal pixel workers, harvest scarce wood, stone, and gold, and fortify your castle walls against nightly waves of goblin raids. In Tiny Kingdom, strategy, resource management, and timing are key. Developed in Phaser with fluid frame animations, this game offers 20+ tiers of buildings and defensive towers.',
+    shortDescription:
+      'Build, defend, and expand your pixelated medieval fortress in this cozy isometric real-time simulator.',
+    fullDescription:
+      'Command loyal pixel workers, harvest scarce wood, stone, and gold, and fortify your castle walls against nightly waves of goblin raids. In Tiny Kingdom, strategy, resource management, and timing are key. Developed in Phaser with fluid frame animations, this game offers 20+ tiers of buildings and defensive towers.',
     category: 'Simulator',
     tags: ['Phaser', 'Pixel Art', 'Isometric', 'RTS', 'Cozy'],
     plays: 18500,
@@ -55,10 +68,14 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?w=600',
     screenshots: [
       'https://images.unsplash.com/photo-1612287230202-1bf1d85d1bdf?w=800',
-      'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'
+      'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
     ],
     devices: ['desktop', 'tablet', 'mouse', 'touch'],
-    controls: ['Left Click to select workers and place structures', 'Drag mouse to pan view', 'Scroll wheel to zoom'],
+    controls: [
+      'Left Click to select workers and place structures',
+      'Drag mouse to pan view',
+      'Scroll wheel to zoom',
+    ],
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -69,9 +86,18 @@ export const mockGames: Game[] = [
     updatedAt: '2026-05-28',
     fileSize: '15.1 MB',
     changelog: [
-      { version: '2.0.4', date: '2026-05-28', notes: 'Fixed pathfinding bugs for workers near castle gates.' },
-      { version: '2.0.0', date: '2026-05-10', notes: 'Huge update! Added stone fortifications, archer guard towers, and 3 new boss monsters.' }
-    ]
+      {
+        version: '2.0.4',
+        date: '2026-05-28',
+        notes: 'Fixed pathfinding bugs for workers near castle gates.',
+      },
+      {
+        version: '2.0.0',
+        date: '2026-05-10',
+        notes:
+          'Huge update! Added stone fortifications, archer guard towers, and 3 new boss monsters.',
+      },
+    ],
   },
   {
     id: 'game_backrooms_shift',
@@ -80,8 +106,10 @@ export const mockGames: Game[] = [
     creatorId: 'user_creator',
     creatorName: 'Demo Creator',
     creatorAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-    shortDescription: 'A tense psychological horror game set in endless yellow corridors. Survive the anomalies and escape.',
-    fullDescription: 'You find yourself trapped in Level 0 of the Backrooms. The hum of fluorescent lights is deafening, and you are not alone. Map the corridors, find survival supplies, and run when you hear anomalous movement. Built using Babylon.js to deliver advanced dynamic shadow rendering and directional audio directly inside standard web viewports.',
+    shortDescription:
+      'A tense psychological horror game set in endless yellow corridors. Survive the anomalies and escape.',
+    fullDescription:
+      'You find yourself trapped in Level 0 of the Backrooms. The hum of fluorescent lights is deafening, and you are not alone. Map the corridors, find survival supplies, and run when you hear anomalous movement. Built using Babylon.js to deliver advanced dynamic shadow rendering and directional audio directly inside standard web viewports.',
     category: 'Horror',
     tags: ['Babylon.js', '3D', 'Horror', 'Raytracing', 'Creepy'],
     plays: 35000,
@@ -90,10 +118,15 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600',
     screenshots: [
       'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=800',
-      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'
+      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
     ],
     devices: ['desktop', 'keyboard', 'mouse'],
-    controls: ['W/A/S/D or Arrow keys to walk', 'Shift to sprint', 'Mouse to look around', 'F to toggle flashlight'],
+    controls: [
+      'W/A/S/D or Arrow keys to walk',
+      'Shift to sprint',
+      'Mouse to look around',
+      'F to toggle flashlight',
+    ],
     multiplayer: false,
     aiDisclosure: 'generated',
     aiTools: ['Claude', 'Gemini', 'Midjourney', 'Suno'],
@@ -104,8 +137,13 @@ export const mockGames: Game[] = [
     updatedAt: '2026-06-10',
     fileSize: '22.5 MB',
     changelog: [
-      { version: '1.0.8', date: '2026-06-10', notes: 'Optimized light baking to reduce texture memory usage. Added escape door indicators.' }
-    ]
+      {
+        version: '1.0.8',
+        date: '2026-06-10',
+        notes:
+          'Optimized light baking to reduce texture memory usage. Added escape door indicators.',
+      },
+    ],
   },
   {
     id: 'game_cyber_delivery',
@@ -114,8 +152,10 @@ export const mockGames: Game[] = [
     creatorId: 'user_neon_ninja',
     creatorName: 'Neon Ninja Games',
     creatorAvatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150',
-    shortDescription: 'Deliver illegal data chips through traffic on a flying hoverbike. Fast action arcade.',
-    fullDescription: 'In the high-tech slums of Neo-Tokyo, information is the most valuable cargo. Ride a high-speed hoverbike through heavy metropolitan traffic, dodge corporate defense drones, and deliver encrypted chips before time runs out. Developed using React Three Fiber with rapid neon particle effects.',
+    shortDescription:
+      'Deliver illegal data chips through traffic on a flying hoverbike. Fast action arcade.',
+    fullDescription:
+      'In the high-tech slums of Neo-Tokyo, information is the most valuable cargo. Ride a high-speed hoverbike through heavy metropolitan traffic, dodge corporate defense drones, and deliver encrypted chips before time runs out. Developed using React Three Fiber with rapid neon particle effects.',
     category: 'Action',
     tags: ['R3F', 'React', 'Three.js', 'Cyberpunk', 'Arcade'],
     plays: 12000,
@@ -124,7 +164,7 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=600',
     screenshots: [
       'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
-      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800'
+      'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
     ],
     devices: ['desktop', 'keyboard'],
     controls: ['Arrow keys to steer and jump', 'A/D to lean left/right', 'Space for EMP blast'],
@@ -137,8 +177,12 @@ export const mockGames: Game[] = [
     updatedAt: '2026-05-20',
     fileSize: '9.8 MB',
     changelog: [
-      { version: '1.0.2', date: '2026-05-20', notes: 'Adjusted drone attack frequencies and added flying hovercab obstacles.' }
-    ]
+      {
+        version: '1.0.2',
+        date: '2026-05-20',
+        notes: 'Adjusted drone attack frequencies and added flying hovercab obstacles.',
+      },
+    ],
   },
   {
     id: 'game_dungeon_blocks',
@@ -147,17 +191,17 @@ export const mockGames: Game[] = [
     creatorId: 'user_pixel_craft',
     creatorName: 'PixelCraft Labs',
     creatorAvatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150',
-    shortDescription: 'A grid-based rogue-like puzzle game where matching dungeon elements fights monsters.',
-    fullDescription: 'Dungeon Blocks combines block matching (Match-3 style) with classic dungeon crawling elements. Slide columns of swords, shields, potions, and scrolls. Matching items triggers character actions, dealing damage to crypt monsters or restoring your health. Created with canvas 2D rendering for lightweight, high-FPS mobile compatibility.',
+    shortDescription:
+      'A grid-based rogue-like puzzle game where matching dungeon elements fights monsters.',
+    fullDescription:
+      'Dungeon Blocks combines block matching (Match-3 style) with classic dungeon crawling elements. Slide columns of swords, shields, potions, and scrolls. Matching items triggers character actions, dealing damage to crypt monsters or restoring your health. Created with canvas 2D rendering for lightweight, high-FPS mobile compatibility.',
     category: 'Puzzle',
     tags: ['Canvas', 'Puzzle', 'Rogue-like', 'Retro', '2D'],
     plays: 9300,
     likes: 450,
     dislikes: 4,
     coverUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'touch', 'mouse'],
     controls: ['Swipe/Drag items to match blocks', 'Tap bottom potions to cast special spells'],
     multiplayer: false,
@@ -168,9 +212,7 @@ export const mockGames: Game[] = [
     version: '1.0.0',
     updatedAt: '2026-04-10',
     fileSize: '4.2 MB',
-    changelog: [
-      { version: '1.0.0', date: '2026-04-10', notes: 'Launch version.' }
-    ]
+    changelog: [{ version: '1.0.0', date: '2026-04-10', notes: 'Launch version.' }],
   },
   {
     id: 'game_sky_islands',
@@ -179,8 +221,10 @@ export const mockGames: Game[] = [
     creatorId: 'user_neon_ninja',
     creatorName: 'Neon Ninja Games',
     creatorAvatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150',
-    shortDescription: 'Explore floating skies, build bridges, and gather magical elements in this voxel sandbox.',
-    fullDescription: 'Wake up on a small island floating above a sea of clouds. Use your gravity gun to attract block elements, build floating platforms, and discover neighboring islands. Find keys, fight cloud spirits, and restore the sky temple. Created with PixiJS, WebGL shaders, and high-performance bounding box physics.',
+    shortDescription:
+      'Explore floating skies, build bridges, and gather magical elements in this voxel sandbox.',
+    fullDescription:
+      'Wake up on a small island floating above a sea of clouds. Use your gravity gun to attract block elements, build floating platforms, and discover neighboring islands. Find keys, fight cloud spirits, and restore the sky temple. Created with PixiJS, WebGL shaders, and high-performance bounding box physics.',
     category: 'Adventure',
     tags: ['PixiJS', 'Voxel', '3D-in-2D', 'Sandbox', 'Magical'],
     plays: 14500,
@@ -189,10 +233,15 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600',
     screenshots: [
       'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800',
-      'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800'
+      'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800',
     ],
     devices: ['desktop', 'tablet', 'keyboard', 'mouse', 'touch'],
-    controls: ['W/A/S/D or Arrow keys to move', 'Space to jump', 'Left click to fire building block', 'Right click to attract block'],
+    controls: [
+      'W/A/S/D or Arrow keys to move',
+      'Space to jump',
+      'Left click to fire building block',
+      'Right click to attract block',
+    ],
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Claude', 'Gemini'],
@@ -203,8 +252,13 @@ export const mockGames: Game[] = [
     updatedAt: '2026-05-18',
     fileSize: '11.2 MB',
     changelog: [
-      { version: '1.1.2', date: '2026-05-18', notes: 'Reduced memory usage during cloud particle generation. Added floating island compass.' }
-    ]
+      {
+        version: '1.1.2',
+        date: '2026-05-18',
+        notes:
+          'Reduced memory usage during cloud particle generation. Added floating island compass.',
+      },
+    ],
   },
   {
     id: 'game_office_escape',
@@ -213,19 +267,23 @@ export const mockGames: Game[] = [
     creatorId: 'user_creator',
     creatorName: 'Demo Creator',
     creatorAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-    shortDescription: 'Dodge the manager, solve corporate puzzles, and escape the corporate maze before 5 PM.',
-    fullDescription: 'Office Escape is a lighthearted stealth puzzle game. Navigate through a corporate building, hide under desks, deploy coffee distractions, and hack computers to open elevator shafts. Watch out for manager patrol routes and annoying colleagues wanting to talk. Uses HTML5 Canvas API and customized pathfinding paths.',
+    shortDescription:
+      'Dodge the manager, solve corporate puzzles, and escape the corporate maze before 5 PM.',
+    fullDescription:
+      'Office Escape is a lighthearted stealth puzzle game. Navigate through a corporate building, hide under desks, deploy coffee distractions, and hack computers to open elevator shafts. Watch out for manager patrol routes and annoying colleagues wanting to talk. Uses HTML5 Canvas API and customized pathfinding paths.',
     category: 'Adventure',
     tags: ['HTML5 Canvas', 'Stealth', 'Puzzle', 'Funny', 'Solo'],
     plays: 6800,
     likes: 310,
     dislikes: 7,
     coverUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800'],
     devices: ['desktop', 'mobile', 'keyboard', 'touch'],
-    controls: ['Tap screen or use arrow keys to sneak around', 'Tap objects to hide/interact', 'Space bar to throw coffee mug distraction'],
+    controls: [
+      'Tap screen or use arrow keys to sneak around',
+      'Tap objects to hide/interact',
+      'Space bar to throw coffee mug distraction',
+    ],
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -235,8 +293,12 @@ export const mockGames: Game[] = [
     updatedAt: '2026-03-30',
     fileSize: '3.5 MB',
     changelog: [
-      { version: '1.0.0', date: '2026-03-30', notes: 'Initial launch with 15 corporate office levels.' }
-    ]
+      {
+        version: '1.0.0',
+        date: '2026-03-30',
+        notes: 'Initial launch with 15 corporate office levels.',
+      },
+    ],
   },
   {
     id: 'game_gravity_lab',
@@ -245,19 +307,23 @@ export const mockGames: Game[] = [
     creatorId: 'user_pixel_craft',
     creatorName: 'PixelCraft Labs',
     creatorAvatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150',
-    shortDescription: 'Control gravity directions to guide a plasma ball to the core. Physics-based puzzle.',
-    fullDescription: 'Welcome to the futuristic gravity testing chamber. In Gravity Lab, you do not control the ball; you control the physics variables. Flip gravity upside down, create localized black holes, and accelerate time to launch the energy core through complex puzzle traps. Powered by Phaser 3 physics engines.',
+    shortDescription:
+      'Control gravity directions to guide a plasma ball to the core. Physics-based puzzle.',
+    fullDescription:
+      'Welcome to the futuristic gravity testing chamber. In Gravity Lab, you do not control the ball; you control the physics variables. Flip gravity upside down, create localized black holes, and accelerate time to launch the energy core through complex puzzle traps. Powered by Phaser 3 physics engines.',
     category: 'Puzzle',
     tags: ['Phaser', 'Physics', 'Sci-fi', 'Minimalist', 'Brain'],
     plays: 11100,
     likes: 720,
     dislikes: 3,
     coverUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'mouse', 'touch'],
-    controls: ['Space or Tap screen to reverse global gravity direction', 'Drag mouse to create gravity fields', 'R to restart level'],
+    controls: [
+      'Space or Tap screen to reverse global gravity direction',
+      'Drag mouse to create gravity fields',
+      'R to restart level',
+    ],
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['GPT-4', 'Cursor'],
@@ -267,8 +333,12 @@ export const mockGames: Game[] = [
     updatedAt: '2026-05-05',
     fileSize: '5.6 MB',
     changelog: [
-      { version: '1.0.4', date: '2026-05-05', notes: 'Added 5 new challenging levels. Improved mobile frame-rate.' }
-    ]
+      {
+        version: '1.0.4',
+        date: '2026-05-05',
+        notes: 'Added 5 new challenging levels. Improved mobile frame-rate.',
+      },
+    ],
   },
   {
     id: 'game_midnight_highway',
@@ -278,18 +348,21 @@ export const mockGames: Game[] = [
     creatorName: 'Neon Ninja Games',
     creatorAvatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150',
     shortDescription: 'Ride through traffic in this endless 80s synthwave road driving simulator.',
-    fullDescription: 'Cruising under neon stars, listening to synthesized vaporwave, driving as fast as possible. Midnight Highway is an endless driving score chaser. Earn speed boosts by close-calling civilian cars. Watch the sunset transition into starry night skies. Uses CSS 3D transforms and canvas elements.',
+    fullDescription:
+      'Cruising under neon stars, listening to synthesized vaporwave, driving as fast as possible. Midnight Highway is an endless driving score chaser. Earn speed boosts by close-calling civilian cars. Watch the sunset transition into starry night skies. Uses CSS 3D transforms and canvas elements.',
     category: 'Racing',
     tags: ['Vaporwave', 'Canvas', 'Pseudo-3D', 'Endless', 'Retro'],
     plays: 15400,
     likes: 910,
     dislikes: 18,
     coverUrl: 'https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=800'],
     devices: ['desktop', 'mobile', 'keyboard', 'touch'],
-    controls: ['Left/Right arrow or tap sides of screen to change lanes', 'Up arrow to accelerate boost', 'Down arrow to brake'],
+    controls: [
+      'Left/Right arrow or tap sides of screen to change lanes',
+      'Up arrow to accelerate boost',
+      'Down arrow to brake',
+    ],
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Claude'],
@@ -300,8 +373,12 @@ export const mockGames: Game[] = [
     updatedAt: '2026-05-24',
     fileSize: '6.2 MB',
     changelog: [
-      { version: '1.3.1', date: '2026-05-24', notes: 'Improved traffic spawning algorithms. Added three new vaporwave radio channels.' }
-    ]
+      {
+        version: '1.3.1',
+        date: '2026-05-24',
+        notes: 'Improved traffic spawning algorithms. Added three new vaporwave radio channels.',
+      },
+    ],
   },
   {
     id: 'game_pixel_farm',
@@ -310,19 +387,23 @@ export const mockGames: Game[] = [
     creatorId: 'user_pixel_craft',
     creatorName: 'PixelCraft Labs',
     creatorAvatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150',
-    shortDescription: 'A slow-paced, cozy browser simulator. Plant crops, raise pixel animals, and trade.',
-    fullDescription: 'Pixel Farm is an idle farming simulator designed to be run in background browser tabs. Plant corn, carrots, and mystical glowing moon-herbs. Feed sheep, pigs, and pixel ducks, and fulfill trade orders on a wooden cart. Relaxing lo-fi audio tracks included.',
+    shortDescription:
+      'A slow-paced, cozy browser simulator. Plant crops, raise pixel animals, and trade.',
+    fullDescription:
+      'Pixel Farm is an idle farming simulator designed to be run in background browser tabs. Plant corn, carrots, and mystical glowing moon-herbs. Feed sheep, pigs, and pixel ducks, and fulfill trade orders on a wooden cart. Relaxing lo-fi audio tracks included.',
     category: 'Simulator',
     tags: ['Cozy', 'Idle', 'Pixel Art', 'Relaxing', 'Farming'],
     plays: 7200,
     likes: 480,
     dislikes: 5,
     coverUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'touch', 'mouse'],
-    controls: ['Click/Tap plots to harvest or plant seeds', 'Drag items to farm containers', 'Click shop to purchase upgrades'],
+    controls: [
+      'Click/Tap plots to harvest or plant seeds',
+      'Drag items to farm containers',
+      'Click shop to purchase upgrades',
+    ],
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -332,8 +413,8 @@ export const mockGames: Game[] = [
     updatedAt: '2026-04-05',
     fileSize: '3.9 MB',
     changelog: [
-      { version: '1.0.1', date: '2026-04-05', notes: 'Added ducks and chicken coop expansion.' }
-    ]
+      { version: '1.0.1', date: '2026-04-05', notes: 'Added ducks and chicken coop expansion.' },
+    ],
   },
   {
     id: 'game_robo_arena',
@@ -342,19 +423,24 @@ export const mockGames: Game[] = [
     creatorId: 'user_creator',
     creatorName: 'Demo Creator',
     creatorAvatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
-    shortDescription: 'Multiplayer robot deathmatch arena. Shoot laser beams, collect shield boosts, win.',
-    fullDescription: 'Fast, intense, multiplayer robotic action! Compete against other players or bots in small laser combat platforms. Robo Arena is built with socket synchronization and three.js to support real-time combat in 3D maps. Pick your robotic weapons and deploy defensive shields.',
+    shortDescription:
+      'Multiplayer robot deathmatch arena. Shoot laser beams, collect shield boosts, win.',
+    fullDescription:
+      'Fast, intense, multiplayer robotic action! Compete against other players or bots in small laser combat platforms. Robo Arena is built with socket synchronization and three.js to support real-time combat in 3D maps. Pick your robotic weapons and deploy defensive shields.',
     category: 'Multiplayer',
     tags: ['Three.js', 'Multiplayer', 'WebGL', 'Sci-fi', 'Lasers'],
     plays: 5400,
     likes: 380,
     dislikes: 22,
     coverUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800'],
     devices: ['desktop', 'keyboard', 'mouse'],
-    controls: ['W/A/S/D to slide robot', 'Mouse cursor to aim laser gun', 'Left click to shoot', 'Right click to deploy bubble shield'],
+    controls: [
+      'W/A/S/D to slide robot',
+      'Mouse cursor to aim laser gun',
+      'Left click to shoot',
+      'Right click to deploy bubble shield',
+    ],
     multiplayer: true,
     aiDisclosure: 'assisted',
     aiTools: ['Claude', 'Gemini'],
@@ -363,8 +449,12 @@ export const mockGames: Game[] = [
     updatedAt: '2026-06-11',
     fileSize: '18.3 MB',
     changelog: [
-      { version: '0.9.5', date: '2026-06-11', notes: 'Beta submitted. Implemented multiplayer websocket lobby simulation.' }
-    ]
+      {
+        version: '0.9.5',
+        date: '2026-06-11',
+        notes: 'Beta submitted. Implemented multiplayer websocket lobby simulation.',
+      },
+    ],
   },
   {
     id: 'game_lost_signal',
@@ -373,19 +463,23 @@ export const mockGames: Game[] = [
     creatorId: 'user_neon_ninja',
     creatorName: 'Neon Ninja Games',
     creatorAvatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150',
-    shortDescription: 'Analyze alien frequency waves using a retro spectral monitor in an abandoned radar outpost.',
-    fullDescription: 'Deep in the snowy forests of Siberia, a giant radar dish has intercepted a cosmic broadcast. Your task is to adjust frequencies, clean white noise static, and decipher foreign waveforms. A high-immersion experimental puzzle with ambient synthesizer scores. Built using HTML5 audio synthesize waves.',
+    shortDescription:
+      'Analyze alien frequency waves using a retro spectral monitor in an abandoned radar outpost.',
+    fullDescription:
+      'Deep in the snowy forests of Siberia, a giant radar dish has intercepted a cosmic broadcast. Your task is to adjust frequencies, clean white noise static, and decipher foreign waveforms. A high-immersion experimental puzzle with ambient synthesizer scores. Built using HTML5 audio synthesize waves.',
     category: 'Experimental',
     tags: ['HTML5 Audio', 'Puzzle', 'Experimental', 'Sci-fi', 'Retro'],
     plays: 2100,
     likes: 125,
     dislikes: 2,
     coverUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=600',
-    screenshots: [
-      'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800'
-    ],
+    screenshots: ['https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800'],
     devices: ['desktop', 'mouse'],
-    controls: ['Drag frequency dials with mouse', 'Toggle filter switches', 'Click DECODE when waveforms align'],
+    controls: [
+      'Drag frequency dials with mouse',
+      'Toggle filter switches',
+      'Click DECODE when waveforms align',
+    ],
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Cursor', 'GPT-4'],
@@ -394,7 +488,11 @@ export const mockGames: Game[] = [
     updatedAt: '2026-06-08',
     fileSize: '12.6 MB',
     changelog: [
-      { version: '0.1.0', date: '2026-06-08', notes: 'Initial draft. Frequency dial mechanics completed.' }
-    ]
-  }
+      {
+        version: '0.1.0',
+        date: '2026-06-08',
+        notes: 'Initial draft. Frequency dial mechanics completed.',
+      },
+    ],
+  },
 ];

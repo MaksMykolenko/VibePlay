@@ -9,9 +9,7 @@ export const NotFoundPage: React.FC = () => {
         <AlertCircle size={36} color="var(--danger)" />
       </div>
       <h1 style={titleStyle}>404 — Page Glitched</h1>
-      <p style={descStyle}>
-        The coordinates you requested do not exist or have been archived.
-      </p>
+      <p style={descStyle}>The coordinates you requested do not exist or have been archived.</p>
       <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
         Back to Safety (Home)
       </Link>
@@ -28,7 +26,7 @@ const containerStyle: React.CSSProperties = {
   textAlign: 'center',
   padding: '2rem',
   backgroundColor: 'var(--bg-main)',
-  color: 'var(--text-primary)'
+  color: 'var(--text-primary)',
 };
 
 const iconBoxStyle: React.CSSProperties = {
@@ -39,14 +37,14 @@ const iconBoxStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  marginBottom: '1.5rem'
+  marginBottom: '1.5rem',
 };
 
 const titleStyle: React.CSSProperties = {
   fontSize: '2rem',
   fontWeight: 700,
   fontFamily: 'var(--font-display)',
-  letterSpacing: '-0.02em'
+  letterSpacing: '-0.02em',
 };
 
 const descStyle: React.CSSProperties = {
@@ -54,5 +52,5 @@ const descStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
   marginTop: '0.5rem',
   maxWidth: '300px',
-  lineHeight: 1.5
+  lineHeight: 1.5,
 };

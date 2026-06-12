@@ -79,14 +79,16 @@ export const httpUrlSchema = z
 // Auth
 // ---------------------------------------------------------------------------
 
-export const registerSchema = z.object({
-  email: emailSchema,
-  username: usernameSchema,
-  displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH),
-  password: passwordSchema,
-  inviteCode: z.string().trim().min(8).max(128).optional(),
-  acceptTerms: z.literal(true, { message: 'You must accept the Terms of Service' }),
-});
+export const registerSchema = z
+  .object({
+    email: emailSchema,
+    username: usernameSchema,
+    displayName: z.string().trim().min(1).max(DISPLAY_NAME_MAX_LENGTH),
+    password: passwordSchema,
+    inviteCode: z.string().trim().min(8).max(128).optional(),
+    acceptTerms: z.literal(true, { message: 'You must accept the Terms of Service' }),
+  })
+  .strict(); // role/status/etc. in the payload are a hard validation error
 
 export const loginSchema = z.object({
   email: emailSchema,

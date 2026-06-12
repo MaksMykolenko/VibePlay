@@ -10,7 +10,7 @@ export const mockReports: Report[] = [
     targetName: 'HACK SITE http://spam-link-example.com TO GET FREE GEMS...',
     reason: 'Spam, advertisement links, and phishing content.',
     status: 'open',
-    timestamp: '2026-06-11T23:10:00Z'
+    timestamp: '2026-06-11T23:10:00Z',
   },
   {
     id: 'report_2',
@@ -19,9 +19,10 @@ export const mockReports: Report[] = [
     targetType: 'game',
     targetId: 'game_neon_drift',
     targetName: 'Neon Drift',
-    reason: 'Game gets stuck on loading scene if graphics quality is set to ultra on low-end laptops.',
+    reason:
+      'Game gets stuck on loading scene if graphics quality is set to ultra on low-end laptops.',
     status: 'reviewing',
-    timestamp: '2026-06-10T11:40:00Z'
+    timestamp: '2026-06-10T11:40:00Z',
   },
   {
     id: 'report_3',
@@ -32,6 +33,6 @@ export const mockReports: Report[] = [
     targetName: 'cheater_boy',
     reason: 'This user is uploading duplicate Phaser scripts claiming them as original builds.',
     status: 'open',
-    timestamp: '2026-06-11T02:15:00Z'
-  }
+    timestamp: '2026-06-11T02:15:00Z',
+  },
 ];
