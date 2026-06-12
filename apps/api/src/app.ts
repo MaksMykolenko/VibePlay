@@ -10,6 +10,7 @@ import { ApiError, type ApiErrorBody, type ErrorCode } from '@vibeplay/shared';
 import { createFsStorage, createS3Storage, type ObjectStorage } from '@vibeplay/storage';
 import { createMailer, type Mailer } from './lib/mailer.js';
 import { createValidationQueue, type InlineProcessor } from './lib/queue.js';
+import { RATE_LIMIT_POLICIES, createRateLimitRedis, rateLimitSubject } from './lib/rateLimit.js';
 import { CSRF_COOKIE, resolveSession } from './lib/sessions.js';
 import { hashToken } from './lib/crypto.js';
 import { safeEqual } from './lib/crypto.js';
@@ -34,6 +35,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     genReqId: (req) => (req.headers['x-request-id'] as string | undefined) ?? randomUUID(),
     logger: {
       level: env.LOG_LEVEL,
+      base: { service: 'api' },
       redact: {
         paths: [
           'req.headers.authorization',
@@ -100,11 +102,26 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
     allowedHeaders: ['content-type', 'x-csrf-token', 'x-request-id'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
+  // Rate limiting (spec §33): Redis-backed in real deployments so restarts do
+  // not reset counters and replicas share state; per-endpoint policies are
+  // attached on routes via `config: { rateLimit: rlPolicy(...) }`.
+  const rateLimitRedis = createRateLimitRedis(env);
+  if (rateLimitRedis) {
+    app.log.info('rate limiting: redis store enabled');
+    app.addHook('onClose', async () => {
+      rateLimitRedis.disconnect();
+    });
+  } else if (env.NODE_ENV === 'production') {
+    app.log.warn('rate limiting: falling back to in-memory store (no usable REDIS_URL)');
+  }
   await app.register(rateLimit, {
     global: true,
-    max: 300,
-    timeWindow: '1 minute',
+    max: RATE_LIMIT_POLICIES.global.max,
+    timeWindow: RATE_LIMIT_POLICIES.global.timeWindow,
+    keyGenerator: (req) => `global:${rateLimitSubject(req)}`,
+    ...(rateLimitRedis ? { redis: rateLimitRedis } : {}),
     allowList: () => env.NODE_ENV === 'test' && process.env.RATE_LIMIT_TESTS !== 'true',
+    addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true },
     errorResponseBuilder: (req) => ({
       error: { code: 'RATE_LIMITED', message: 'Too many requests, slow down', requestId: req.id },
     }),

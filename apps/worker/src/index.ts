@@ -13,6 +13,7 @@ const VALIDATION_QUEUE_NAME = 'game-version-validation';
 const env = loadWorkerEnv();
 const log = pino({
   level: env.LOG_LEVEL,
+  base: { service: 'worker' },
   ...(env.NODE_ENV === 'development'
     ? { transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }
     : {}),

@@ -9,6 +9,7 @@ import {
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { requireCreator, requireOwnershipOrAdmin, requireVerifiedEmail } from '../lib/guards.js';
+import { rlPolicy } from '../lib/rateLimit.js';
 import { toGameDetail, toGameVersionDto } from '../lib/serializers.js';
 import { parse } from '../lib/validate.js';
 
@@ -210,49 +211,53 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     reply.status(204).send();
   });
 
-  app.post<{ Params: { gameId: string } }>('/creator/games/:gameId/upload-intent', async (req) => {
-    const user = requireVerifiedEmail(req);
-    requireCreator(req);
-    const body = parse(uploadIntentSchema, req.body);
-    if (body.fileSize > env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024) {
-      throw errors.tooLarge('ZIP exceeds the configured upload limit');
-    }
-    const version = await prisma.gameVersion.findUnique({
-      where: { id: body.versionId },
-      include: { game: true, upload: true },
-    });
-    if (!version || version.gameId !== req.params.gameId) {
-      throw errors.notFound('VERSION_NOT_FOUND', 'Version not found');
-    }
-    if (version.game.creatorId !== user.id && user.role !== 'ADMIN') throw errors.forbidden();
-    if (version.status !== 'UPLOADING' || version.upload) {
-      throw errors.conflict('Upload intent already created or version is not uploadable');
-    }
-    const upload = await prisma.upload.create({
-      data: {
-        gameVersionId: version.id,
-        objectKey: storageKeys.quarantineZip(version.id),
-        declaredSize: BigInt(body.fileSize),
-        declaredSha256: body.sha256,
-        fileName: body.fileName,
-        expiresAt: new Date(Date.now() + 15 * 60_000),
-      },
-    });
-    const signed = await storage.presignPut(env.S3_QUARANTINE_BUCKET, upload.objectKey, {
-      contentType: 'application/zip',
-      contentLength: body.fileSize,
-      expiresSeconds: 15 * 60,
-      publicEndpoint: env.S3_PUBLIC_ENDPOINT,
-    });
-    return {
-      uploadId: upload.id,
-      uploadUrl: signed.url,
-      method: signed.method,
-      headers: signed.headers,
-      expiresAt: signed.expiresAt.toISOString(),
-      maxBytes: env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024,
-    };
-  });
+  app.post<{ Params: { gameId: string } }>(
+    '/creator/games/:gameId/upload-intent',
+    { config: { rateLimit: rlPolicy('uploadIntent') } },
+    async (req) => {
+      const user = requireVerifiedEmail(req);
+      requireCreator(req);
+      const body = parse(uploadIntentSchema, req.body);
+      if (body.fileSize > env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024) {
+        throw errors.tooLarge('ZIP exceeds the configured upload limit');
+      }
+      const version = await prisma.gameVersion.findUnique({
+        where: { id: body.versionId },
+        include: { game: true, upload: true },
+      });
+      if (!version || version.gameId !== req.params.gameId) {
+        throw errors.notFound('VERSION_NOT_FOUND', 'Version not found');
+      }
+      if (version.game.creatorId !== user.id && user.role !== 'ADMIN') throw errors.forbidden();
+      if (version.status !== 'UPLOADING' || version.upload) {
+        throw errors.conflict('Upload intent already created or version is not uploadable');
+      }
+      const upload = await prisma.upload.create({
+        data: {
+          gameVersionId: version.id,
+          objectKey: storageKeys.quarantineZip(version.id),
+          declaredSize: BigInt(body.fileSize),
+          declaredSha256: body.sha256,
+          fileName: body.fileName,
+          expiresAt: new Date(Date.now() + 15 * 60_000),
+        },
+      });
+      const signed = await storage.presignPut(env.S3_QUARANTINE_BUCKET, upload.objectKey, {
+        contentType: 'application/zip',
+        contentLength: body.fileSize,
+        expiresSeconds: 15 * 60,
+        publicEndpoint: env.S3_PUBLIC_ENDPOINT,
+      });
+      return {
+        uploadId: upload.id,
+        uploadUrl: signed.url,
+        method: signed.method,
+        headers: signed.headers,
+        expiresAt: signed.expiresAt.toISOString(),
+        maxBytes: env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024,
+      };
+    },
+  );
 
   app.put<{ Params: { uploadId: string }; Body: Buffer }>(
     '/uploads/:uploadId/direct',
@@ -283,72 +288,76 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     },
   );
 
-  app.post<{ Params: { uploadId: string } }>('/uploads/:uploadId/complete', async (req) => {
-    const user = requireVerifiedEmail(req);
-    const upload = await prisma.upload.findUnique({
-      where: { id: req.params.uploadId },
-      include: { gameVersion: { include: { game: true } } },
-    });
-    if (!upload) throw errors.notFound('UPLOAD_NOT_FOUND', 'Upload not found');
-    if (upload.gameVersion.game.creatorId !== user.id && user.role !== 'ADMIN') {
-      throw errors.forbidden();
-    }
-    if (upload.expiresAt < new Date()) throw errors.conflict('Upload intent expired');
-    if (upload.completedAt || upload.gameVersion.status !== 'UPLOADING') {
-      throw errors.conflict('Upload was already completed');
-    }
-    const object = await storage.headObject(env.S3_QUARANTINE_BUCKET, upload.objectKey);
-    if (!object) throw errors.notFound('UPLOAD_NOT_FOUND', 'Uploaded ZIP was not found');
-    if (BigInt(object.size) !== upload.declaredSize) {
-      throw errors.validation([
-        { path: 'fileSize', message: 'Uploaded size does not match intent' },
-      ]);
-    }
-    await prisma.$transaction([
-      prisma.upload.update({ where: { id: upload.id }, data: { completedAt: new Date() } }),
-      prisma.gameVersion.update({
-        where: { id: upload.gameVersionId },
-        data: {
-          status: 'QUARANTINED',
-          quarantineObjectKey: upload.objectKey,
-          declaredSha256: upload.declaredSha256,
-          compressedSize: upload.declaredSize,
-        },
-      }),
-    ]);
-    try {
-      await validationQueue.enqueueValidation({
-        uploadId: upload.id,
-        gameVersionId: upload.gameVersionId,
+  app.post<{ Params: { uploadId: string } }>(
+    '/uploads/:uploadId/complete',
+    { config: { rateLimit: rlPolicy('uploadComplete') } },
+    async (req) => {
+      const user = requireVerifiedEmail(req);
+      const upload = await prisma.upload.findUnique({
+        where: { id: req.params.uploadId },
+        include: { gameVersion: { include: { game: true } } },
       });
-    } catch (error) {
+      if (!upload) throw errors.notFound('UPLOAD_NOT_FOUND', 'Upload not found');
+      if (upload.gameVersion.game.creatorId !== user.id && user.role !== 'ADMIN') {
+        throw errors.forbidden();
+      }
+      if (upload.expiresAt < new Date()) throw errors.conflict('Upload intent expired');
+      if (upload.completedAt || upload.gameVersion.status !== 'UPLOADING') {
+        throw errors.conflict('Upload was already completed');
+      }
+      const object = await storage.headObject(env.S3_QUARANTINE_BUCKET, upload.objectKey);
+      if (!object) throw errors.notFound('UPLOAD_NOT_FOUND', 'Uploaded ZIP was not found');
+      if (BigInt(object.size) !== upload.declaredSize) {
+        throw errors.validation([
+          { path: 'fileSize', message: 'Uploaded size does not match intent' },
+        ]);
+      }
       await prisma.$transaction([
-        prisma.upload.update({ where: { id: upload.id }, data: { completedAt: null } }),
+        prisma.upload.update({ where: { id: upload.id }, data: { completedAt: new Date() } }),
         prisma.gameVersion.update({
           where: { id: upload.gameVersionId },
-          data: { status: 'UPLOADING' },
+          data: {
+            status: 'QUARANTINED',
+            quarantineObjectKey: upload.objectKey,
+            declaredSha256: upload.declaredSha256,
+            compressedSize: upload.declaredSize,
+          },
         }),
       ]);
-      throw error;
-    }
-    await audit(prisma, {
-      actorId: user.id,
-      action: 'upload.completed',
-      targetType: 'GAME_VERSION',
-      targetId: upload.gameVersionId,
-      req,
-      secret: env.SESSION_SECRET,
-    });
-    const version = await prisma.gameVersion.findUniqueOrThrow({
-      where: { id: upload.gameVersionId },
-    });
-    return {
-      uploadId: upload.id,
-      versionId: version.id,
-      versionStatus: version.status,
-      validationReport: version.validationReport,
-    };
-  });
+      try {
+        await validationQueue.enqueueValidation({
+          uploadId: upload.id,
+          gameVersionId: upload.gameVersionId,
+        });
+      } catch (error) {
+        await prisma.$transaction([
+          prisma.upload.update({ where: { id: upload.id }, data: { completedAt: null } }),
+          prisma.gameVersion.update({
+            where: { id: upload.gameVersionId },
+            data: { status: 'UPLOADING' },
+          }),
+        ]);
+        throw error;
+      }
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'upload.completed',
+        targetType: 'GAME_VERSION',
+        targetId: upload.gameVersionId,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      const version = await prisma.gameVersion.findUniqueOrThrow({
+        where: { id: upload.gameVersionId },
+      });
+      return {
+        uploadId: upload.id,
+        versionId: version.id,
+        versionStatus: version.status,
+        validationReport: version.validationReport,
+      };
+    },
+  );
 
   app.get<{ Params: { uploadId: string } }>('/uploads/:uploadId/status', async (req) => {
     const user = requireCreator(req);
