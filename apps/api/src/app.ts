@@ -76,6 +76,9 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   app.decorate('redisPing', redisPing);
   app.decorateRequest('currentUser', null);
   app.decorateRequest('currentSession', null);
+  app.addContentTypeParser('application/zip', { parseAs: 'buffer' }, (_req, body, done) => {
+    done(null, body);
+  });
 
   app.addHook('onClose', async () => {
     await queue.close();

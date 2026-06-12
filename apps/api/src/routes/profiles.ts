@@ -1,5 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import { ApiError, errors, updateProfileSchema, usernameSchema } from '@vibeplay/shared';
+import {
+  ApiError,
+  errors,
+  searchQuerySchema,
+  updateProfileSchema,
+  usernameSchema,
+} from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { requireActiveUser } from '../lib/guards.js';
 import { toCurrentUser, toGameListItem, toPublicUser } from '../lib/serializers.js';
@@ -7,6 +13,25 @@ import { parse } from '../lib/validate.js';
 
 export async function registerProfileRoutes(app: FastifyInstance): Promise<void> {
   const { prisma, env } = app;
+
+  app.get('/profiles', async (req) => {
+    const query = parse(searchQuerySchema, req.query);
+    const creators = await prisma.user.findMany({
+      where: {
+        role: 'CREATOR',
+        status: 'ACTIVE',
+        OR: [
+          { username: { contains: query.q, mode: 'insensitive' } },
+          { displayName: { contains: query.q, mode: 'insensitive' } },
+          { bio: { contains: query.q, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (query.page - 1) * query.perPage,
+      take: query.perPage,
+    });
+    return { creators: creators.map(toPublicUser) };
+  });
 
   // Public profile by username.
   app.get<{ Params: { username: string } }>('/profiles/:username', async (req) => {
