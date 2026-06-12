@@ -21,6 +21,7 @@ dist-ssr
 coverage/
 playwright-report/
 test-results/
+fixtures/generated/
 
 # Prisma generated client
 packages/database/src/generated/

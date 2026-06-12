@@ -214,7 +214,7 @@ export const createReportSchema = z
 
 export const resolveReportSchema = z
   .object({
-    status: z.enum(REPORT_STATUSES.filter((s) => s !== 'OPEN') as [string, ...string[]]),
+    status: z.enum(['REVIEWING', 'RESOLVED', 'DISMISSED']),
     note: z.string().trim().max(2000).default(''),
   })
   .strict();

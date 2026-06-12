@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hello VibePlay</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: #070912;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      #hud {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        z-index: 2;
+        padding: 10px 14px;
+        border: 1px solid #f6b17a;
+        border-radius: 8px;
+        background: rgb(7 9 18 / 80%);
+      }
+    </style>
+    <script src="/sdk/vibeplay-sdk.js"></script>
+    <script src="game.js" defer></script>
+  </head>
+  <body>
+    <div id="hud">Score: <strong id="score">0</strong></div>
+    <canvas id="game" aria-label="Hello VibePlay game canvas"></canvas>
+  </body>
+</html>

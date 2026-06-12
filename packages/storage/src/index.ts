@@ -70,12 +70,23 @@ export interface S3StorageConfig {
 }
 
 export function createS3Storage(cfg: S3StorageConfig): ObjectStorage {
-  const client = new S3Client({
-    endpoint: cfg.endpoint,
-    region: cfg.region,
-    forcePathStyle: cfg.forcePathStyle,
-    credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
-  });
+  const createClient = (endpoint: string) =>
+    new S3Client({
+      endpoint,
+      region: cfg.region,
+      forcePathStyle: cfg.forcePathStyle,
+      credentials: { accessKeyId: cfg.accessKeyId, secretAccessKey: cfg.secretAccessKey },
+      requestChecksumCalculation: 'WHEN_REQUIRED',
+    });
+  const client = createClient(cfg.endpoint);
+  const presignClients = new Map<string, S3Client>([[cfg.endpoint, client]]);
+  const presignClient = (endpoint: string): S3Client => {
+    const existing = presignClients.get(endpoint);
+    if (existing) return existing;
+    const created = createClient(endpoint);
+    presignClients.set(endpoint, created);
+    return created;
+  };
 
   return {
     driver: 's3',
@@ -117,11 +128,12 @@ export function createS3Storage(cfg: S3StorageConfig): ObjectStorage {
         ContentType: opts.contentType,
         ContentLength: opts.contentLength,
       });
-      let url = await getSignedUrl(client, cmd, { expiresIn: opts.expiresSeconds });
-      if (opts.publicEndpoint && opts.publicEndpoint !== cfg.endpoint) {
-        // MinIO behind docker: browser-visible endpoint differs from internal one.
-        url = url.replace(cfg.endpoint, opts.publicEndpoint);
-      }
+      // The Host header is part of SigV4. Sign with the browser-visible
+      // endpoint directly instead of rewriting an internally signed URL.
+      const endpoint = opts.publicEndpoint ?? cfg.endpoint;
+      const url = await getSignedUrl(presignClient(endpoint), cmd, {
+        expiresIn: opts.expiresSeconds,
+      });
       return {
         url,
         method: 'PUT',

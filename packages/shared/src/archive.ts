@@ -32,6 +32,7 @@ export function checkArchivePath(rawPath: string): PathCheckResult {
   const segments = nfc.split('/');
   for (const seg of segments) {
     if (seg === '..') return { ok: false, reason: 'path traversal (..)' };
+    if (seg === '.') return { ok: false, reason: 'dot path segment' };
     if (seg === '' && segments.indexOf(seg) !== segments.length - 1) {
       // empty segment in the middle => '//'
       return { ok: false, reason: 'empty path segment' };

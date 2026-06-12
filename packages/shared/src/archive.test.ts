@@ -11,6 +11,7 @@ describe('archive validation helpers', () => {
   it.each([
     ['/index.html', 'absolute path'],
     ['../index.html', 'path traversal'],
+    ['assets/./game.js', 'dot path segment'],
     ['assets\\game.js', 'backslash'],
     ['assets//game.js', 'empty path segment'],
     ['C:\\game\\index.html', 'backslash'],
