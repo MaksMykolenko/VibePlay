@@ -1,85 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Game, Comment, Report, ActivityLog, GameStatus } from '../types';
-import { mockGames } from '../data/mockGames';
-import { mockComments } from '../data/mockComments';
-import { mockReports } from '../data/mockReports';
-import { mockActivityLogs } from '../data/mockActivityLog';
-
-interface LibraryState {
-  favorites: string[];
-  likes: string[];
-  recentlyPlayed: { id: string; timestamp: string }[];
-}
-
-interface GamesContextType {
-  games: Game[];
-  comments: Comment[];
-  reports: Report[];
-  activityLogs: ActivityLog[];
-  library: LibraryState;
-
-  // Player Actions
-  toggleLikeGame: (gameId: string, userId: string) => void;
-  toggleFavoriteGame: (gameId: string, userId: string) => void;
-  addRecentlyPlayed: (gameId: string, userId: string) => void;
-  addComment: (
-    gameId: string,
-    userId: string,
-    username: string,
-    avatar: string,
-    content: string,
-  ) => void;
-  likeComment: (commentId: string, userId: string) => void;
-  deleteComment: (commentId: string) => void;
-  submitReport: (
-    reporterId: string,
-    reporterName: string,
-    targetType: 'game' | 'comment' | 'user',
-    targetId: string,
-    targetName: string,
-    reason: string,
-  ) => void;
-
-  // Creator Actions
-  createGame: (
-    gameData: Omit<
-      Game,
-      | 'id'
-      | 'slug'
-      | 'plays'
-      | 'likes'
-      | 'dislikes'
-      | 'status'
-      | 'updatedAt'
-      | 'creatorId'
-      | 'creatorName'
-      | 'creatorAvatar'
-    >,
-    creatorId: string,
-    creatorName: string,
-    creatorAvatar: string,
-  ) => Game;
-  updateGame: (gameId: string, updatedFields: Partial<Game>) => void;
-  deleteGame: (gameId: string) => void;
-  submitForReview: (gameId: string) => void;
-  hideGame: (gameId: string) => void;
-  publishGameDraft: (gameId: string) => void;
-
-  // Admin Actions
-  approveGame: (gameId: string, adminId: string, adminName: string) => void;
-  rejectGame: (gameId: string, reason: string, adminId: string, adminName: string) => void;
-  toggleFeaturedGame: (
-    gameId: string,
-    category: 'hero' | 'trending' | 'editors_choice' | null,
-    adminId: string,
-    adminName: string,
-  ) => void;
-  resolveReport: (reportId: string) => void;
-  dismissReport: (reportId: string) => void;
-  suspendUserGames: (creatorId: string) => void;
-}
-
-const GamesContext = createContext<GamesContextType | undefined>(undefined);
+import React, { useState, useEffect } from 'react';
+import type { Game, Comment, Report, ActivityLog, GameStatus } from '../../types';
+import { mockGames } from '../../data/mockGames';
+import { mockComments } from '../../data/mockComments';
+import { mockReports } from '../../data/mockReports';
+import { mockActivityLogs } from '../../data/mockActivityLog';
+import { GamesContext, type LibraryState } from '../gamesContext';
 
 function readStored<T>(key: string, fallback: T): T {
   const stored = localStorage.getItem(key);
@@ -112,7 +37,7 @@ function readActiveLibrary(): { userId: string | null; library: LibraryState } {
   }
 }
 
-export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DemoGamesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [games, setGames] = useState<Game[]>(() => readStored('vibeplay_games', mockGames));
   const [comments, setComments] = useState<Comment[]>(() =>
     readStored('vibeplay_comments', mockComments),
@@ -325,7 +250,7 @@ export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ---------------- CREATOR ACTIONS ----------------
 
-  const createGame = (
+  const createGame = async (
     gameData: Omit<
       Game,
       | 'id'
@@ -342,7 +267,7 @@ export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     creatorId: string,
     creatorName: string,
     creatorAvatar: string,
-  ): Game => {
+  ): Promise<Game> => {
     const newGame: Game = {
       ...gameData,
       id: `game_${Date.now()}`,
@@ -569,6 +494,7 @@ export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <GamesContext.Provider
       value={{
+        isLoading: false,
         games,
         comments,
         reports,
@@ -593,15 +519,10 @@ export const GamesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resolveReport,
         dismissReport,
         suspendUserGames,
+        refreshGames: async () => {},
       }}
     >
       {children}
     </GamesContext.Provider>
   );
-};
-
-export const useGames = () => {
-  const context = useContext(GamesContext);
-  if (!context) throw new Error('useGames must be used within GamesProvider');
-  return context;
 };

@@ -28,7 +28,11 @@ export const LandingPage: React.FC = () => {
       navigate('/login');
       return;
     }
-    becomeCreator();
+    const notice = becomeCreator();
+    if (notice) {
+      toast.info(notice);
+      return;
+    }
     toast.success('You are now a Creator! Access your Creator Dashboard to publish games.');
     navigate('/creator');
   };
@@ -58,9 +62,9 @@ export const LandingPage: React.FC = () => {
     .filter((g) => g.category.toLowerCase() === 'simulator')
     .slice(0, 8);
 
-  // Section 7: Horror Games
-  const horrorGames = publishedGames
-    .filter((g) => g.category.toLowerCase() === 'horror')
+  // Section 7: Puzzle Games
+  const puzzleGames = publishedGames
+    .filter((g) => g.category.toLowerCase() === 'puzzle')
     .slice(0, 8);
 
   return (
@@ -114,7 +118,7 @@ export const LandingPage: React.FC = () => {
         linkTo="/games?category=simulator"
       />
 
-      <GameCarousel title="Horror Games" gamesList={horrorGames} linkTo="/games?category=horror" />
+      <GameCarousel title="Puzzle Games" gamesList={puzzleGames} linkTo="/games?category=puzzle" />
 
       {/* Explore Categories Box */}
       <section style={sectionWrapperStyle}>
@@ -134,9 +138,9 @@ export const LandingPage: React.FC = () => {
               count: publishedGames.filter((g) => g.category.toLowerCase() === 'adventure').length,
             },
             {
-              name: 'Horror',
+              name: 'Arcade',
               color: 'var(--brand-peach-700)',
-              count: publishedGames.filter((g) => g.category.toLowerCase() === 'horror').length,
+              count: publishedGames.filter((g) => g.category.toLowerCase() === 'arcade').length,
             },
             {
               name: 'Simulator',
@@ -154,24 +158,19 @@ export const LandingPage: React.FC = () => {
               count: publishedGames.filter((g) => g.category.toLowerCase() === 'puzzle').length,
             },
             {
-              name: 'Multiplayer',
+              name: 'Platformer',
               color: 'var(--brand-peach-300)',
-              count: publishedGames.filter((g) => g.multiplayer).length,
+              count: publishedGames.filter((g) => g.category.toLowerCase() === 'platformer').length,
             },
             {
-              name: 'Experimental',
+              name: 'Strategy',
               color: 'var(--danger)',
-              count: publishedGames.filter((g) => g.category.toLowerCase() === 'experimental')
-                .length,
+              count: publishedGames.filter((g) => g.category.toLowerCase() === 'strategy').length,
             },
           ].map((cat) => (
             <Link
               key={cat.name}
-              to={
-                cat.name === 'Multiplayer'
-                  ? '/games?multiplayer=true'
-                  : `/games?category=${cat.name.toLowerCase()}`
-              }
+              to={`/games?category=${cat.name.toLowerCase()}`}
               style={{ ...categoryBoxStyle, borderLeft: `4px solid ${cat.color}` }}
               className="bg-glass"
             >

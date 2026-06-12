@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import type { LaunchDescriptorDto } from '@vibeplay/shared';
+import { GameBridge } from '@vibeplay/sdk';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
+import { api } from '../lib/api';
+import { GAME_ORIGIN, IS_DEMO } from '../lib/appMode';
 import {
   ArrowLeft,
   Maximize2,
@@ -35,7 +39,7 @@ interface WebkitFullscreenDocument extends Document {
 export const GamePlayerPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { currentUser } = useAuth();
-  const { games, addRecentlyPlayed } = useGames();
+  const { games, isLoading, addRecentlyPlayed } = useGames();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -43,25 +47,92 @@ export const GamePlayerPage: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [launch, setLaunch] = useState<LaunchDescriptorDto | null>(null);
+  const [iframeKey, setIframeKey] = useState(0);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
   const game = games.find((g) => g.slug === slug);
+  const gameId = game?.id;
+  const launchLoading = IS_DEMO ? loading : launch === null;
 
-  // Loading Steps Text Simulation
-  // Guard: Game exist check
   useEffect(() => {
-    if (!game) {
+    if (!isLoading && !game) {
       toast.danger('Game could not be loaded.');
       navigate('/games');
     }
-  }, [game, navigate]);
+  }, [game, isLoading, navigate]);
+
+  useEffect(() => {
+    if (IS_DEMO || !gameId) return;
+    let active = true;
+    let sessionId: string | undefined;
+
+    queueMicrotask(() => {
+      if (active) setLaunch(null);
+    });
+    void api
+      .launchGame(gameId)
+      .then((descriptor) => {
+        const expectedOrigin = new URL(GAME_ORIGIN).origin;
+        if (new URL(descriptor.gameUrl).origin !== expectedOrigin) {
+          throw new Error('The game launch origin does not match the configured game host.');
+        }
+        sessionId = descriptor.sessionId;
+        if (!active) {
+          void api.endPlaySession(sessionId);
+          return;
+        }
+        setLaunch(descriptor);
+        setIsPlaying(true);
+      })
+      .catch((error) => {
+        if (!active) return;
+        toast.danger(error instanceof Error ? error.message : 'Game launch failed.');
+      });
+
+    return () => {
+      active = false;
+      if (sessionId) void api.endPlaySession(sessionId);
+    };
+  }, [gameId]);
+
+  useEffect(() => {
+    if (IS_DEMO || !launch || !iframeRef.current) return;
+    const bridge = new GameBridge({
+      iframe: iframeRef.current,
+      gameOrigin: new URL(launch.gameUrl).origin,
+      playerSummary: currentUser
+        ? {
+            id: currentUser.id,
+            username: currentUser.username,
+            displayName: currentUser.displayName,
+            avatarUrl: currentUser.avatar || null,
+          }
+        : null,
+      events: {
+        onFullscreenRequest: async () => {
+          const container = containerRef.current;
+          if (!container) return false;
+          if (container.requestFullscreen) {
+            await container.requestFullscreen();
+            return true;
+          }
+          await (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
+          return true;
+        },
+        onGameError: (message) => toast.danger(`Game error: ${message}`),
+      },
+    });
+    return () => bridge.destroy();
+  }, [currentUser, iframeKey, launch]);
 
   // Loading simulation
   useEffect(() => {
-    if (!game) return;
+    if (!IS_DEMO || !game) return;
 
     let timer: ReturnType<typeof setTimeout>;
     if (loadingStep < LOADING_TEXTS.length - 1) {
@@ -84,7 +155,7 @@ export const GamePlayerPage: React.FC = () => {
 
   // Synthwave Canvas game simulation loop
   useEffect(() => {
-    if (loading || !isPlaying || !canvasRef.current) return;
+    if (!IS_DEMO || loading || !isPlaying || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -262,10 +333,15 @@ export const GamePlayerPage: React.FC = () => {
   }, []);
 
   const handleRestart = () => {
+    if (!IS_DEMO) {
+      setIframeKey((key) => key + 1);
+      toast.info('Reloading the published game build...');
+      return;
+    }
     setLoading(true);
     setLoadingStep(0);
     setIsPlaying(false);
-    toast.info('Restarting game sandbox environment...');
+    toast.info('Restarting the demo canvas...');
   };
 
   const handleExit = () => {
@@ -285,12 +361,16 @@ export const GamePlayerPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <AlertCircle size={16} color="var(--warning)" />
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            This is a prototype game preview. Uploaded games will run inside a secure sandbox.
+            {IS_DEMO
+              ? 'This demo uses a local simulated game canvas. No uploaded build is executed.'
+              : 'This published build is isolated on the configured game origin in a sandboxed iframe.'}
           </span>
         </div>
         <div style={sandboxBadgeStyle}>
           <ShieldCheck size={14} color="var(--success)" />
-          <span style={{ color: 'var(--success)' }}>Secure sandbox active</span>
+          <span style={{ color: 'var(--success)' }}>
+            {IS_DEMO ? 'Demo simulation active' : 'Sandboxed game host active'}
+          </span>
         </div>
       </div>
 
@@ -317,13 +397,15 @@ export const GamePlayerPage: React.FC = () => {
             <button onClick={handleRestart} style={controlIconBtnStyle} title="Restart Game">
               <RotateCcw size={16} />
             </button>
-            <button
-              onClick={() => setIsMuted(!isMuted)}
-              style={controlIconBtnStyle}
-              title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-            >
-              {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-            </button>
+            {IS_DEMO && (
+              <button
+                onClick={() => setIsMuted(!isMuted)}
+                style={controlIconBtnStyle}
+                title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+              >
+                {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+            )}
             <button
               onClick={toggleFullscreen}
               style={controlIconBtnStyle}
@@ -337,28 +419,45 @@ export const GamePlayerPage: React.FC = () => {
         {/* Display Wrapper */}
         <div style={displayWrapperStyle}>
           {/* Loading Layer */}
-          {loading && (
+          {launchLoading && (
             <div style={loadingLayerStyle}>
               <div style={spinnerStyle}></div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em' }}>
                 Launching Game Build
               </h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
-                {LOADING_TEXTS[loadingStep]}
+                {IS_DEMO
+                  ? LOADING_TEXTS[loadingStep]
+                  : 'Requesting a server-authorized launch descriptor...'}
               </p>
               <div style={progressOuterStyle}>
                 <div
                   style={{
                     ...progressInnerStyle,
-                    width: `${((loadingStep + 1) / LOADING_TEXTS.length) * 100}%`,
+                    width: IS_DEMO ? `${((loadingStep + 1) / LOADING_TEXTS.length) * 100}%` : '35%',
                   }}
                 ></div>
               </div>
             </div>
           )}
 
-          {/* Interactive Simulated Game Canvas */}
-          {!loading && isPlaying && <canvas ref={canvasRef} style={canvasStyle}></canvas>}
+          {!IS_DEMO && launch && (
+            <iframe
+              key={iframeKey}
+              ref={iframeRef}
+              src={launch.gameUrl}
+              title={game.title}
+              sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+              allow="fullscreen"
+              allowFullScreen
+              referrerPolicy="no-referrer"
+              style={iframeStyle}
+            />
+          )}
+
+          {IS_DEMO && !loading && isPlaying && (
+            <canvas ref={canvasRef} style={canvasStyle}></canvas>
+          )}
         </div>
       </div>
     </div>
@@ -509,4 +608,12 @@ const canvasStyle: React.CSSProperties = {
   height: '100%',
   display: 'block',
   cursor: 'crosshair',
+};
+
+const iframeStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  display: 'block',
+  border: 0,
+  backgroundColor: '#080A12',
 };

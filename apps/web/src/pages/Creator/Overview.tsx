@@ -17,24 +17,13 @@ export const CreatorOverview: React.FC = () => {
   const totalLikes = myGames.reduce((sum, g) => sum + g.likes, 0);
   const pendingReviews = myGames.filter((g) => g.status === 'pending').length;
 
-  // Simulated Weekly stats data for SVG Chart
-  const weeklyPlays = [1200, 1500, 1100, 1900, 2400, 2800, 3100];
-  const weeklyLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  // SVG Chart Geometry
-  const chartWidth = 500;
-  const chartHeight = 160;
-  const padding = 20;
-
-  const maxPlay = Math.max(...weeklyPlays);
-  const points = weeklyPlays.map((val, idx) => {
-    const x = padding + (idx * (chartWidth - padding * 2)) / (weeklyPlays.length - 1);
-    const y = chartHeight - padding - (val * (chartHeight - padding * 2)) / maxPlay;
-    return { x, y, val };
-  });
-
-  const pathD = `M ${points.map((p) => `${p.x} ${p.y}`).join(' L ')}`;
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${chartHeight - padding} L ${points[0].x} ${chartHeight - padding} Z`;
+  const statusSummary = [
+    { label: 'Published', count: myGames.filter((game) => game.status === 'published').length },
+    { label: 'In moderation', count: pendingReviews },
+    { label: 'Draft', count: myGames.filter((game) => game.status === 'draft').length },
+    { label: 'Rejected', count: myGames.filter((game) => game.status === 'rejected').length },
+    { label: 'Hidden', count: myGames.filter((game) => game.status === 'hidden').length },
+  ];
 
   // Get recent activity
   const recentComments = comments
@@ -90,96 +79,42 @@ export const CreatorOverview: React.FC = () => {
         </div>
       </div>
 
-      {/* Analytics Chart Block */}
+      {/* Portfolio and interaction summary */}
       <div style={layoutGridStyle}>
-        {/* SVG Graph */}
         <div style={chartCardStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
-            <h3 style={cardTitleStyle}>Launch Stats (Last 7 Days)</h3>
-            <span style={chartTotalStyle}>
-              +{weeklyPlays[weeklyPlays.length - 1] - weeklyPlays[0]} plays
-            </span>
+            <h3 style={cardTitleStyle}>Build Status</h3>
+            <span style={chartTotalStyle}>{myGames.length} total</span>
           </div>
 
-          <div style={chartWrapperStyle}>
-            <svg
-              viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-              style={{ width: '100%', height: '100%', overflow: 'visible' }}
-            >
-              {/* Grid Lines */}
-              {[0, 0.25, 0.5, 0.75, 1].map((ratio, idx) => {
-                const y = padding + ratio * (chartHeight - padding * 2);
-                return (
-                  <line
-                    key={idx}
-                    x1={padding}
-                    y1={y}
-                    x2={chartWidth - padding}
-                    y2={y}
-                    stroke="rgba(255,255,255,0.03)"
-                    strokeWidth="1"
-                  />
-                );
-              })}
-
-              {/* Area gradient under path */}
-              <defs>
-                <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--secondary)" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="var(--secondary)" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path d={areaD} fill="url(#chartGradient)" />
-
-              {/* Chart Line path */}
-              <path
-                d={pathD}
-                fill="none"
-                stroke="var(--secondary)"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* Dots & Labels */}
-              {points.map((p, idx) => (
-                <g key={idx}>
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r="5"
-                    fill="var(--bg-card)"
-                    stroke="var(--secondary)"
-                    strokeWidth="2.5"
-                  />
-
-                  {/* Tooltip on hover */}
-                  <text
-                    x={p.x}
-                    y={p.y - 10}
-                    textAnchor="middle"
-                    fill="#fff"
-                    fontSize="9"
-                    fontWeight="600"
-                  >
-                    {p.val}
-                  </text>
-
-                  {/* Day Label */}
-                  <text
-                    x={p.x}
-                    y={chartHeight - 4}
-                    textAnchor="middle"
-                    fill="var(--text-secondary)"
-                    fontSize="9"
-                    fontWeight="500"
-                  >
-                    {weeklyLabels[idx]}
-                  </text>
-                </g>
-              ))}
-            </svg>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              gap: '12px',
+              marginTop: '1.5rem',
+            }}
+          >
+            {statusSummary.map((status) => (
+              <div
+                key={status.label}
+                style={{
+                  padding: '1rem',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--bg-surface)',
+                }}
+              >
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{status.count}</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                  {status.label}
+                </div>
+              </div>
+            ))}
           </div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '1rem' }}>
+            Daily time-series analytics are not available in the private beta.
+          </p>
         </div>
 
         {/* Recent comments/feedback activity */}
@@ -372,12 +307,6 @@ const chartTotalStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   color: 'var(--secondary)',
   fontWeight: 600,
-};
-
-const chartWrapperStyle: React.CSSProperties = {
-  width: '100%',
-  height: '180px',
-  paddingTop: '10px',
 };
 
 const activityCardStyle: React.CSSProperties = {

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import { toast } from '../../components/toastEvents';
+import { api } from '../../lib/api';
+import { IS_DEMO } from '../../lib/appMode';
 import {
   FileCode,
   UploadCloud,
@@ -32,7 +34,7 @@ export const PublishGame: React.FC = () => {
   const [tagsInput, setTagsInput] = useState('');
 
   // --- Step 2: Game Build ---
-  const [_zipFile, setZipFile] = useState<File | null>(null);
+  const [zipFile, setZipFile] = useState<File | null>(null);
   const [zipFileName, setZipFileName] = useState('');
   const [zipFileSize, setZipFileSize] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -76,35 +78,31 @@ export const PublishGame: React.FC = () => {
     setUploadLog([]);
     setIsUploaded(false);
 
-    // Start progress simulator
+    if (!IS_DEMO) {
+      setUploadLog(['ZIP selected. It will upload to quarantine when you submit the game.']);
+      setIsUploaded(true);
+      return;
+    }
+
+    // Demo-only progress simulation.
     let prog = 0;
     const interval = setInterval(() => {
       prog += 20;
       setUploadProgress(prog);
 
       if (prog === 20) {
-        setUploadLog((prev) => [
-          ...prev,
-          'Establishing secure sandboxed tunnel...',
-          'Uploading zip archive...',
-        ]);
+        setUploadLog((prev) => [...prev, 'Reading the ZIP in this browser-only demo...']);
       } else if (prog === 60) {
         setUploadLog((prev) => [
           ...prev,
-          'Zip archive received. Decompressing files...',
-          'Scanning archive for security threats...',
+          'No server or malware scanner is connected in demo mode.',
         ]);
       } else if (prog === 80) {
-        setUploadLog((prev) => [
-          ...prev,
-          'Index.html found at root level.',
-          'Scripts and stylesheet references checked.',
-          'No external server requests detected. Safe for Sandbox.',
-        ]);
+        setUploadLog((prev) => [...prev, 'Demo mode stores game metadata only in this browser.']);
       } else if (prog === 100) {
         setUploadLog((prev) => [
           ...prev,
-          'Upload complete! Diagnostic checks passed successfully.',
+          'Demo upload complete. No real validation or malware scan was performed.',
         ]);
         setIsUploaded(true);
         clearInterval(interval);
@@ -121,7 +119,11 @@ export const PublishGame: React.FC = () => {
     }
     if (step === 2) {
       if (!isUploaded) {
-        toast.warning('Please upload your game build ZIP and wait for security scans.');
+        toast.warning(
+          IS_DEMO
+            ? 'Please select a game ZIP and wait for the demo progress to finish.'
+            : 'Please select the game build ZIP that will be uploaded on submission.',
+        );
         return;
       }
     }
@@ -141,9 +143,13 @@ export const PublishGame: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    if (!zipFile) {
+      toast.warning('Select a ZIP build first.');
+      return;
+    }
 
     setLoading(true);
 
@@ -161,9 +167,8 @@ export const PublishGame: React.FC = () => {
 
     const controls = [controlKeys, controlAction].filter((c) => c.length > 0);
 
-    setTimeout(() => {
-      // Add game using Context
-      const newGame = createGame(
+    try {
+      const newGame = await createGame(
         {
           title,
           shortDescription: shortDesc,
@@ -193,13 +198,63 @@ export const PublishGame: React.FC = () => {
         currentUser.avatar,
       );
 
-      // Now set game status to 'pending'
-      submitForReview(newGame.id);
+      if (IS_DEMO) {
+        submitForReview(newGame.id);
+      } else {
+        const bytes = await zipFile.arrayBuffer();
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        const sha256 = [...new Uint8Array(digest)]
+          .map((byte) => byte.toString(16).padStart(2, '0'))
+          .join('');
+        setUploadProgress(20);
+        setUploadLog(['Game draft created.', 'Version record created.']);
+        const version = await api.createVersion(newGame.id, {
+          version: '1.0.0',
+          changelog: 'Initial private beta build.',
+          aiDisclosure:
+            aiDisclosure === 'no' ? 'NONE' : aiDisclosure === 'assisted' ? 'ASSISTED' : 'GENERATED',
+          toolsUsed: aiTools,
+        });
+        const intent = await api.createUploadIntent(newGame.id, {
+          versionId: version.id,
+          fileName: zipFile.name,
+          fileSize: zipFile.size,
+          contentType: 'application/zip',
+          sha256,
+        });
+        setUploadProgress(45);
+        setUploadLog((lines) => [...lines, 'Uploading ZIP to quarantine storage...']);
+        if (intent.uploadUrl) {
+          const response = await fetch(intent.uploadUrl, {
+            method: intent.method,
+            headers: intent.headers,
+            body: zipFile,
+          });
+          if (!response.ok) throw new Error(`Quarantine upload failed (${response.status})`);
+        } else {
+          await api.uploadZipDirect(intent.uploadId, zipFile);
+        }
+        setUploadProgress(80);
+        setUploadLog((lines) => [...lines, 'Upload received. Queuing validation worker...']);
+        const status = await api.completeUpload(intent.uploadId);
+        setUploadProgress(100);
+        setUploadLog((lines) => [
+          ...lines,
+          `Worker status: ${status.versionStatus}. Validation continues asynchronously.`,
+        ]);
+      }
 
       setLoading(false);
       setSuccess(true);
-      toast.success('Your build has been submitted to the moderation queue!');
-    }, 2000);
+      toast.success(
+        IS_DEMO
+          ? 'Demo submission stored in this browser.'
+          : 'Build uploaded to quarantine and queued for validation.',
+      );
+    } catch (error) {
+      setLoading(false);
+      toast.danger(error instanceof Error ? error.message : 'Submission failed');
+    }
   };
 
   if (success) {
@@ -210,13 +265,14 @@ export const PublishGame: React.FC = () => {
         </div>
         <h1>Submission Received!</h1>
         <p style={successDescStyle}>
-          Your game build has been successfully uploaded and queued for administration review.
-          Platforms diagnostic scanners completed sandboxed scanning, and found{' '}
-          <strong>0 warnings</strong>.
+          {IS_DEMO
+            ? 'This demo submission is stored only in this browser. No backend scan or moderation was performed.'
+            : 'Your game build was uploaded to quarantine and queued for structural validation and malware scanning.'}
         </p>
         <p style={{ ...successDescStyle, color: 'var(--text-secondary)' }}>
-          Moderators typically review new builds within 24 hours. We'll send you an alert
-          notification when the game status is updated.
+          {IS_DEMO
+            ? 'Use the demo role switch to explore the rest of the prototype.'
+            : 'The creator dashboard will show the real validation result before the build can enter moderation.'}
         </p>
         <div style={successActionsStyle}>
           <button onClick={() => navigate('/creator/my-games')} className="btn btn-secondary">
@@ -300,12 +356,16 @@ export const PublishGame: React.FC = () => {
                 {[
                   'Action',
                   'Adventure',
-                  'Horror',
-                  'Simulator',
+                  'Arcade',
+                  'Casual',
+                  'Platformer',
+                  'RPG',
+                  'Shooter',
                   'Racing',
                   'Puzzle',
-                  'Multiplayer',
-                  'Experimental',
+                  'Simulator',
+                  'Sports',
+                  'Strategy',
                 ].map((cat) => (
                   <option key={cat} value={cat}>
                     {cat}
@@ -358,8 +418,10 @@ export const PublishGame: React.FC = () => {
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>Step 2 — Upload Game Archive</h2>
             <p style={stepDescStyle}>
-              Upload a `.zip` archive containing your index file. Games are scanned and run inside
-              an isolated browser sandbox. Server-side code is not supported.
+              {IS_DEMO
+                ? 'Select a `.zip` archive to demonstrate the publishing flow. The demo does not upload or scan it.'
+                : 'Select a `.zip` archive containing index.html. On submission it is uploaded to quarantine, validated by the worker, and only approved builds can run on the isolated game origin.'}{' '}
+              Server-side code is not supported.
             </p>
 
             <div style={uploadContainerStyle}>
@@ -592,7 +654,8 @@ export const PublishGame: React.FC = () => {
                   className="checkbox-input"
                 />
                 <span style={{ fontSize: '0.9rem' }}>
-                  This game features Multiplayer capabilities (Simulated WebSockets)
+                  This game includes multiplayer features implemented by the game. VibePlay does not
+                  provide a multiplayer server.
                 </span>
               </label>
             </div>
@@ -784,8 +847,9 @@ export const PublishGame: React.FC = () => {
             <div style={noticeBoxStyle}>
               <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Submitting a build locks metadata edits until the moderation review finishes. The
-                file size, scan checksums, and author details will be published in public logs.
+                {IS_DEMO
+                  ? 'This demo stores metadata in your browser and does not perform moderation.'
+                  : 'Submission creates an administrator-visible validation report and locks executable publication until a moderator approves the build.'}
               </span>
             </div>
           </div>

@@ -27,6 +27,7 @@ export interface Game {
   slug: string;
   creatorId: string;
   creatorName: string;
+  creatorUsername?: string;
   creatorAvatar: string;
   shortDescription: string;
   fullDescription: string;
@@ -51,6 +52,8 @@ export interface Game {
   changelog: ChangelogItem[];
   fileSize?: string; // e.g., '14.2 MB'
   fileName?: string; // e.g., 'neon-drift-v1.zip'
+  moderationVersionId?: string;
+  validationReport?: import('@vibeplay/shared').ValidationReportDto;
 }
 
 export interface Comment {

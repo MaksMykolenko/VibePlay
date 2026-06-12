@@ -4,6 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { User, Shield, Key, Bell, Eye, EyeOff, Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useTheme } from '../hooks/useTheme';
+import { api } from '../lib/api';
+import { errorMessage } from '../lib/api/errors';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, updateProfile } = useAuth();
@@ -49,39 +51,48 @@ export const SettingsPage: React.FC = () => {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updateProfile(displayName, bio, avatar);
-    toast.success('Profile settings updated successfully!');
+    const error = await updateProfile(displayName, bio, avatar);
+    if (error) {
+      toast.danger(error);
+    } else {
+      toast.success('Profile settings updated successfully!');
+    }
   };
 
   const handleAccountSave = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Account credentials updated (simulated).');
+    toast.warning('Email changes are not available in the private beta.');
   };
 
-  const handlePasswordSave = (e: React.FormEvent) => {
+  const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
       toast.danger('New passwords do not match!');
       return;
     }
-    if (newPassword.length < 6) {
-      toast.warning('New password must be at least 6 characters.');
+    if (newPassword.length < 10) {
+      toast.warning('New password must be at least 10 characters.');
       return;
     }
-    toast.success('Password updated successfully (simulated).');
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      await api.changePassword(currentPassword, newPassword);
+      toast.success('Password updated successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    }
   };
 
   const handleNotificationsSave = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Notification preferences updated.');
+    toast.warning('Notification preferences are not persisted in the private beta.');
   };
 
   const handlePrivacySave = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Privacy settings saved.');
+    toast.warning('Privacy preference controls are not available in the private beta.');
   };
 
   return (
@@ -241,8 +252,10 @@ export const SettingsPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="form-input"
+                  disabled
                   required
                 />
+                <span style={helperStyle}>Contact support to change the registered email.</span>
               </div>
 
               <button type="submit" className="btn btn-primary">

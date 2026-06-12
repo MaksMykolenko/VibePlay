@@ -71,7 +71,7 @@ function toCurrentUser(u: User): CurrentUserDto {
   return {
     ...toPublicUser(u),
     email: u.email,
-    status: 'ACTIVE',
+    status: u.isSuspended ? 'SUSPENDED' : 'ACTIVE',
     emailVerified: true,
     lastLoginAt: null,
   };
@@ -290,6 +290,19 @@ export function createDemoClient(): ApiClient {
         },
         games: games.map((g) => toListItem(g, getUsers())),
       };
+    },
+    async searchCreators(query) {
+      const term = query.trim().toLowerCase();
+      return getUsers()
+        .filter((user) => user.role === 'creator' && !user.isSuspended)
+        .filter(
+          (user) =>
+            user.username.toLowerCase().includes(term) ||
+            user.displayName.toLowerCase().includes(term) ||
+            user.bio.toLowerCase().includes(term),
+        )
+        .slice(0, 20)
+        .map(toPublicUser);
     },
     async updateProfile(patch) {
       const me = requireUser();
@@ -671,7 +684,7 @@ export function createDemoClient(): ApiClient {
       notInDemo('Game build upload');
     },
 
-    // ----- admin (not available in demo: server-enforced moderation only) -----
+    // ----- admin -----
     async adminModerationQueue() {
       notInDemo('Admin moderation');
     },
@@ -696,20 +709,56 @@ export function createDemoClient(): ApiClient {
     async adminPreviewUrl() {
       notInDemo('Admin preview');
     },
-    async adminListUsers() {
-      notInDemo('Admin users');
+    async adminListUsers(params) {
+      const query = params.q?.trim().toLowerCase();
+      const filtered = getUsers()
+        .filter((user) => !params.role || user.role.toUpperCase() === params.role)
+        .filter(
+          (user) => !params.status || (user.isSuspended ? 'SUSPENDED' : 'ACTIVE') === params.status,
+        )
+        .filter(
+          (user) =>
+            !query ||
+            user.email.toLowerCase().includes(query) ||
+            user.username.toLowerCase().includes(query) ||
+            user.displayName.toLowerCase().includes(query),
+        )
+        .sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime());
+      const page = params.page ?? 1;
+      const perPage = params.perPage ?? 20;
+      return {
+        items: filtered.slice((page - 1) * perPage, page * perPage).map(toCurrentUser),
+        page,
+        perPage,
+        total: filtered.length,
+        totalPages: Math.ceil(filtered.length / perPage),
+      };
     },
-    async adminSuspendUser() {
-      notInDemo('Admin users');
+    async adminSuspendUser(userId) {
+      save(
+        LS.users,
+        getUsers().map((user) => (user.id === userId ? { ...user, isSuspended: true } : user)),
+      );
     },
-    async adminBanUser() {
-      notInDemo('Admin users');
+    async adminBanUser(userId) {
+      save(
+        LS.users,
+        getUsers().map((user) => (user.id === userId ? { ...user, isSuspended: true } : user)),
+      );
     },
-    async adminRestoreUser() {
-      notInDemo('Admin users');
+    async adminRestoreUser(userId) {
+      save(
+        LS.users,
+        getUsers().map((user) => (user.id === userId ? { ...user, isSuspended: false } : user)),
+      );
     },
-    async adminPromoteCreator() {
-      notInDemo('Admin users');
+    async adminPromoteCreator(userId) {
+      save(
+        LS.users,
+        getUsers().map((user) =>
+          user.id === userId ? { ...user, role: 'creator' as const } : user,
+        ),
+      );
     },
     async adminListReports() {
       notInDemo('Admin reports');
@@ -728,11 +777,15 @@ export function createDemoClient(): ApiClient {
     },
     async adminStats() {
       const games = getGames();
+      const users = getUsers();
       return {
-        users: getUsers().length,
+        users: users.length,
+        creators: users.filter((user) => user.role === 'creator').length,
         games: games.length,
         published: games.filter((g) => g.status === 'published').length,
         pending: games.filter((g) => g.status === 'pending').length,
+        reports: 0,
+        plays: games.reduce((total, game) => total + game.plays, 0),
       };
     },
   };

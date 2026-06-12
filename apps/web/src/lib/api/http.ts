@@ -9,6 +9,7 @@ import type {
   LaunchDescriptorDto,
   NotificationDto,
   PaginatedDto,
+  PublicUserDto,
   ReportDto,
   SessionDto,
   UploadIntentResponseDto,
@@ -167,6 +168,12 @@ export function createHttpClient(): ApiClient {
     // ----- profile -----
     async getProfile(username) {
       return request<ProfileResponse>(`/profiles/${encodeURIComponent(username)}`);
+    },
+    async searchCreators(query) {
+      const r = await request<{ creators: PublicUserDto[] }>(
+        `/profiles${qs({ q: query, page: 1, perPage: 20 })}`,
+      );
+      return r.creators;
     },
     async updateProfile(patch) {
       const r = await request<{ user: CurrentUserDto }>('/profile', {

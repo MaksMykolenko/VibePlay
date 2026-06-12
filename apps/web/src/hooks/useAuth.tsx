@@ -16,11 +16,6 @@ import type { User, UserRole } from '../types';
 
 export interface AuthContextType {
   currentUser: User | null;
-  /**
-   * @deprecated Legacy mock-era field kept only until ProfilePage/Search/Admin
-   * pages move to the server API (always empty in real mode).
-   */
-  users: User[];
   /** Raw server DTO (status, emailVerified, …). */
   account: CurrentUserDto | null;
   isLoading: boolean;
@@ -195,7 +190,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const value: AuthContextType = {
     currentUser: account ? dtoToLegacyUser(account) : null,
-    users: [],
     account,
     isLoading,
     login,

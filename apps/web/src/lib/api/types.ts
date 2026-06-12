@@ -136,6 +136,7 @@ export interface ApiClient {
 
   // profile
   getProfile(username: string): Promise<ProfileResponse>;
+  searchCreators(query: string): Promise<PublicUserDto[]>;
   updateProfile(patch: {
     displayName?: string;
     bio?: string;

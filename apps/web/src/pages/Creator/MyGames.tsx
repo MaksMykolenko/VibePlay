@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { Game } from '../../types';
 import { toast } from '../../components/toastEvents';
+import { IS_DEMO } from '../../lib/appMode';
 import {
   Edit2,
   Eye,
@@ -39,6 +40,10 @@ export const MyGames: React.FC = () => {
   };
 
   const handleSubmitReview = (gameId: string, title: string) => {
+    if (!IS_DEMO) {
+      toast.warning('Submit a validated ZIP version through the publishing flow.');
+      return;
+    }
     submitForReview(gameId);
     toast.success(`"${title}" submitted for administration review!`);
   };
@@ -47,20 +52,23 @@ export const MyGames: React.FC = () => {
     if (game.status === 'published') {
       hideGame(game.id);
       toast.info(`"${game.title}" is now hidden from the public catalog.`);
-    } else {
+    } else if (IS_DEMO) {
       publishGameDraft(game.id);
       toast.success(`"${game.title}" is now published and public.`);
+    } else {
+      toast.warning('Only an administrator can restore a hidden game in the private beta.');
     }
   };
 
   const handleDelete = (gameId: string, title: string) => {
-    if (
-      window.confirm(
-        `Are you absolutely sure you want to delete "${title}"? This action is permanent.`,
-      )
-    ) {
+    const message = IS_DEMO
+      ? `Are you sure you want to delete "${title}" from this browser demo?`
+      : `Archive "${title}" and remove it from the public catalog?`;
+    if (window.confirm(message)) {
       deleteGame(gameId);
-      toast.danger(`"${title}" has been deleted.`);
+      toast.info(
+        IS_DEMO ? `"${title}" was removed from this browser demo.` : `"${title}" was archived.`,
+      );
     }
   };
 
@@ -189,7 +197,7 @@ export const MyGames: React.FC = () => {
                       </Link>
 
                       {/* Submit for Review (Draft or Rejected builds) */}
-                      {(game.status === 'draft' || game.status === 'rejected') && (
+                      {IS_DEMO && (game.status === 'draft' || game.status === 'rejected') && (
                         <button
                           onClick={() => handleSubmitReview(game.id, game.title)}
                           className="btn btn-secondary btn-sm"
@@ -201,7 +209,7 @@ export const MyGames: React.FC = () => {
                       )}
 
                       {/* Hide/Reveal toggle (Published or Hidden builds) */}
-                      {(game.status === 'published' || game.status === 'hidden') && (
+                      {(game.status === 'published' || (IS_DEMO && game.status === 'hidden')) && (
                         <button
                           onClick={() => handleHideToggle(game)}
                           className="btn btn-secondary btn-sm"
@@ -221,7 +229,7 @@ export const MyGames: React.FC = () => {
                         onClick={() => handleDelete(game.id, game.title)}
                         className="btn btn-danger btn-sm"
                         style={actionBtnStyle}
-                        title="Delete Build"
+                        title={IS_DEMO ? 'Delete Demo Build' : 'Archive Build'}
                       >
                         <Trash2 size={14} />
                       </button>

@@ -1,26 +1,39 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import type { CurrentUserDto } from '@vibeplay/shared';
 import { useGames } from '../../hooks/useGames';
 import { Users, AlertTriangle, Play, HelpCircle } from 'lucide-react';
+import { api } from '../../lib/api';
+import { toast } from '../../components/toastEvents';
 
 export const AdminDashboard: React.FC = () => {
-  const { users } = useAuth();
-  const { games, reports } = useGames();
+  const { games } = useGames();
+  const [stats, setStats] = useState<Record<string, number>>({});
+  const [recentUsers, setRecentUsers] = useState<CurrentUserDto[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([api.adminStats(), api.adminListUsers({ page: 1, perPage: 3 })])
+      .then(([nextStats, users]) => {
+        if (!active) return;
+        setStats(nextStats);
+        setRecentUsers(users.items);
+      })
+      .catch((error) => {
+        if (active) toast.danger(error instanceof Error ? error.message : 'Failed to load stats');
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Platform metrics
-  const totalUsers = users.length;
-  const totalCreators = users.filter((u) => u.role === 'creator').length;
-  const publishedGames = games.filter((g) => g.status === 'published').length;
-  const pendingReviews = games.filter((g) => g.status === 'pending').length;
-  const openReports = reports.filter((r) => r.status === 'open' || r.status === 'reviewing').length;
-
-  const totalPlays = games.reduce((sum, g) => sum + g.plays, 0);
-
-  // Recent 3 registrations
-  const recentUsers = [...users]
-    .sort((a, b) => new Date(b.joinDate).getTime() - new Date(a.joinDate).getTime())
-    .slice(0, 3);
+  const totalUsers = stats.users ?? 0;
+  const totalCreators = stats.creators ?? 0;
+  const publishedGames = stats.published ?? 0;
+  const pendingReviews = stats.pending ?? 0;
+  const openReports = stats.reports ?? 0;
+  const totalPlays = stats.plays ?? 0;
 
   // Recent 3 submissions
   const pendingGames = games.filter((g) => g.status === 'pending').slice(0, 3);
@@ -151,7 +164,7 @@ export const AdminDashboard: React.FC = () => {
           <div style={listStyle}>
             {recentUsers.map((user) => (
               <div key={user.id} style={listItemStyle}>
-                <img src={user.avatar} alt="" style={userAvatarStyle} />
+                <img src={user.avatarUrl ?? ''} alt="" style={userAvatarStyle} />
                 <div style={itemMetaStyle}>
                   <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{user.displayName}</div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -159,10 +172,10 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 <span
-                  className={`badge ${user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                  className={`badge ${user.role === 'ADMIN' ? 'badge-danger' : user.role === 'CREATOR' ? 'badge-success' : 'badge-primary'}`}
                   style={{ fontSize: '0.65rem' }}
                 >
-                  {user.role}
+                  {user.role.toLowerCase()}
                 </span>
               </div>
             ))}

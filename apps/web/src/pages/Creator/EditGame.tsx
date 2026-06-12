@@ -4,10 +4,11 @@ import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../components/toastEvents';
 import { Save, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { IS_DEMO } from '../../lib/appMode';
 
 export const EditGame: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { games, updateGame } = useGames();
+  const { games, isLoading, updateGame } = useGames();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
@@ -34,14 +35,14 @@ export const EditGame: React.FC = () => {
   const [changelogNotes, setChangelogNotes] = useState('');
 
   useEffect(() => {
-    if (!game) {
+    if (!isLoading && !game) {
       toast.danger('Game build not found.');
       navigate('/creator/my-games');
       return;
     }
-  }, [game, navigate]);
+  }, [game, isLoading, navigate]);
 
-  if (!game) return null;
+  if (isLoading || !game) return null;
 
   // Verify ownership
   if (currentUser?.id !== game.creatorId && currentUser?.role !== 'admin') {
@@ -87,11 +88,10 @@ export const EditGame: React.FC = () => {
       });
     }
 
-    // Update Game status - if published, major edit will push back to 'pending review' moderation
     let status = game.status;
     let statusMsg = 'Game details updated successfully!';
 
-    if (game.status === 'published' && title !== game.title) {
+    if (IS_DEMO && game.status === 'published' && title !== game.title) {
       status = 'pending';
       statusMsg = 'Details updated! Title changes flag the build for repeat moderation.';
     }
@@ -132,8 +132,9 @@ export const EditGame: React.FC = () => {
       <div style={noticeBoxStyle}>
         <AlertTriangle size={20} color="var(--warning)" style={{ flexShrink: 0 }} />
         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-          Notice: Significant edits (such as changing the title or swapping files) will flag this
-          build for repeat moderation. The game status will return to Pending Review.
+          {IS_DEMO
+            ? 'In demo mode, title changes move the game back to Pending Review.'
+            : 'This form updates catalog metadata only. Uploading a new executable version requires a new ZIP validation and moderation cycle.'}
         </span>
       </div>
 
@@ -160,12 +161,16 @@ export const EditGame: React.FC = () => {
             {[
               'Action',
               'Adventure',
-              'Horror',
+              'Arcade',
+              'Casual',
+              'Platformer',
+              'RPG',
+              'Shooter',
               'Simulator',
               'Racing',
               'Puzzle',
-              'Multiplayer',
-              'Experimental',
+              'Sports',
+              'Strategy',
             ].map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
@@ -227,28 +232,37 @@ export const EditGame: React.FC = () => {
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Version Code</label>
-          <input
-            type="text"
-            value={version}
-            onChange={(e) => setVersion(e.target.value)}
-            className="form-input"
-            placeholder="e.g. 1.1.0"
-          />
-        </div>
+        {IS_DEMO ? (
+          <>
+            <div className="form-group">
+              <label className="form-label">Version Code</label>
+              <input
+                type="text"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                className="form-input"
+                placeholder="e.g. 1.1.0"
+              />
+            </div>
 
-        <div className="form-group">
-          <label className="form-label">Changelog Updates Notes</label>
-          <textarea
-            value={changelogNotes}
-            onChange={(e) => setChangelogNotes(e.target.value)}
-            className="form-input"
-            placeholder="Describe what has changed in this version..."
-            style={{ minHeight: '80px', resize: 'vertical' }}
-          />
-          <span style={helperStyle}>Leave empty if version code is not changing.</span>
-        </div>
+            <div className="form-group">
+              <label className="form-label">Changelog Updates Notes</label>
+              <textarea
+                value={changelogNotes}
+                onChange={(e) => setChangelogNotes(e.target.value)}
+                className="form-input"
+                placeholder="Describe what has changed in this version..."
+                style={{ minHeight: '80px', resize: 'vertical' }}
+              />
+              <span style={helperStyle}>Leave empty if version code is not changing.</span>
+            </div>
+          </>
+        ) : (
+          <div className="form-group">
+            <label className="form-label">Published Version</label>
+            <input type="text" value={game.version} className="form-input" disabled />
+          </div>
+        )}
 
         {/* Action Controls */}
         <div style={footerRowStyle}>

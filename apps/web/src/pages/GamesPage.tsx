@@ -13,14 +13,16 @@ export const GamesPage: React.FC = () => {
   const initialCategory = searchParams.get('category') || '';
   const initialSearch = searchParams.get('search') || '';
   const initialAi = searchParams.get('ai') === 'true';
+  const initialMultiplayer = searchParams.get('multiplayer') === 'true';
+  const initialSort = searchParams.get('sort') || 'trending';
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedDevice, setSelectedDevice] = useState<string>('all');
   const [selectedAi, setSelectedAi] = useState<string>(initialAi ? 'assisted' : 'all');
-  const [isMultiplayer, setIsMultiplayer] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<string>('trending');
+  const [isMultiplayer, setIsMultiplayer] = useState<boolean>(initialMultiplayer);
+  const [sortBy, setSortBy] = useState<string>(initialSort);
 
   // More Filters popover state
   const [showMore, setShowMore] = useState(false);
@@ -157,13 +159,24 @@ export const GamesPage: React.FC = () => {
             style={filterSelectStyle}
           >
             <option value="">All Categories</option>
-            {['Action', 'Adventure', 'Horror', 'Simulator', 'Racing', 'Puzzle', 'Experimental'].map(
-              (cat) => (
-                <option key={cat} value={cat.toLowerCase()}>
-                  {cat}
-                </option>
-              ),
-            )}
+            {[
+              'Action',
+              'Adventure',
+              'Arcade',
+              'Casual',
+              'Platformer',
+              'Puzzle',
+              'Racing',
+              'RPG',
+              'Shooter',
+              'Simulator',
+              'Sports',
+              'Strategy',
+            ].map((cat) => (
+              <option key={cat} value={cat.toLowerCase()}>
+                {cat}
+              </option>
+            ))}
           </select>
 
           {/* Device Dropdown */}

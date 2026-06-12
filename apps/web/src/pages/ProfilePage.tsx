@@ -1,25 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Calendar, UserCheck, Edit3, ShieldAlert, Sparkles } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { api } from '../lib/api';
+import type { User } from '../types';
 
 export const ProfilePage: React.FC = () => {
   const { username } = useParams<{ username: string }>();
-  const { currentUser, users, becomeCreator } = useAuth();
+  const { currentUser, becomeCreator } = useAuth();
   const { games, library } = useGames();
   const navigate = useNavigate();
 
-  // Find user by username
-  const profileUser = users.find((u) => u.username.toLowerCase() === username?.toLowerCase());
+  const [profileUser, setProfileUser] = useState<User | null>(
+    currentUser?.username === username ? currentUser : null,
+  );
+  const [profileMissing, setProfileMissing] = useState(false);
   const [activeTab, setActiveTab] = useState<'games' | 'favorites' | 'recently' | 'about'>(
     profileUser?.role === 'creator' ? 'games' : 'favorites',
   );
-  const [isFollowed, setIsFollowed] = useState(false);
 
-  if (!profileUser) {
+  useEffect(() => {
+    if (!username) return;
+    let active = true;
+    api
+      .getProfile(username)
+      .then(({ profile }) => {
+        if (!active) return;
+        setProfileUser({
+          id: profile.id,
+          username: profile.username,
+          displayName: profile.displayName,
+          email: currentUser?.id === profile.id ? currentUser.email : '',
+          role: profile.role.toLowerCase() as User['role'],
+          bio: profile.bio,
+          avatar: profile.avatarUrl ?? '',
+          joinDate: profile.createdAt,
+          followersCount: 0,
+        });
+        setActiveTab(profile.role === 'CREATOR' ? 'games' : 'favorites');
+        setProfileMissing(false);
+      })
+      .catch(() => {
+        if (active) setProfileMissing(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser, username]);
+
+  if (!profileUser && profileMissing) {
     return (
       <div style={notFoundContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
@@ -33,6 +65,7 @@ export const ProfilePage: React.FC = () => {
       </div>
     );
   }
+  if (!profileUser) return null;
 
   const isOwnProfile = currentUser?.id === profileUser.id;
 
@@ -45,22 +78,14 @@ export const ProfilePage: React.FC = () => {
     (g) => g.creatorId === profileUser.id && g.status !== 'published',
   );
 
-  // Filter favorites
-  const favoriteGames = games.filter((g) => {
-    // If own profile, load from library. If another user, simulate some favorite games
-    if (isOwnProfile) {
-      return library.favorites.includes(g.id);
-    }
-    return g.plays > 15000 && g.likes > 800; // Simulated favorites for other users
-  });
+  // Libraries are private; only the signed-in user's own lists are available.
+  const favoriteGames = isOwnProfile
+    ? games.filter((game) => library.favorites.includes(game.id))
+    : [];
 
-  // Filter recently played
-  const recentlyPlayed = games.filter((g) => {
-    if (isOwnProfile) {
-      return library.recentlyPlayed.some((item) => item.id === g.id);
-    }
-    return g.plays > 10000 && g.plays < 20000; // Simulated recently played
-  });
+  const recentlyPlayed = isOwnProfile
+    ? games.filter((game) => library.recentlyPlayed.some((item) => item.id === game.id))
+    : [];
 
   // Aggregate statistics
   const totalPlays = games
@@ -71,17 +96,12 @@ export const ProfilePage: React.FC = () => {
     .filter((g) => g.creatorId === profileUser.id)
     .reduce((sum, g) => sum + g.likes, 0);
 
-  const handleFollowClick = () => {
-    if (!isFollowed) {
-      toast.success(`You are now following @${profileUser.username}!`);
-    } else {
-      toast.info(`You unfollowed @${profileUser.username}.`);
-    }
-    setIsFollowed((followed) => !followed);
-  };
-
   const handleBecomeCreator = () => {
-    becomeCreator();
+    const notice = becomeCreator();
+    if (notice) {
+      toast.info(notice);
+      return;
+    }
     toast.success('Congratulations! You are now a Creator. Open Creator Hub to upload games.');
     setActiveTab('games');
     navigate('/creator');
@@ -118,7 +138,7 @@ export const ProfilePage: React.FC = () => {
             {/* Basic Info Bar */}
             <div style={statsRowStyle}>
               <div style={statItemStyle}>
-                <strong>{profileUser.followersCount + (isFollowed ? 1 : 0)}</strong>
+                <strong>{profileUser.followersCount}</strong>
                 <span>followers</span>
               </div>
               {profileUser.role === 'creator' && (
@@ -159,12 +179,13 @@ export const ProfilePage: React.FC = () => {
               </div>
             ) : (
               <button
-                onClick={handleFollowClick}
-                className={isFollowed ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'}
+                className="btn btn-secondary btn-sm"
                 style={{ gap: '6px', width: '120px' }}
+                disabled
+                title="Following is not available in the private beta."
               >
                 <UserCheck size={14} />
-                {isFollowed ? 'Following' : 'Follow'}
+                Follow unavailable
               </button>
             )}
           </div>

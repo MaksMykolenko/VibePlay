@@ -1,118 +1,74 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { NotificationDto } from '@vibeplay/shared';
+import { api } from '../lib/api';
 import type { Notification, NotificationType } from '../types';
-import { mockNotifications } from '../data/mockNotifications';
 
-function readNotifications(userId: string | undefined): Notification[] {
-  if (!userId) return [];
-  const stored = localStorage.getItem('vibeplay_notifications');
-  let parsed: Notification[] = [];
-  if (stored) {
-    try {
-      parsed = JSON.parse(stored);
-    } catch (error) {
-      console.error(error);
-    }
-  } else {
-    parsed = mockNotifications;
-    localStorage.setItem('vibeplay_notifications', JSON.stringify(mockNotifications));
+function notificationType(type: NotificationDto['type']): NotificationType {
+  switch (type) {
+    case 'GAME_APPROVED':
+      return 'game_approved';
+    case 'GAME_REJECTED':
+    case 'GAME_VALIDATION_FAILED':
+      return 'game_rejected';
+    case 'NEW_COMMENT':
+      return 'new_comment';
+    case 'GAME_READY_FOR_REVIEW':
+      return 'moderation_message';
+    default:
+      return 'platform_announcement';
   }
-  return parsed.filter((notification) => notification.userId === userId);
+}
+
+function toNotification(dto: NotificationDto, userId: string): Notification {
+  return {
+    id: dto.id,
+    userId,
+    type: notificationType(dto.type),
+    title: dto.title,
+    message: dto.body,
+    isRead: dto.readAt !== null,
+    timestamp: dto.createdAt,
+    relatedSlug: dto.metadata.slug,
+  };
 }
 
 export const useNotifications = (userId: string | undefined) => {
-  const [notifications, setNotifications] = useState<Notification[]>(() =>
-    readNotifications(userId),
-  );
-  const [unreadCount, setUnreadCount] = useState(
-    () => readNotifications(userId).filter((notification) => !notification.isRead).length,
-  );
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  useEffect(() => {
-    const loadNotifications = () => {
-      const userNotifs = readNotifications(userId);
-      setNotifications(userNotifs);
-      setUnreadCount(userNotifs.filter((n) => !n.isRead).length);
-    };
-
-    const initialLoad = window.setTimeout(loadNotifications, 0);
-    const interval = setInterval(loadNotifications, 1000);
-    return () => {
-      clearTimeout(initialLoad);
-      clearInterval(interval);
-    };
+  const loadNotifications = useCallback(async () => {
+    if (!userId) {
+      setNotifications([]);
+      return;
+    }
+    const items = await api.listNotifications();
+    setNotifications(items.map((item) => toNotification(item, userId)));
   }, [userId]);
 
-  const markAsRead = (id: string) => {
-    const stored = localStorage.getItem('vibeplay_notifications');
-    if (!stored) return;
-    try {
-      const allNotifs: Notification[] = JSON.parse(stored);
-      const updated = allNotifs.map((n) => (n.id === id ? { ...n, isRead: true } : n));
-      localStorage.setItem('vibeplay_notifications', JSON.stringify(updated));
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void loadNotifications(), 0);
+    const interval = window.setInterval(() => void loadNotifications(), 30_000);
+    return () => {
+      window.clearTimeout(initialLoad);
+      window.clearInterval(interval);
+    };
+  }, [loadNotifications]);
 
-      if (userId) {
-        const userNotifs = updated.filter((n) => n.userId === userId);
-        setNotifications(userNotifs);
-        setUnreadCount(userNotifs.filter((n) => !n.isRead).length);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  const markAsRead = (id: string) => {
+    setNotifications((items) =>
+      items.map((item) => (item.id === id ? { ...item, isRead: true } : item)),
+    );
+    void api.markNotificationRead(id).catch(() => void loadNotifications());
   };
 
   const markAllAsRead = () => {
-    if (!userId) return;
-    const stored = localStorage.getItem('vibeplay_notifications');
-    if (!stored) return;
-    try {
-      const allNotifs: Notification[] = JSON.parse(stored);
-      const updated = allNotifs.map((n) => (n.userId === userId ? { ...n, isRead: true } : n));
-      localStorage.setItem('vibeplay_notifications', JSON.stringify(updated));
-
-      const userNotifs = updated.filter((n) => n.userId === userId);
-      setNotifications(userNotifs);
-      setUnreadCount(0);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const addNotification = (
-    targetUserId: string,
-    type: NotificationType,
-    title: string,
-    message: string,
-    relatedSlug?: string,
-  ) => {
-    const stored = localStorage.getItem('vibeplay_notifications');
-    const allNotifs: Notification[] = stored ? JSON.parse(stored) : [];
-
-    const newNotif: Notification = {
-      id: `notif_${Date.now()}`,
-      userId: targetUserId,
-      type,
-      title,
-      message,
-      isRead: false,
-      timestamp: new Date().toISOString(),
-      relatedSlug,
-    };
-
-    const updated = [newNotif, ...allNotifs];
-    localStorage.setItem('vibeplay_notifications', JSON.stringify(updated));
-
-    if (userId === targetUserId) {
-      const userNotifs = updated.filter((n) => n.userId === userId);
-      setNotifications(userNotifs);
-      setUnreadCount(userNotifs.filter((n) => !n.isRead).length);
-    }
+    setNotifications((items) => items.map((item) => ({ ...item, isRead: true })));
+    void api.markAllNotificationsRead().catch(() => void loadNotifications());
   };
 
   return {
     notifications,
-    unreadCount,
+    unreadCount: notifications.filter((notification) => !notification.isRead).length,
     markAsRead,
     markAllAsRead,
-    addNotification,
   };
 };

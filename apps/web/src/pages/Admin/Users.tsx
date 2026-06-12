@@ -1,15 +1,47 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
-import type { UserRole } from '../../types';
+import type { User, UserRole } from '../../types';
 import { toast } from '../../components/toastEvents';
 import { ShieldAlert, Award, UserMinus, UserCheck } from 'lucide-react';
+import { api } from '../../lib/api';
 
 export const AdminUsers: React.FC = () => {
-  const { users, currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const { games, suspendUserGames } = useGames();
-
+  const [users, setUsers] = useState<User[]>([]);
   const [filterRole, setFilterRole] = useState<string>('all');
+
+  const loadUsers = useCallback(async () => {
+    const page = await api.adminListUsers({
+      page: 1,
+      perPage: 50,
+      role: filterRole === 'all' ? undefined : filterRole.toUpperCase(),
+    });
+    setUsers(
+      page.items.map((user) => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        email: user.email,
+        role: user.role.toLowerCase() as UserRole,
+        bio: user.bio,
+        avatar: user.avatarUrl ?? '',
+        joinDate: user.createdAt,
+        followersCount: 0,
+        isSuspended: user.status === 'SUSPENDED' || user.status === 'BANNED',
+      })),
+    );
+  }, [filterRole]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUsers().catch((error) => {
+        toast.danger(error instanceof Error ? error.message : 'Failed to load users');
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadUsers]);
 
   const getGamesCount = (userId: string) => {
     return games.filter((g) => g.creatorId === userId).length;
@@ -21,16 +53,15 @@ export const AdminUsers: React.FC = () => {
       return;
     }
 
-    const updatedUsers = users.map((u) => {
-      if (u.id === userId) {
-        return { ...u, role: newRole };
-      }
-      return u;
-    });
-
-    localStorage.setItem('vibeplay_users', JSON.stringify(updatedUsers));
-    window.dispatchEvent(new Event('storage'));
-    toast.success(`User role updated to ${newRole.toUpperCase()}.`);
+    if (newRole !== 'creator') {
+      toast.warning('The beta API only supports promotion to Creator.');
+      return;
+    }
+    void api
+      .adminPromoteCreator(userId)
+      .then(loadUsers)
+      .then(() => toast.success('User promoted to Creator.'))
+      .catch((error) => toast.danger(error instanceof Error ? error.message : 'Update failed'));
   };
 
   const handleStatusChange = (userId: string, isSuspended: boolean) => {
@@ -39,25 +70,20 @@ export const AdminUsers: React.FC = () => {
       return;
     }
 
-    // Toggle custom status in local storage user profiles
-    const updatedUsers = users.map((u) => {
-      if (u.id === userId) {
-        // Embed a mock status key directly
-        return { ...u, isSuspended };
-      }
-      return u;
-    });
-
-    localStorage.setItem('vibeplay_users', JSON.stringify(updatedUsers));
-    window.dispatchEvent(new Event('storage'));
-
-    if (isSuspended) {
-      // Hide all games of this suspended user
-      suspendUserGames(userId);
-      toast.danger('User suspended and their builds were hidden.');
-    } else {
-      toast.success('User account restored successfully.');
-    }
+    const operation = isSuspended
+      ? api.adminSuspendUser(userId, 'Suspended from the admin user directory')
+      : api.adminRestoreUser(userId);
+    void operation
+      .then(loadUsers)
+      .then(() => {
+        if (isSuspended) {
+          suspendUserGames(userId);
+          toast.danger('User suspended and their builds were hidden.');
+        } else {
+          toast.success('User account restored successfully.');
+        }
+      })
+      .catch((error) => toast.danger(error instanceof Error ? error.message : 'Update failed'));
   };
 
   const filteredUsers = users.filter((u) => {
@@ -106,7 +132,6 @@ export const AdminUsers: React.FC = () => {
           </thead>
           <tbody>
             {filteredUsers.map((user) => {
-              // Simulated suspend status check
               const isSuspended = user.isSuspended === true;
 
               return (

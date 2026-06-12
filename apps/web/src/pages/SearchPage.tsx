@@ -1,17 +1,33 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import type { PublicUserDto } from '@vibeplay/shared';
 import { useGames } from '../hooks/useGames';
-import { useAuth } from '../hooks/useAuth';
 import { GameCard } from '../components/GameCard';
 import { Search } from 'lucide-react';
+import { api } from '../lib/api';
 
 export const SearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const { games } = useGames();
-  const { users } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'all' | 'games' | 'creators'>('all');
+  const [matchedCreators, setMatchedCreators] = useState<PublicUserDto[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    const request = query.trim() ? api.searchCreators(query) : Promise.resolve([]);
+    void request
+      .then((creators) => {
+        if (active) setMatchedCreators(creators);
+      })
+      .catch(() => {
+        if (active) setMatchedCreators([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [query]);
 
   // Perform search queries
   const matchedGames = games
@@ -23,17 +39,6 @@ export const SearchPage: React.FC = () => {
         g.shortDescription.toLowerCase().includes(term) ||
         g.category.toLowerCase().includes(term) ||
         g.tags.some((t) => t.toLowerCase().includes(term))
-      );
-    });
-
-  const matchedCreators = users
-    .filter((u) => u.role === 'creator')
-    .filter((u) => {
-      const term = query.toLowerCase();
-      return (
-        u.displayName.toLowerCase().includes(term) ||
-        u.username.toLowerCase().includes(term) ||
-        u.bio.toLowerCase().includes(term)
       );
     });
 
@@ -131,14 +136,18 @@ export const SearchPage: React.FC = () => {
                 <div style={creatorsGridStyle}>
                   {matchedCreators.map((user) => (
                     <div key={user.id} style={creatorCardStyle} className="bg-glass">
-                      <img src={user.avatar} alt={user.displayName} style={creatorAvatarStyle} />
+                      <img
+                        src={user.avatarUrl ?? ''}
+                        alt={user.displayName}
+                        style={creatorAvatarStyle}
+                      />
                       <div style={creatorInfoStyle}>
                         <Link to={`/profile/${user.username}`} style={creatorNameStyle}>
                           {user.displayName}
                         </Link>
                         <div style={creatorUsernameStyle}>@{user.username}</div>
                         <p style={creatorBioStyle}>{user.bio}</p>
-                        <div style={creatorFollowersStyle}>{user.followersCount} followers</div>
+                        <div style={creatorFollowersStyle}>Creator profile</div>
                       </div>
                       <Link
                         to={`/profile/${user.username}`}

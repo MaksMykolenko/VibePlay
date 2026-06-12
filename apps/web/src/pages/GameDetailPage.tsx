@@ -21,7 +21,8 @@ import {
 export const GameDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { currentUser } = useAuth();
-  const { games, toggleLikeGame, toggleFavoriteGame, submitReport } = useGames();
+  const { games, isLoading, library, toggleLikeGame, toggleFavoriteGame, submitReport } =
+    useGames();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'info' | 'screenshots' | 'changelog'>('info');
@@ -29,6 +30,10 @@ export const GameDetailPage: React.FC = () => {
 
   // Locate the game
   const game = games.find((g) => g.slug === slug);
+
+  if (isLoading && !game) {
+    return <div style={notFoundContainerStyle}>Loading game...</div>;
+  }
 
   if (!game) {
     return (
@@ -64,20 +69,8 @@ export const GameDetailPage: React.FC = () => {
     );
   }
 
-  // Better favorite check from context directly
-  const hasLiked = currentUser
-    ? localStorage.getItem(`vibeplay_lib_${currentUser.id}`)
-      ? JSON.parse(localStorage.getItem(`vibeplay_lib_${currentUser.id}`)!).likes.includes(game.id)
-      : false
-    : false;
-
-  const hasFavorited = currentUser
-    ? localStorage.getItem(`vibeplay_lib_${currentUser.id}`)
-      ? JSON.parse(localStorage.getItem(`vibeplay_lib_${currentUser.id}`)!).favorites.includes(
-          game.id,
-        )
-      : false
-    : false;
+  const hasLiked = currentUser ? library.likes.includes(game.id) : false;
+  const hasFavorited = currentUser ? library.favorites.includes(game.id) : false;
 
   const handleLike = () => {
     if (!currentUser) {
@@ -227,8 +220,11 @@ export const GameDetailPage: React.FC = () => {
                 <img src={game.creatorAvatar} alt={game.creatorName} style={creatorAvatarStyle} />
                 <span style={{ fontSize: '0.95rem' }}>
                   by{' '}
-                  <Link to={`/profile/${game.creatorName}`} style={creatorLinkStyle}>
-                    @{game.creatorName}
+                  <Link
+                    to={`/profile/${game.creatorUsername ?? game.creatorName}`}
+                    style={creatorLinkStyle}
+                  >
+                    @{game.creatorUsername ?? game.creatorName}
                   </Link>
                 </span>
               </div>

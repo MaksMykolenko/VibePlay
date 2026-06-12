@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { Game } from '../../types';
 import { toast } from '../../components/toastEvents';
 import { Check, X, Cpu, Eye } from 'lucide-react';
+import { api } from '../../lib/api';
+import { IS_DEMO } from '../../lib/appMode';
 
 export const AdminModeration: React.FC = () => {
   const { currentUser } = useAuth();
@@ -52,6 +54,24 @@ export const AdminModeration: React.FC = () => {
     toast.danger(`Build "${selectedGame.title}" was rejected.`);
     setShowRejectModal(false);
     setSearchParams({});
+  };
+
+  const handlePreview = () => {
+    if (!selectedGame) return;
+    if (IS_DEMO) {
+      window.open(`/game/${selectedGame.slug}`, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    if (!selectedGame.moderationVersionId) {
+      toast.danger('The moderation version is unavailable.');
+      return;
+    }
+    void api
+      .adminPreviewUrl(selectedGame.moderationVersionId)
+      .then((url) => window.open(url, '_blank', 'noopener,noreferrer'))
+      .catch((error) =>
+        toast.danger(error instanceof Error ? error.message : 'Could not create preview URL'),
+      );
   };
 
   return (
@@ -175,40 +195,33 @@ export const AdminModeration: React.FC = () => {
 
               <hr style={hrStyle} />
 
-              {/* Security Diagnostics scan logs */}
+              {/* Worker validation report */}
               <div style={scansSectionStyle}>
-                <h4 style={sectionHeadingStyle}>Simulated Sandbox Scan Diagnostic</h4>
+                <h4 style={sectionHeadingStyle}>Worker Validation Report</h4>
                 <div style={logsBoxStyle}>
-                  <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Sandbox Checksum
-                    Verification: hash matches original bundle.
-                  </div>
-                  <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Entrypoint Validation:
-                    index.html found at root level.
-                  </div>
-                  <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Static Malware Scan: 0
-                    files flagged.
-                  </div>
-                  <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> Server Call Prevention:
-                    no active outbound API requests detected.
-                  </div>
-                  <div style={logLineStyle}>
-                    <span style={{ color: 'var(--success)' }}>[PASS]</span> WebGL Context
-                    initialization checks complete.
-                  </div>
-                  <div
-                    style={{
-                      ...logLineStyle,
-                      fontWeight: 600,
-                      color: 'var(--success)',
-                      marginTop: '6px',
-                    }}
-                  >
-                    &gt; DIAGNOSTICS CODE SCANNER STATUS: SECURE FOR IFRAME SANDBOX RUN
-                  </div>
+                  {selectedGame.validationReport ? (
+                    <>
+                      {selectedGame.validationReport.checks.map((check) => (
+                        <div key={check.name} style={logLineStyle}>
+                          <span style={{ color: check.ok ? 'var(--success)' : 'var(--danger)' }}>
+                            [{check.ok ? 'PASS' : 'FAIL'}]
+                          </span>{' '}
+                          {check.name}
+                          {check.detail ? `: ${check.detail}` : ''}
+                        </div>
+                      ))}
+                      <div style={{ ...logLineStyle, marginTop: '6px', fontWeight: 600 }}>
+                        Malware scanner: {selectedGame.validationReport.scanner.engine} /{' '}
+                        {selectedGame.validationReport.scanner.result}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={logLineStyle}>
+                      {IS_DEMO
+                        ? 'Demo mode has no server-generated validation report.'
+                        : 'No validation report was returned for this version.'}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -219,8 +232,8 @@ export const AdminModeration: React.FC = () => {
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>ZIP Name: {selectedGame.fileName || 'robo-arena-v1.zip'}</div>
-                    <div>ZIP Size: {selectedGame.fileSize || '18.3 MB'}</div>
+                    <div>ZIP Name: {selectedGame.fileName || 'Not retained in this response'}</div>
+                    <div>ZIP Size: {selectedGame.fileSize || 'Unknown'}</div>
                     <div>Build Version: v{selectedGame.version}</div>
                   </div>
                 </div>
@@ -264,15 +277,15 @@ export const AdminModeration: React.FC = () => {
 
               {/* Actions Preview link */}
               <div style={{ marginTop: '1rem' }}>
-                <Link
-                  to={`/game/${selectedGame.slug}`}
-                  target="_blank"
+                <button
+                  type="button"
+                  onClick={handlePreview}
                   className="btn btn-secondary btn-sm"
                   style={{ gap: '6px' }}
                 >
                   <Eye size={14} />
-                  <span>Launch Safe Preview Player</span>
-                </Link>
+                  <span>{IS_DEMO ? 'Open Demo Detail' : 'Launch Moderation Preview'}</span>
+                </button>
               </div>
             </div>
           ) : (
