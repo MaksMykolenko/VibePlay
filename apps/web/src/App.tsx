@@ -33,6 +33,17 @@ import { PublishGame } from './pages/Creator/PublishGame';
 import { CreatorAnalytics } from './pages/Creator/Analytics';
 import { EditGame } from './pages/Creator/EditGame';
 
+// Legal & policy pages (beta drafts)
+import {
+  CommunityGuidelinesPage,
+  ContactPage,
+  ContentGuidelinesPage,
+  CopyrightPage,
+  PrivacyPage,
+  ReportAbusePage,
+  TermsPage,
+} from './pages/legal/LegalPages';
+
 // Admin Pages
 import { AdminDashboard } from './pages/Admin/Dashboard';
 import { AdminModeration } from './pages/Admin/Moderation';
@@ -81,6 +92,15 @@ function App() {
                 <Route path="recently-played" element={<LibraryPage />} />
                 <Route path="search" element={<SearchPage />} />
                 <Route path="notifications" element={<NotificationsPage />} />
+
+                {/* Legal & policy (beta drafts) */}
+                <Route path="terms" element={<TermsPage />} />
+                <Route path="privacy" element={<PrivacyPage />} />
+                <Route path="community-guidelines" element={<CommunityGuidelinesPage />} />
+                <Route path="content-guidelines" element={<ContentGuidelinesPage />} />
+                <Route path="copyright" element={<CopyrightPage />} />
+                <Route path="report-abuse" element={<ReportAbusePage />} />
+                <Route path="contact" element={<ContactPage />} />
 
                 {/* Creator Studio Routes */}
                 <Route path="creator" element={<CreatorOverview />} />

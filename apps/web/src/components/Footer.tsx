@@ -84,28 +84,34 @@ export const Footer: React.FC = () => {
             <Link to="/creator/publish" className="footer-link" style={footerLinkStyle}>
               Publish Game
             </Link>
-            <a href="#guidelines" className="footer-link" style={footerLinkStyle}>
+            <Link to="/content-guidelines" className="footer-link" style={footerLinkStyle}>
               Submission Rules
-            </a>
-            <a href="#sandbox" className="footer-link" style={footerLinkStyle}>
-              Secure Sandbox API
-            </a>
+            </Link>
+            <Link to="/community-guidelines" className="footer-link" style={footerLinkStyle}>
+              Community Guidelines
+            </Link>
           </div>
 
           <div style={linkColStyle}>
             <h4 style={colTitleStyle}>Legal</h4>
-            <a href="#terms" className="footer-link" style={footerLinkStyle}>
+            <Link to="/terms" className="footer-link" style={footerLinkStyle}>
               Terms of Service
-            </a>
-            <a href="#privacy" className="footer-link" style={footerLinkStyle}>
+            </Link>
+            <Link to="/privacy" className="footer-link" style={footerLinkStyle}>
               Privacy Policy
-            </a>
-            <a href="#content-guidelines" className="footer-link" style={footerLinkStyle}>
+            </Link>
+            <Link to="/content-guidelines" className="footer-link" style={footerLinkStyle}>
               Content Guidelines
-            </a>
-            <a href="#contact" className="footer-link" style={footerLinkStyle}>
+            </Link>
+            <Link to="/copyright" className="footer-link" style={footerLinkStyle}>
+              Copyright & Takedown
+            </Link>
+            <Link to="/report-abuse" className="footer-link" style={footerLinkStyle}>
+              Report Abuse
+            </Link>
+            <Link to="/contact" className="footer-link" style={footerLinkStyle}>
               Contact Us
-            </a>
+            </Link>
           </div>
         </div>
       </div>
