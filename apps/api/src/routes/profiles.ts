@@ -2,12 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import {
   ApiError,
   errors,
+  notificationPrefsSchema,
   searchQuerySchema,
   updateProfileSchema,
   usernameSchema,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { requireActiveUser } from '../lib/guards.js';
+import { rlPolicy } from '../lib/rateLimit.js';
 import { toCurrentUser, toGameListItem, toPublicUser } from '../lib/serializers.js';
 import { parse } from '../lib/validate.js';
 
@@ -93,30 +95,77 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
 
   // Account deletion request (spec §36): recorded for admins, processed manually
   // during the beta. Documented in /privacy.
-  app.post('/profile/delete-request', async (req) => {
+  app.post(
+    '/profile/delete-request',
+    { config: { rateLimit: rlPolicy('accountDeletion') } },
+    async (req) => {
+      const user = requireActiveUser(req);
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'account.deletion_requested',
+        targetType: 'USER',
+        targetId: user.id,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' } });
+      await prisma.notification.createMany({
+        data: admins.map((a) => ({
+          userId: a.id,
+          type: 'PLATFORM' as const,
+          title: 'Account deletion request',
+          body: `User @${user.username} (${user.email}) requested account deletion.`,
+          metadata: { userId: user.id },
+        })),
+      });
+      return {
+        ok: true,
+        message:
+          'Deletion request recorded. An administrator will process it within 30 days; you will receive a confirmation email.',
+      };
+    },
+  );
+
+  // Data export request (spec §36): manual during the beta, like deletion.
+  app.post(
+    '/profile/export-request',
+    { config: { rateLimit: rlPolicy('dataExport') } },
+    async (req) => {
+      const user = requireActiveUser(req);
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'account.export_requested',
+        targetType: 'USER',
+        targetId: user.id,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' } });
+      await prisma.notification.createMany({
+        data: admins.map((a) => ({
+          userId: a.id,
+          type: 'PLATFORM' as const,
+          title: 'Data export request',
+          body: `User @${user.username} (${user.email}) requested a data export.`,
+          metadata: { userId: user.id },
+        })),
+      });
+      return {
+        ok: true,
+        message:
+          'Export request recorded. The export will be delivered to your verified email within 30 days.',
+      };
+    },
+  );
+
+  // Persisted notification preferences (spec §36).
+  app.put('/profile/notification-preferences', async (req) => {
     const user = requireActiveUser(req);
-    await audit(prisma, {
-      actorId: user.id,
-      action: 'account.deletion_requested',
-      targetType: 'USER',
-      targetId: user.id,
-      req,
-      secret: env.SESSION_SECRET,
+    const prefs = parse(notificationPrefsSchema, req.body);
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { notificationPrefs: prefs },
     });
-    const admins = await prisma.user.findMany({ where: { role: 'ADMIN', status: 'ACTIVE' } });
-    await prisma.notification.createMany({
-      data: admins.map((a) => ({
-        userId: a.id,
-        type: 'PLATFORM' as const,
-        title: 'Account deletion request',
-        body: `User @${user.username} (${user.email}) requested account deletion.`,
-        metadata: { userId: user.id },
-      })),
-    });
-    return {
-      ok: true,
-      message:
-        'Deletion request recorded. An administrator will process it within 30 days; you will receive a confirmation email.',
-    };
+    return { user: toCurrentUser(updated) };
   });
 }

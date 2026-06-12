@@ -34,13 +34,25 @@ export function toPublicUser(u: User): PublicUserDto {
   };
 }
 
+const DEFAULT_NOTIFICATION_PREFS = {
+  moderationUpdates: true,
+  social: true,
+  platformNews: false,
+} as const;
+
 export function toCurrentUser(u: User): CurrentUserDto {
+  const raw = (u.notificationPrefs ?? {}) as Partial<typeof DEFAULT_NOTIFICATION_PREFS>;
   return {
     ...toPublicUser(u),
     email: u.email,
     status: u.status,
     emailVerified: u.emailVerifiedAt != null,
     lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+    notificationPrefs: {
+      moderationUpdates: raw.moderationUpdates ?? DEFAULT_NOTIFICATION_PREFS.moderationUpdates,
+      social: raw.social ?? DEFAULT_NOTIFICATION_PREFS.social,
+      platformNews: raw.platformNews ?? DEFAULT_NOTIFICATION_PREFS.platformNews,
+    },
   };
 }
 

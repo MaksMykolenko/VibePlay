@@ -189,6 +189,24 @@ export function createHttpClient(): ApiClient {
       });
       return r.message;
     },
+    async requestDataExport() {
+      const r = await request<{ message: string }>('/profile/export-request', {
+        method: 'POST',
+        body: {},
+      });
+      return r.message;
+    },
+    async updateNotificationPrefs(prefs) {
+      const r = await request<{ user: CurrentUserDto }>('/profile/notification-preferences', {
+        method: 'PUT',
+        body: prefs,
+      });
+      return r.user;
+    },
+
+    async submitFeedback(input) {
+      await request('/feedback', { method: 'POST', body: input });
+    },
 
     // ----- catalog -----
     async listGames(params: GamesListParams) {

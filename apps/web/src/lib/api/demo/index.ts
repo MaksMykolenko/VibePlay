@@ -74,6 +74,7 @@ function toCurrentUser(u: User): CurrentUserDto {
     status: u.isSuspended ? 'SUSPENDED' : 'ACTIVE',
     emailVerified: true,
     lastLoginAt: null,
+    notificationPrefs: { moderationUpdates: true, social: true, platformNews: false },
   };
 }
 
@@ -321,6 +322,16 @@ export function createDemoClient(): ApiClient {
     },
     async requestAccountDeletion() {
       return 'Demo build: account data lives only in your browser. Clear site data to remove it.';
+    },
+    async submitFeedback() {
+      // Demo build: nowhere to send feedback; stored nowhere by design.
+    },
+    async requestDataExport() {
+      return 'Demo build: data lives only in this browser, so there is nothing to export server-side.';
+    },
+    async updateNotificationPrefs() {
+      const me = requireUser();
+      return toCurrentUser(me);
     },
 
     // ----- catalog -----

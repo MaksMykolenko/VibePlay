@@ -25,11 +25,18 @@ export interface PublicUserDto {
 }
 
 /** The authenticated user's own view. */
+export interface NotificationPrefsDto {
+  moderationUpdates: boolean;
+  social: boolean;
+  platformNews: boolean;
+}
+
 export interface CurrentUserDto extends PublicUserDto {
   email: string;
   status: UserStatus;
   emailVerified: boolean;
   lastLoginAt: string | null;
+  notificationPrefs: NotificationPrefsDto;
 }
 
 export interface SessionDto {

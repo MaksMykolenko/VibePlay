@@ -39,6 +39,8 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   lastLoginAt     DateTime?
+  /// Persisted notification preferences (validated by notificationPrefsSchema).
+  notificationPrefs Json     @default("{}")
 
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
@@ -54,6 +56,7 @@ model User {
   notifications           Notification[]
   moderationDecisions     ModerationDecision[]
   auditLogs               AuditLog[]
+  feedback                Feedback[]
 
   @@index([status])
   @@index([role])
@@ -431,4 +434,23 @@ model AuditLog {
   @@index([createdAt])
   @@index([actorId])
   @@index([action])
+}
+
+/// Beta feedback and bug reports (spec §38).
+enum FeedbackCategory {
+  FEEDBACK
+  BUG
+}
+
+model Feedback {
+  id        String           @id @default(cuid())
+  userId    String?
+  category  FeedbackCategory
+  message   String
+  page      String           @default("")
+  createdAt DateTime         @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
 }

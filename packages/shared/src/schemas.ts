@@ -264,3 +264,21 @@ export const auditLogQuerySchema = paginationSchema.extend({
   action: z.string().trim().max(64).optional(),
   actorId: idSchema.optional(),
 });
+
+/** Per-user notification preferences (Settings → Notifications). */
+export const notificationPrefsSchema = z
+  .object({
+    moderationUpdates: z.boolean(),
+    social: z.boolean(),
+    platformNews: z.boolean(),
+  })
+  .strict();
+
+/** Beta feedback / bug report (spec §38). */
+export const createFeedbackSchema = z
+  .object({
+    category: z.enum(['FEEDBACK', 'BUG']),
+    message: z.string().trim().min(5).max(4000),
+    page: z.string().trim().max(300).default(''),
+  })
+  .strict();

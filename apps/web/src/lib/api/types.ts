@@ -1,5 +1,6 @@
 import type {
   AuditLogEntryDto,
+  NotificationPrefsDto,
   CommentDto,
   CurrentUserDto,
   GameDetailDto,
@@ -143,6 +144,8 @@ export interface ApiClient {
     avatarUrl?: string | null;
   }): Promise<CurrentUserDto>;
   requestAccountDeletion(): Promise<string>;
+  requestDataExport(): Promise<string>;
+  updateNotificationPrefs(prefs: NotificationPrefsDto): Promise<CurrentUserDto>;
 
   // catalog
   listGames(params: GamesListParams): Promise<PaginatedDto<GameListItemDto>>;
@@ -165,6 +168,13 @@ export interface ApiClient {
 
   // reports
   createReport(input: CreateReportInput): Promise<void>;
+
+  // beta feedback
+  submitFeedback(input: {
+    category: 'FEEDBACK' | 'BUG';
+    message: string;
+    page?: string;
+  }): Promise<void>;
 
   // notifications
   listNotifications(): Promise<NotificationDto[]>;

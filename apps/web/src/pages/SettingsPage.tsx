@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { SessionDto } from '@vibeplay/shared';
 import { useAuth } from '../hooks/useAuth';
 import { User, Shield, Key, Bell, Eye, EyeOff, Palette, Sun, Moon, Monitor } from 'lucide-react';
 import { toast } from '../components/toastEvents';
@@ -8,7 +9,7 @@ import { api } from '../lib/api';
 import { errorMessage } from '../lib/api/errors';
 
 export const SettingsPage: React.FC = () => {
-  const { currentUser, updateProfile } = useAuth();
+  const { currentUser, account, refresh, updateProfile, logoutAll } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -22,18 +23,38 @@ export const SettingsPage: React.FC = () => {
   const [bio, setBio] = useState(currentUser?.bio || '');
   const [avatar, setAvatar] = useState(currentUser?.avatar || '');
 
-  const [email, setEmail] = useState(currentUser?.email || '');
+  const [email] = useState(currentUser?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
 
+  // Sessions (Account tab)
+  const [sessions, setSessions] = useState<SessionDto[]>([]);
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
+  const [dangerBusy, setDangerBusy] = useState(false);
+
   // Checks
-  const [notifApprovals, setNotifApprovals] = useState(true);
-  const [notifComments, setNotifComments] = useState(true);
-  const [notifPlatform, setNotifPlatform] = useState(false);
+  const [notifApprovals, setNotifApprovals] = useState(
+    account?.notificationPrefs.moderationUpdates ?? true,
+  );
+  const [notifComments, setNotifComments] = useState(account?.notificationPrefs.social ?? true);
+  const [notifPlatform, setNotifPlatform] = useState(
+    account?.notificationPrefs.platformNews ?? false,
+  );
   const [privacySearch, setPrivacySearch] = useState(true);
   const [privacyActivity, setPrivacyActivity] = useState(true);
+
+  useEffect(() => {
+    if (activeTab !== 'account' || sessionsLoaded || !currentUser) return;
+    api
+      .listSessions()
+      .then((rows) => {
+        setSessions(rows);
+        setSessionsLoaded(true);
+      })
+      .catch((error) => toast.danger(errorMessage(error)));
+  }, [activeTab, currentUser, sessionsLoaded]);
 
   if (!currentUser) {
     return (
@@ -64,6 +85,53 @@ export const SettingsPage: React.FC = () => {
     toast.warning('Email changes are not available in the private beta.');
   };
 
+  const handleRevokeSession = async (id: string) => {
+    try {
+      await api.revokeSession(id);
+      setSessions((rows) => rows.filter((row) => row.id !== id));
+      toast.success('Session revoked.');
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    if (!window.confirm('Log out of ALL sessions, including this one?')) return;
+    await logoutAll();
+    navigate('/login');
+  };
+
+  const handleDeletionRequest = async () => {
+    if (
+      !window.confirm(
+        'Request deletion of your VibePlay account? An administrator will process the request within 30 days. This cannot be undone once processed.',
+      )
+    ) {
+      return;
+    }
+    setDangerBusy(true);
+    try {
+      const message = await api.requestAccountDeletion();
+      toast.success(message);
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setDangerBusy(false);
+    }
+  };
+
+  const handleExportRequest = async () => {
+    setDangerBusy(true);
+    try {
+      const message = await api.requestDataExport();
+      toast.success(message);
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setDangerBusy(false);
+    }
+  };
+
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
@@ -85,9 +153,19 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
-  const handleNotificationsSave = (e: React.FormEvent) => {
+  const handleNotificationsSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.warning('Notification preferences are not persisted in the private beta.');
+    try {
+      await api.updateNotificationPrefs({
+        moderationUpdates: notifApprovals,
+        social: notifComments,
+        platformNews: notifPlatform,
+      });
+      await refresh();
+      toast.success('Notification preferences saved.');
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    }
   };
 
   const handlePrivacySave = (e: React.FormEvent) => {
@@ -247,20 +325,86 @@ export const SettingsPage: React.FC = () => {
 
               <div className="form-group">
                 <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="form-input"
-                  disabled
-                  required
-                />
+                <input type="email" value={email} className="form-input" disabled required />
                 <span style={helperStyle}>Contact support to change the registered email.</span>
               </div>
 
               <button type="submit" className="btn btn-primary">
                 Save Account Settings
               </button>
+
+              {/* Active sessions */}
+              <h3 style={sectionTitleStyle}>Active sessions</h3>
+              <p style={tabDescStyle}>
+                Sessions where this account is currently logged in. Revoke anything you don't
+                recognize.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {sessions.map((session) => (
+                  <div key={session.id} style={sessionRowStyle}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                        {session.current ? 'This device' : (session.userAgent ?? 'Unknown device')}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        Started {new Date(session.createdAt).toLocaleString()} · expires{' '}
+                        {new Date(session.expiresAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    {!session.current && (
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={dangerGhostBtnStyle}
+                        onClick={() => void handleRevokeSession(session.id)}
+                      >
+                        Revoke
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {sessionsLoaded && sessions.length === 0 && (
+                  <p style={helperStyle}>No active sessions found.</p>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn"
+                style={{ ...dangerGhostBtnStyle, marginTop: '0.75rem' }}
+                onClick={() => void handleLogoutAll()}
+              >
+                Log out of all sessions
+              </button>
+
+              {/* Danger zone */}
+              <h3 style={sectionTitleStyle}>Your data</h3>
+              <p style={tabDescStyle}>
+                Export or delete your account data as described in the{' '}
+                <a href="/privacy" style={{ color: 'var(--secondary)' }}>
+                  Privacy Policy
+                </a>
+                . Both actions are processed by an administrator within 30 days.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={dangerBusy}
+                  style={dangerGhostBtnStyle}
+                  onClick={() => void handleExportRequest()}
+                >
+                  Request data export
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={dangerBusy}
+                  style={dangerSolidBtnStyle}
+                  onClick={() => void handleDeletionRequest()}
+                >
+                  Request account deletion
+                </button>
+              </div>
             </form>
           )}
 
@@ -676,6 +820,34 @@ const checkboxStackStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1rem',
+};
+
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  margin: '2rem 0 0.25rem',
+};
+
+const sessionRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  padding: '10px 14px',
+  borderRadius: '10px',
+  border: '1px solid var(--border-color)',
+  backgroundColor: 'var(--surface-1)',
+};
+
+const dangerGhostBtnStyle: React.CSSProperties = {
+  border: '1px solid rgba(255,93,115,0.4)',
+  color: 'var(--danger)',
+  background: 'transparent',
+};
+
+const dangerSolidBtnStyle: React.CSSProperties = {
+  border: '1px solid var(--danger)',
+  color: '#fff',
+  background: 'var(--danger)',
 };
 
 const chkLabelStyle: React.CSSProperties = {
