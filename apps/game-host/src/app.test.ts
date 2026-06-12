@@ -95,7 +95,7 @@ describe('game host', () => {
       (
         await ready.inject({
           method: 'GET',
-          url: `/preview/version-1/index.html?t=${token}`,
+          url: `/preview/version-1/${token}/index.html`,
         })
       ).statusCode,
     ).toBe(200);
@@ -110,7 +110,7 @@ describe('game host', () => {
       (
         await rejected.inject({
           method: 'GET',
-          url: `/preview/version-1/index.html?t=${token}`,
+          url: `/preview/version-1/${token}/index.html`,
         })
       ).statusCode,
     ).toBe(404);
@@ -128,5 +128,23 @@ describe('game host', () => {
         env.PREVIEW_URL_SECRET,
       ),
     ).toBe(false);
+  });
+
+  it('keeps the preview token in relative asset paths', async () => {
+    const storage = createStorage();
+    const token = makePreviewToken('version-1', env.PREVIEW_URL_SECRET);
+    const app = await buildGameHost({ env, prisma: createPrisma(), storage });
+
+    const asset = await app.inject({
+      method: 'GET',
+      url: `/preview/version-1/${token}/assets/game.js`,
+    });
+
+    expect(asset.statusCode).toBe(200);
+    expect(storage.getObjectStream).toHaveBeenCalledWith(
+      'published',
+      'games/game-1/version-1/assets/game.js',
+    );
+    await app.close();
   });
 });

@@ -181,12 +181,10 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
 
   // --- admin preview (short-lived HMAC token, no cookies on this origin) ----
   app.get<{
-    Params: { versionId: string; '*': string };
-    Querystring: { t?: string };
-  }>('/preview/:versionId/*', async (req, reply) => {
-    const { versionId } = req.params;
+    Params: { versionId: string; token: string; '*': string };
+  }>('/preview/:versionId/:token/*', async (req, reply) => {
+    const { versionId, token } = req.params;
     const rel = req.params['*'] || 'index.html';
-    const token = req.query.t ?? '';
     if (!verifyPreviewToken(versionId, token, env.PREVIEW_URL_SECRET)) {
       setSecurityHeaders(reply, false);
       await reply.status(403).send({ error: 'invalid or expired preview token' });
