@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import type { Comment } from '../types';
 import { ThumbsUp, Trash2, AlertOctagon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from './Toast';
 
 interface CommentsSectionProps {
@@ -120,7 +121,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
       ) : (
         <div style={loginCTAStyle}>
           <p>Want to join the conversation?</p>
-          <a href="/login" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Log in to comment</a>
+          <Link to="/login" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>Log in to comment</Link>
         </div>
       )}
 

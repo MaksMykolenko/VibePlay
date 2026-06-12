@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
 import { GamesProvider } from './hooks/useGames';
 
@@ -36,7 +36,7 @@ import { ThemeProvider } from './hooks/useTheme';
 
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ThemeProvider>
         <AuthProvider>
           <GamesProvider>
@@ -91,7 +91,7 @@ function App() {
         </GamesProvider>
       </AuthProvider>
     </ThemeProvider>
-  </BrowserRouter>
+  </HashRouter>
 );
 }
 
