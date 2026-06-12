@@ -1,3 +1,4 @@
+import { OnboardingCard } from '../../components/OnboardingCard';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -32,6 +33,16 @@ export const CreatorOverview: React.FC = () => {
 
   return (
     <div style={containerStyle} className="animate-fade">
+      <OnboardingCard
+        storageKey="creator_v1"
+        title="Publishing on VibePlay — how it works"
+        steps={[
+          'Create a game draft with title, description and cover art.',
+          'Upload your build as a ZIP with index.html at the root (static files only — limits are shown on the upload screen).',
+          'The pipeline validates the archive and scans it for malware; you see the real status at every step.',
+          'A moderator reviews the build. Approved versions go live; rejections always include a reason so you can fix and re-upload.',
+        ]}
+      />
       {/* Welcome Message */}
       <div style={welcomeStyle}>
         <h1>Welcome, {currentUser.displayName}</h1>

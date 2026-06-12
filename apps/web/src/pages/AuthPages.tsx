@@ -147,7 +147,7 @@ export const LoginPage: React.FC = () => {
           </Link>
         </div>
 
-        {demoRolesEnabled && (
+        {import.meta.env.APP_MODE === 'demo' && demoRolesEnabled && (
           <div style={demoBoxStyle}>
             <div style={demoTitleStyle}>Demo accounts (demo build only)</div>
             <p style={demoDescStyle}>

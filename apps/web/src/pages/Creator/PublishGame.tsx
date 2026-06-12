@@ -5,6 +5,7 @@ import { useGames } from '../../hooks/useGames';
 import { toast } from '../../components/toastEvents';
 import { api } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
+import { versionStatusLabel } from '../../lib/versionStatus';
 import {
   FileCode,
   UploadCloud,
@@ -240,7 +241,7 @@ export const PublishGame: React.FC = () => {
         setUploadProgress(100);
         setUploadLog((lines) => [
           ...lines,
-          `Worker status: ${status.versionStatus}. Validation continues asynchronously.`,
+          `Status: ${versionStatusLabel(status.versionStatus)}. Validation continues asynchronously.`,
         ]);
       }
 

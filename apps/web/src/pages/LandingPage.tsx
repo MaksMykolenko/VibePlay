@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useGames } from '../hooks/useGames';
 import { useAuth } from '../hooks/useAuth';
 import { GameCarousel } from '../components/GameCarousel';
+import { OnboardingCard } from '../components/OnboardingCard';
 import { UploadCloud } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 
@@ -88,6 +89,18 @@ export const LandingPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {currentUser && (
+        <OnboardingCard
+          storageKey="player_v1"
+          title="Welcome to the VibePlay beta"
+          steps={[
+            'Browse the catalog and hit Play — games run instantly in a sandboxed window, nothing installs.',
+            'Like and favorite games to build your library; recently played is tracked automatically.',
+            'See something broken or suspicious? Use Report on the game page or the Beta feedback button in the sidebar.',
+          ]}
+        />
+      )}
 
       {/* Horizontal Carousels */}
       <GameCarousel

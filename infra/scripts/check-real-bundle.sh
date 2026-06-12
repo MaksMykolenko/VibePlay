@@ -18,10 +18,15 @@ patterns=(
   'creator@vibeplay.demo'
   'admin@vibeplay.demo'
   'DEMO_PASSWORD'
+  'demo123'
+  'Quick Role Switch'
+  'Demo Accounts'
+  'Demo accounts'
   'Frontend Demo'
   'vibeplay_users'
   'vibeplay_demo_session'
   'NOT_AVAILABLE_IN_DEMO'
+  'Securing browser sandbox environment'
 )
 
 fail=0

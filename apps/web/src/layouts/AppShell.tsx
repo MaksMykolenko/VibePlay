@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
 import { ToastContainer } from '../components/Toast';
 import { toast } from '../components/toastEvents';
+import { FeedbackModal } from '../components/FeedbackModal';
 import {
   Menu,
   X,
@@ -635,105 +636,116 @@ export const AppShell: React.FC = () => {
 
     return (
       <div className="sidebar-bottom">
-        {/* Quick Role Switch in Mobile Drawer */}
-        {isMobileOrDrawer && currentUser && (
-          <div
-            style={{
-              padding: '12px 14px',
-              margin: '4px 8px 12px',
-              borderRadius: '12px',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
+        {/* Quick Role Switch in Mobile Drawer — demo builds only; the
+            APP_MODE check is statically folded so this block (and its strings)
+            never reaches the real bundle. */}
+        {import.meta.env.APP_MODE === 'demo' &&
+          demoRolesEnabled &&
+          isMobileOrDrawer &&
+          currentUser && (
             <div
               style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: 'var(--text-secondary)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                marginBottom: '8px',
+                padding: '12px 14px',
+                margin: '4px 8px 12px',
+                borderRadius: '12px',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--border-color)',
               }}
             >
-              Quick Role Switch
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: 'var(--text-secondary)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: '8px',
+                }}
+              >
+                Quick Role Switch
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                <button
+                  onClick={() => {
+                    handleDemoSwitch('player');
+                    setMobileDrawerOpen(false);
+                  }}
+                  style={{
+                    padding: '6px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color:
+                      currentUser?.role === 'player'
+                        ? 'var(--text-primary)'
+                        : 'var(--text-secondary)',
+                    backgroundColor:
+                      currentUser?.role === 'player' ? 'var(--primary)' : 'transparent',
+                    border:
+                      '1px solid ' +
+                      (currentUser?.role === 'player' ? 'var(--primary)' : 'var(--border-color)'),
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  Player
+                </button>
+                <button
+                  onClick={() => {
+                    handleDemoSwitch('creator');
+                    setMobileDrawerOpen(false);
+                  }}
+                  style={{
+                    padding: '6px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color:
+                      currentUser?.role === 'creator'
+                        ? 'var(--text-primary)'
+                        : 'var(--text-secondary)',
+                    backgroundColor:
+                      currentUser?.role === 'creator' ? 'var(--primary)' : 'transparent',
+                    border:
+                      '1px solid ' +
+                      (currentUser?.role === 'creator' ? 'var(--primary)' : 'var(--border-color)'),
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  Creator
+                </button>
+                <button
+                  onClick={() => {
+                    handleDemoSwitch('admin');
+                    setMobileDrawerOpen(false);
+                  }}
+                  style={{
+                    padding: '6px 4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color:
+                      currentUser?.role === 'admin'
+                        ? 'var(--text-primary)'
+                        : 'var(--text-secondary)',
+                    backgroundColor:
+                      currentUser?.role === 'admin' ? 'var(--primary)' : 'transparent',
+                    border:
+                      '1px solid ' +
+                      (currentUser?.role === 'admin' ? 'var(--primary)' : 'var(--border-color)'),
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                  }}
+                >
+                  Admin
+                </button>
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-              <button
-                onClick={() => {
-                  handleDemoSwitch('player');
-                  setMobileDrawerOpen(false);
-                }}
-                style={{
-                  padding: '6px 4px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color:
-                    currentUser?.role === 'player'
-                      ? 'var(--text-primary)'
-                      : 'var(--text-secondary)',
-                  backgroundColor:
-                    currentUser?.role === 'player' ? 'var(--primary)' : 'transparent',
-                  border:
-                    '1px solid ' +
-                    (currentUser?.role === 'player' ? 'var(--primary)' : 'var(--border-color)'),
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                }}
-              >
-                Player
-              </button>
-              <button
-                onClick={() => {
-                  handleDemoSwitch('creator');
-                  setMobileDrawerOpen(false);
-                }}
-                style={{
-                  padding: '6px 4px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color:
-                    currentUser?.role === 'creator'
-                      ? 'var(--text-primary)'
-                      : 'var(--text-secondary)',
-                  backgroundColor:
-                    currentUser?.role === 'creator' ? 'var(--primary)' : 'transparent',
-                  border:
-                    '1px solid ' +
-                    (currentUser?.role === 'creator' ? 'var(--primary)' : 'var(--border-color)'),
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                }}
-              >
-                Creator
-              </button>
-              <button
-                onClick={() => {
-                  handleDemoSwitch('admin');
-                  setMobileDrawerOpen(false);
-                }}
-                style={{
-                  padding: '6px 4px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  color:
-                    currentUser?.role === 'admin' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  backgroundColor: currentUser?.role === 'admin' ? 'var(--primary)' : 'transparent',
-                  border:
-                    '1px solid ' +
-                    (currentUser?.role === 'admin' ? 'var(--primary)' : 'var(--border-color)'),
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                }}
-              >
-                Admin
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+
+        {/* Beta feedback (spec §38) */}
+        {currentUser && <FeedbackModal asSidebarItem />}
 
         {/* Notifications */}
         <NavLink
@@ -1201,6 +1213,9 @@ export const AppShell: React.FC = () => {
             <span style={logoTextStyle} className="mobile-header__wordmark">
               Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
             </span>
+            <span style={betaBadgeStyle} title="VibePlay is an invite-only private beta">
+              Beta
+            </span>
           </Link>
 
           {/* Global Search (Desktop Only) */}
@@ -1240,7 +1255,7 @@ export const AppShell: React.FC = () => {
           </button>
 
           {/* Demo-build-only role switcher (spec §12): never present in the real bundle */}
-          {demoRolesEnabled && (
+          {import.meta.env.APP_MODE === 'demo' && demoRolesEnabled && (
             <div ref={demoRef} style={dropdownRelativeStyle} className="desktop-only">
               <button
                 onClick={() => setShowDemoDropdown(!showDemoDropdown)}
@@ -1644,8 +1659,8 @@ export const AppShell: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            Frontend Demo — data is not persistent. This GitHub Pages build stores everything in
-            your browser only; uploads, emails and moderation need the real VibePlay backend.
+            Frontend Demo — data is stored only in this browser. Uploads, emails and moderation need
+            the real VibePlay backend.
           </div>
         )}
 
@@ -1813,6 +1828,21 @@ const logoTextStyle: React.CSSProperties = {
   fontWeight: 700,
   color: 'var(--text-primary)',
   letterSpacing: '-0.02em',
+};
+
+// Small, quiet beta indicator (spec §38) — informative, not a warning.
+const betaBadgeStyle: React.CSSProperties = {
+  marginLeft: '6px',
+  padding: '2px 7px',
+  borderRadius: '999px',
+  fontSize: '0.62rem',
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  textTransform: 'uppercase',
+  color: 'var(--primary)',
+  border: '1px solid var(--primary)',
+  lineHeight: 1.4,
+  alignSelf: 'center',
 };
 
 const searchFormStyle: React.CSSProperties = {
