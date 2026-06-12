@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: vibeplay
+          POSTGRES_PASSWORD: vibeplay
+          POSTGRES_DB: vibeplay_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vibeplay"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Build packages
+        run: npm run build:packages
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Migrations apply on a clean database
+        run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://vibeplay:vibeplay@localhost:5432/vibeplay_test
+
+      - name: Migration drift check (schema == migrations)
+        run: |
+          cd packages/database
+          npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema prisma/schema.prisma \
+            --exit-code \
+            --shadow-database-url postgresql://vibeplay:vibeplay@localhost:5432/vibeplay_shadow || {
+              echo "::error::Prisma schema and migrations are out of sync"; exit 1; }
+        env:
+          DATABASE_URL: postgresql://vibeplay:vibeplay@localhost:5432/vibeplay_test
+
+      - name: Integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://vibeplay:vibeplay@localhost:5432/vibeplay_test
+          REDIS_URL: redis://localhost:6379
+
+      - name: Build apps
+        run: npm run build:apps
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: npm audit (production deps, high+)
+        run: npm audit --omit=dev --audit-level=high
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Forbidden patterns scan
+        run: bash infra/scripts/forbidden-scan.sh
+
+  production-bundle-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Build packages
+        run: npm run build -w @vibeplay/shared -w @vibeplay/sdk
+      - name: Build web in REAL mode
+        run: npm run build -w @vibeplay/web
+        env:
+          VITE_API_URL: https://api.example.com/api
+          VITE_GAME_ORIGIN: https://games.example.com
+          VITE_APP_MODE: real
+      - name: Real bundle must not contain demo auth artifacts
+        run: bash infra/scripts/check-real-bundle.sh apps/web/dist
+
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile: [api, worker, game-host, web]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build ${{ matrix.dockerfile }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/docker/${{ matrix.dockerfile }}.Dockerfile
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

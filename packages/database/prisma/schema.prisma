@@ -1,0 +1,434 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Users & auth
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  PLAYER
+  CREATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+  DELETED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  username        String     @unique
+  displayName     String
+  passwordHash    String
+  avatarUrl       String?
+  bio             String     @default("")
+  role            UserRole   @default(PLAYER)
+  status          UserStatus @default(ACTIVE)
+  statusReason    String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  lastLoginAt     DateTime?
+
+  sessions                Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  invitesCreated          Invite[]                 @relation("InviteCreatedBy")
+  games                   Game[]
+  likes                   Like[]
+  favorites               Favorite[]
+  playSessions            PlaySession[]
+  comments                Comment[]
+  reports                 Report[]                 @relation("ReportReporter")
+  assignedReports         Report[]                 @relation("ReportAssignee")
+  notifications           Notification[]
+  moderationDecisions     ModerationDecision[]
+  auditLogs               AuditLog[]
+
+  @@index([status])
+  @@index([role])
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  csrfHash  String
+  ipHash    String?
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  codeHash    String    @unique
+  email       String?
+  role        UserRole  @default(PLAYER)
+  expiresAt   DateTime
+  usedAt      DateTime?
+  usedById    String?
+  createdById String?
+  createdBy   User?     @relation("InviteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+}
+
+// ---------------------------------------------------------------------------
+// Games & versions
+// ---------------------------------------------------------------------------
+
+enum GameStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  HIDDEN
+  SUSPENDED
+}
+
+enum GameVersionStatus {
+  UPLOADING
+  QUARANTINED
+  VALIDATING
+  SCAN_FAILED
+  READY_FOR_REVIEW
+  APPROVED
+  REJECTED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AgeRating {
+  EVERYONE
+  TEEN
+  MATURE
+}
+
+enum AiDisclosure {
+  NONE
+  ASSISTED
+  GENERATED
+}
+
+enum FeaturedCategory {
+  HERO
+  TRENDING
+  EDITORS_CHOICE
+}
+
+model Game {
+  id                 String            @id @default(cuid())
+  slug               String            @unique
+  creatorId          String
+  creator            User              @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  title              String
+  shortDescription   String
+  description        String
+  category           String
+  ageRating          AgeRating         @default(EVERYONE)
+  status             GameStatus        @default(DRAFT)
+  tags               String[]          @default([])
+  devices            String[]          @default([])
+  controls           String[]          @default([])
+  toolsUsed          String[]          @default([])
+  multiplayer        Boolean           @default(false)
+  aiDisclosure       AiDisclosure      @default(NONE)
+  featuredCategory   FeaturedCategory?
+  coverUrl           String?
+  publishedVersionId String?           @unique
+  publishedVersion   GameVersion?      @relation("PublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  publishedAt        DateTime?
+  likesCount         Int               @default(0)
+  playsCount         Int               @default(0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  versions     GameVersion[] @relation("GameVersions")
+  screenshots  GameScreenshot[]
+  likes        Like[]
+  favorites    Favorite[]
+  playSessions PlaySession[]
+  comments     Comment[]
+
+  @@index([status, category])
+  @@index([creatorId])
+  @@index([status, publishedAt])
+  @@index([featuredCategory])
+}
+
+model GameVersion {
+  id                    String            @id @default(cuid())
+  gameId                String
+  game                  Game              @relation("GameVersions", fields: [gameId], references: [id], onDelete: Cascade)
+  version               String
+  status                GameVersionStatus @default(UPLOADING)
+  quarantineObjectKey   String?
+  publishedObjectPrefix String?
+  compressedSize        BigInt?
+  uncompressedSize      BigInt?
+  fileCount             Int?
+  entrypoint            String?
+  contentHash           String?
+  declaredSha256        String?
+  aiDisclosure          AiDisclosure      @default(NONE)
+  toolsUsed             String[]          @default([])
+  changelog             String            @default("")
+  validationReport      Json?
+  rejectReason          String?
+  submittedAt           DateTime?
+  approvedAt            DateTime?
+  rejectedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  publishedOf         Game?                @relation("PublishedVersion")
+  moderationDecisions ModerationDecision[]
+  playSessions        PlaySession[]
+  upload              Upload?
+
+  @@unique([gameId, version])
+  @@index([status, submittedAt])
+  @@index([gameId, createdAt])
+}
+
+/// Tracks a single presigned-upload lifecycle for a GameVersion (one-time completion).
+model Upload {
+  id            String    @id @default(cuid())
+  gameVersionId String    @unique
+  gameVersion   GameVersion @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
+  objectKey     String
+  declaredSize  BigInt
+  declaredSha256 String
+  fileName      String
+  completedAt   DateTime?
+  abandonedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime
+
+  @@index([expiresAt])
+}
+
+enum ModerationDecisionType {
+  APPROVE
+  REJECT
+}
+
+/// Immutable moderation decision record — never updated, never deleted.
+model ModerationDecision {
+  id            String                 @id @default(cuid())
+  gameVersionId String
+  gameVersion   GameVersion            @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
+  moderatorId   String?
+  moderator     User?                  @relation(fields: [moderatorId], references: [id], onDelete: SetNull)
+  decision      ModerationDecisionType
+  reason        String                 @default("")
+  notes         String                 @default("")
+  createdAt     DateTime               @default(now())
+
+  @@index([gameVersionId])
+}
+
+model GameScreenshot {
+  id        String @id @default(cuid())
+  gameId    String
+  game      Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  url       String
+  sortOrder Int    @default(0)
+
+  @@index([gameId, sortOrder])
+}
+
+// ---------------------------------------------------------------------------
+// Social
+// ---------------------------------------------------------------------------
+
+model Like {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, gameId])
+  @@index([gameId])
+}
+
+model Favorite {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId    String
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, gameId])
+  @@index([gameId])
+}
+
+model PlaySession {
+  id              String       @id @default(cuid())
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  gameId          String
+  game            Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  gameVersionId   String
+  gameVersion     GameVersion  @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
+  startedAt       DateTime     @default(now())
+  endedAt         DateTime?
+  durationSeconds Int?
+  clientSessionId String?
+
+  @@index([gameId, startedAt])
+  @@index([userId, startedAt])
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  gameId    String
+  game      Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  status    CommentStatus @default(VISIBLE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([gameId, status, createdAt])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Safety
+// ---------------------------------------------------------------------------
+
+enum ReportTargetType {
+  GAME
+  COMMENT
+  USER
+}
+
+enum ReportReason {
+  MALICIOUS_BEHAVIOR
+  COPYRIGHT
+  STOLEN_CONTENT
+  ADULT_CONTENT
+  HATE
+  HARASSMENT
+  SPAM
+  IMPERSONATION
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id              String           @id @default(cuid())
+  reporterId      String?
+  reporter        User?            @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  targetType      ReportTargetType
+  targetId        String
+  reason          ReportReason
+  details         String           @default("")
+  status          ReportStatus     @default(OPEN)
+  resolutionNote  String           @default("")
+  assignedAdminId String?
+  assignedAdmin   User?            @relation("ReportAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  createdAt       DateTime         @default(now())
+  resolvedAt      DateTime?
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+enum NotificationType {
+  EMAIL_VERIFIED
+  GAME_VALIDATION_FAILED
+  GAME_READY_FOR_REVIEW
+  GAME_APPROVED
+  GAME_REJECTED
+  NEW_COMMENT
+  REPORT_RESOLVED
+  ACCOUNT_SUSPENDED
+  PLATFORM
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  metadata  Json             @default("{}")
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+/// Append-only at the application level: the API exposes create + read only.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json     @default("{}")
+  ipHash     String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@index([action])
+}

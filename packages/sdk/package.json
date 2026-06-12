@@ -1,0 +1,31 @@
+{
+  "name": "@vibeplay/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./host": {
+      "types": "./dist/host.d.ts",
+      "default": "./dist/host.js"
+    },
+    "./vibeplay-sdk.js": "./dist/vibeplay-sdk.js"
+  },
+  "scripts": {
+    "build": "tsc -b && esbuild src/sdk-entry.ts --bundle --format=iife --global-name=VibePlaySDK --outfile=dist/vibeplay-sdk.js --minify",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vibeplay/shared": "*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "vitest": "^3.2.0"
+  }
+}

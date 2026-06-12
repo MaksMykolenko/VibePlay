@@ -1,0 +1,36 @@
+{
+  "name": "@vibeplay/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --exclude '**/*.integration.test.ts'",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.0",
+    "@fastify/cors": "^11.0.0",
+    "@fastify/rate-limit": "^10.2.0",
+    "@vibeplay/config": "*",
+    "@vibeplay/database": "*",
+    "@vibeplay/shared": "*",
+    "@vibeplay/storage": "*",
+    "argon2": "^0.44.0",
+    "bullmq": "^5.56.0",
+    "fastify": "^5.6.0",
+    "ioredis": "^5.6.0",
+    "nodemailer": "^7.0.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^7.0.0",
+    "embedded-postgres": "18.4.0-beta.17",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.20.0",
+    "vitest": "^3.2.0"
+  }
+}

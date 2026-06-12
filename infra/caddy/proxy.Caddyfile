@@ -1,0 +1,29 @@
+{
+	auto_https off
+	admin off
+}
+
+# Main application origin: web SPA + API under /api
+:80 {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+# Separate game origin (games.localhost:8080 in local development).
+# In production this MUST be a different registrable domain
+# (e.g. gamesusercontent.example) — see docs/GAME_SANDBOX.md.
+:8080 {
+	reverse_proxy game-host:8080
+}

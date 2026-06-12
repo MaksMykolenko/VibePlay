@@ -1,7 +1,14 @@
 {
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "packages/shared" },
+    { "path": "packages/config" },
+    { "path": "packages/database" },
+    { "path": "packages/storage" },
+    { "path": "packages/sdk" },
+    { "path": "apps/api" },
+    { "path": "apps/worker" },
+    { "path": "apps/game-host" },
+    { "path": "apps/web" }
   ]
 }
