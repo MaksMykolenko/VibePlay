@@ -369,7 +369,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
         return session;
       });
       // One origin per published version (spec §24): the iframe gets a unique
-      // {versionId}.{gameId}.<game host base> origin and never a shared one.
+      // {versionId}--{gameId}.<game host base> origin and never a shared one.
       const gameOrigin = publishedGameOrigin(
         parseGameHostBase(env.GAME_ORIGIN),
         game.id,

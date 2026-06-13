@@ -55,6 +55,7 @@ export async function buildTestApp(
 export async function resetDb(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction([
     prisma.auditLog.deleteMany(),
+    prisma.feedback.deleteMany(),
     prisma.notification.deleteMany(),
     prisma.report.deleteMany(),
     prisma.comment.deleteMany(),

@@ -230,9 +230,9 @@ describe('core MVP routes', () => {
       payload: {},
     });
     expect(launch.statusCode, launch.body).toBe(200);
-    // Per-version unique origin: {versionId}.{gameId}.<game host base>.
+    // Per-version unique origin: {versionId}--{gameId}.<game host base>.
     expect(launch.json().gameUrl).toBe(
-      `http://${version.id}.${game.id}.games.localhost:8080/index.html`,
+      `http://${version.id}--${game.id}.games.localhost:8080/index.html`,
     );
   });
 
@@ -333,5 +333,139 @@ describe('core MVP routes', () => {
     });
     expect(allowed.statusCode).toBe(200);
     expect(allowed.json().total).toBe(4);
+  });
+
+  it('persists account controls, exports only owned safe data, and manages beta feedback', async () => {
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      ...authed(playerAgent),
+    });
+    expect(me.statusCode).toBe(200);
+    expect(me.json().user.notificationPrefs).toEqual({
+      moderationUpdates: true,
+      social: true,
+      platformNews: false,
+    });
+
+    const prefs = await app.inject({
+      method: 'PUT',
+      url: '/api/profile/notification-preferences',
+      ...authed(playerAgent),
+      payload: { moderationUpdates: false, social: true, platformNews: true },
+    });
+    expect(prefs.statusCode, prefs.body).toBe(200);
+    expect(prefs.json().user.notificationPrefs).toEqual({
+      moderationUpdates: false,
+      social: true,
+      platformNews: true,
+    });
+
+    const invalidPrefs = await app.inject({
+      method: 'PUT',
+      url: '/api/profile/notification-preferences',
+      ...authed(playerAgent),
+      payload: {
+        moderationUpdates: false,
+        social: true,
+        platformNews: true,
+        userId: admin.id,
+      },
+    });
+    expect(invalidPrefs.statusCode).toBe(422);
+
+    const feedback = await app.inject({
+      method: 'POST',
+      url: '/api/feedback',
+      ...authed(playerAgent),
+      payload: {
+        category: 'BUG',
+        message: '<img src=x onerror=alert(1)> is stored as plain data, never rendered as HTML',
+        page: '/settings',
+      },
+    });
+    expect(feedback.statusCode, feedback.body).toBe(204);
+    const feedbackRow = await prisma.feedback.findFirstOrThrow({ where: { userId: player.id } });
+    expect(feedbackRow.status).toBe('OPEN');
+    expect(feedbackRow.message).toContain('<img');
+
+    const adminFeedback = await app.inject({
+      method: 'GET',
+      url: '/api/admin/feedback?status=OPEN',
+      ...authed(adminAgent),
+    });
+    expect(adminFeedback.statusCode, adminFeedback.body).toBe(200);
+    expect(adminFeedback.json().items[0].id).toBe(feedbackRow.id);
+
+    const resolveFeedback = await app.inject({
+      method: 'POST',
+      url: `/api/admin/feedback/${feedbackRow.id}/resolve`,
+      ...authed(adminAgent),
+      payload: {},
+    });
+    expect(resolveFeedback.statusCode, resolveFeedback.body).toBe(204);
+    expect(
+      (await prisma.feedback.findUniqueOrThrow({ where: { id: feedbackRow.id } })).status,
+    ).toBe('RESOLVED');
+
+    const resolveAgain = await app.inject({
+      method: 'POST',
+      url: `/api/admin/feedback/${feedbackRow.id}/resolve`,
+      ...authed(adminAgent),
+      payload: {},
+    });
+    expect(resolveAgain.statusCode).toBe(409);
+
+    const exportResponse = await app.inject({
+      method: 'POST',
+      url: '/api/profile/export',
+      ...authed(playerAgent),
+      payload: {},
+    });
+    expect(exportResponse.statusCode, exportResponse.body).toBe(200);
+    expect(exportResponse.headers['content-type']).toContain('application/json');
+    expect(exportResponse.headers['content-disposition']).toContain('attachment');
+    const exported = exportResponse.json();
+    expect(exported.account.email).toBe(player.email);
+    expect(exported.feedback).toHaveLength(1);
+    const serialized = JSON.stringify(exported);
+    for (const forbidden of [
+      'passwordHash',
+      'tokenHash',
+      'csrfHash',
+      'verificationToken',
+      'resetToken',
+      otherCreator.email,
+    ]) {
+      expect(serialized).not.toContain(forbidden);
+    }
+    expect(
+      await prisma.auditLog.count({
+        where: { actorId: player.id, action: 'account.data_exported' },
+      }),
+    ).toBe(1);
+
+    const anonymousExport = await app.inject({
+      method: 'POST',
+      url: '/api/profile/export',
+      payload: {},
+    });
+    expect(anonymousExport.statusCode).toBe(401);
+
+    const deletion = await app.inject({
+      method: 'POST',
+      url: '/api/profile/delete-request',
+      ...authed(playerAgent),
+      payload: {},
+    });
+    expect(deletion.statusCode, deletion.body).toBe(200);
+    expect(await prisma.session.count({ where: { userId: player.id, revokedAt: null } })).toBe(0);
+
+    const meAfterDeletionRequest = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      ...authed(playerAgent),
+    });
+    expect(meAfterDeletionRequest.statusCode).toBe(401);
   });
 });

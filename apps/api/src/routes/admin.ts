@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ReportStatus } from '@vibeplay/database';
 import {
+  adminFeedbackQuerySchema,
   adminReportsQuerySchema,
   adminUsersQuerySchema,
   approveVersionSchema,
@@ -11,6 +12,7 @@ import {
   parseGameHostBase,
   previewGameOrigin,
   rejectVersionSchema,
+  resolveFeedbackSchema,
   resolveReportSchema,
   suspendUserSchema,
 } from '@vibeplay/shared';
@@ -205,7 +207,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         throw errors.notFound('VERSION_NOT_FOUND', 'Previewable version not found');
       }
       const token = signExpiringValue(version.id, Date.now() + 5 * 60_000, env.PREVIEW_URL_SECRET);
-      // Preview gets its own {versionId}.preview.<base> origin so review
+      // Preview gets its own {versionId}--preview.<base> origin so review
       // sessions never share storage with published games (spec §25).
       const origin = previewGameOrigin(parseGameHostBase(env.GAME_ORIGIN), version.id);
       return {
@@ -383,6 +385,62 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }
     reply.status(204).send();
   });
+
+  app.get('/feedback', async (req) => {
+    const query = parse(adminFeedbackQuerySchema, req.query);
+    const where = query.status ? { status: query.status } : {};
+    const [rows, total] = await Promise.all([
+      prisma.feedback.findMany({
+        where,
+        include: { user: true, resolvedBy: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (query.page - 1) * query.perPage,
+        take: query.perPage,
+      }),
+      prisma.feedback.count({ where }),
+    ]);
+    return paginated(
+      rows.map((row) => ({
+        id: row.id,
+        category: row.category,
+        status: row.status,
+        message: row.message,
+        page: row.page,
+        user: row.user ? toPublicUser(row.user) : null,
+        resolvedBy: row.resolvedBy ? toPublicUser(row.resolvedBy) : null,
+        resolvedAt: row.resolvedAt?.toISOString() ?? null,
+        createdAt: row.createdAt.toISOString(),
+      })),
+      query.page,
+      query.perPage,
+      total,
+    );
+  });
+
+  app.post<{ Params: { feedbackId: string } }>(
+    '/feedback/:feedbackId/resolve',
+    { config: { rateLimit: rlPolicy('adminAction') } },
+    async (req, reply) => {
+      const admin = requireAdmin(req);
+      parse(resolveFeedbackSchema, req.body);
+      const feedback = await prisma.feedback.findUnique({ where: { id: req.params.feedbackId } });
+      if (!feedback) throw errors.notFound('NOT_FOUND', 'Feedback not found');
+      if (feedback.status === 'RESOLVED') throw errors.conflict('Feedback is already resolved');
+      await prisma.feedback.update({
+        where: { id: feedback.id },
+        data: { status: 'RESOLVED', resolvedAt: new Date(), resolvedById: admin.id },
+      });
+      await audit(prisma, {
+        actorId: admin.id,
+        action: 'feedback.resolved',
+        targetType: 'FEEDBACK',
+        targetId: feedback.id,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      reply.status(204).send();
+    },
+  );
 
   app.get('/audit-log', async (req) => {
     const query = parse(auditLogQuerySchema, req.query);
