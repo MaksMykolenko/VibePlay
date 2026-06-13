@@ -5,10 +5,10 @@
  * - runs on a separate registrable domain from the main app, so main-app auth
  *   cookies and site-scoped permissions can never cover game content;
  * - every published version is served from its OWN origin
- *   ({versionId}.{gameId}.<base>), so two games — and even two versions of the
+ *   ({versionId}--{gameId}.<base>), so two games — and even two versions of the
  *   same game — can never share localStorage / IndexedDB / Cache Storage /
  *   Service Workers, even with `allow-same-origin` in the player iframe;
- * - admin preview runs on {versionId}.preview.<base> and requires a
+ * - admin preview runs on {versionId}--preview.<base> and requires a
  *   short-lived HMAC token embedded in the path (relative assets keep it);
  * - on every request validates against the database that the requested version
  *   is the currently published version of a PUBLISHED game (short TTL cache,
@@ -183,8 +183,8 @@ export async function buildGameHost(opts: GameHostOptions): Promise<FastifyInsta
   }
 
   // --- game content, routed by Host header (one origin per version) ---------
-  // {versionId}.{gameId}.<base>  → published, immutable content
-  // {versionId}.preview.<base>   → admin preview, token as first path segment
+  // {versionId}--{gameId}.<base>  → published, immutable content
+  // {versionId}--preview.<base>   → admin preview, token as first path segment
   app.get<{ Params: { '*': string } }>('/*', async (req, reply) => {
     const parsedHost = parseGameHostName(req.headers.host ?? '', hostBase.hostname);
 

@@ -11,12 +11,12 @@ const base = parseGameHostBase('http://games.localhost:8080');
 const prodBase = parseGameHostBase('https://games-beta.vibeplayusercontent.example');
 
 describe('publishedGameOrigin / previewGameOrigin', () => {
-  it('mints one origin per published version', () => {
+  it('mints one single-label origin per published version', () => {
     expect(publishedGameOrigin(base, 'g1abc', 'v1def')).toBe(
-      'http://v1def.g1abc.games.localhost:8080',
+      'http://v1def--g1abc.games.localhost:8080',
     );
     expect(publishedGameOrigin(prodBase, 'g1abc', 'v2xyz')).toBe(
-      'https://v2xyz.g1abc.games-beta.vibeplayusercontent.example',
+      'https://v2xyz--g1abc.games-beta.vibeplayusercontent.example',
     );
   });
 
@@ -27,13 +27,15 @@ describe('publishedGameOrigin / previewGameOrigin', () => {
   });
 
   it('mints a dedicated preview origin', () => {
-    expect(previewGameOrigin(base, 'v9rev')).toBe('http://v9rev.preview.games.localhost:8080');
+    expect(previewGameOrigin(base, 'v9rev')).toBe('http://v9rev--preview.games.localhost:8080');
   });
 
-  it('rejects ids that are not safe DNS labels', () => {
+  it('rejects ids that are not safe origin labels', () => {
     expect(() => publishedGameOrigin(base, 'evil.com', 'v1')).toThrow();
     expect(() => publishedGameOrigin(base, 'g1', 'UPPER')).toThrow();
     expect(() => publishedGameOrigin(base, 'g1', 'a'.repeat(64))).toThrow();
+    // cuid ids never contain dashes; dashes would make '--' ambiguous.
+    expect(() => publishedGameOrigin(base, 'has-dash', 'v1')).toThrow();
     expect(() => previewGameOrigin(base, 'bad!label')).toThrow();
     // "preview" is reserved for the preview host pattern.
     expect(() => publishedGameOrigin(base, 'preview', 'v1')).toThrow();
@@ -42,7 +44,7 @@ describe('publishedGameOrigin / previewGameOrigin', () => {
 
 describe('parseGameHostName', () => {
   it('parses published hosts', () => {
-    expect(parseGameHostName('v1def.g1abc.games.localhost:8080', 'games.localhost')).toEqual({
+    expect(parseGameHostName('v1def--g1abc.games.localhost:8080', 'games.localhost')).toEqual({
       kind: 'published',
       gameId: 'g1abc',
       versionId: 'v1def',
@@ -50,7 +52,7 @@ describe('parseGameHostName', () => {
   });
 
   it('parses preview hosts', () => {
-    expect(parseGameHostName('v1def.preview.games.localhost', 'games.localhost')).toEqual({
+    expect(parseGameHostName('v1def--preview.games.localhost', 'games.localhost')).toEqual({
       kind: 'preview',
       versionId: 'v1def',
     });
@@ -63,13 +65,15 @@ describe('parseGameHostName', () => {
   it('refuses foreign and malformed hosts', () => {
     expect(parseGameHostName('evil.example', 'games.localhost')).toBeNull();
     expect(parseGameHostName('games.localhost.evil.example', 'games.localhost')).toBeNull();
-    expect(parseGameHostName('a.b.c.games.localhost', 'games.localhost')).toBeNull();
+    // nested labels are not part of the scheme (TLS wildcards cover one label)
+    expect(parseGameHostName('v1.g1.games.localhost', 'games.localhost')).toBeNull();
+    expect(parseGameHostName('a--b--c.games.localhost', 'games.localhost')).toBeNull();
     expect(parseGameHostName('onlyone.games.localhost', 'games.localhost')).toBeNull();
-    expect(parseGameHostName('v1.bad_label.games.localhost', 'games.localhost')).toBeNull();
+    expect(parseGameHostName('v1--bad_label.games.localhost', 'games.localhost')).toBeNull();
   });
 
   it('treats DNS names case-insensitively (Host headers may differ in case)', () => {
-    expect(parseGameHostName('V1.G1.Games.LOCALHOST', 'games.localhost')).toEqual({
+    expect(parseGameHostName('V1--G1.Games.LOCALHOST', 'games.localhost')).toEqual({
       kind: 'published',
       gameId: 'g1',
       versionId: 'v1',
@@ -81,7 +85,7 @@ describe('isAllowedGameLaunchUrl', () => {
   it('accepts per-version subdomain launch URLs', () => {
     expect(
       isAllowedGameLaunchUrl(
-        'http://v1def.g1abc.games.localhost:8080/index.html',
+        'http://v1def--g1abc.games.localhost:8080/index.html',
         'http://games.localhost:8080',
       ),
     ).toBe(true);
@@ -99,13 +103,13 @@ describe('isAllowedGameLaunchUrl', () => {
     ).toBe(false);
     expect(
       isAllowedGameLaunchUrl(
-        'https://v1.g1.games.localhost:8080/index.html',
+        'https://v1--g1.games.localhost:8080/index.html',
         'http://games.localhost:8080',
       ),
     ).toBe(false);
     expect(
       isAllowedGameLaunchUrl(
-        'http://v1.g1.games.localhost:9999/index.html',
+        'http://v1--g1.games.localhost:9999/index.html',
         'http://games.localhost:8080',
       ),
     ).toBe(false);

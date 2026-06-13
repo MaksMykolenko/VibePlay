@@ -72,7 +72,7 @@ describe('game host (one origin per version)', () => {
     const storage = createStorage();
     const app = await buildGameHost({ env, prisma: createPrisma(), storage });
 
-    const ok = await injectHost(app, 'version1.game1.games.localhost:8080', '/index.html');
+    const ok = await injectHost(app, 'version1--game1.games.localhost:8080', '/index.html');
     expect(ok.statusCode).toBe(200);
     expect(ok.headers['content-security-policy']).toContain(
       'frame-ancestors https://app.example.com',
@@ -112,7 +112,7 @@ describe('game host (one origin per version)', () => {
       storage: createStorage(),
     });
     expect(
-      (await injectHost(hidden, 'version1.game1.games.localhost:8080', '/index.html')).statusCode,
+      (await injectHost(hidden, 'version1--game1.games.localhost:8080', '/index.html')).statusCode,
     ).toBe(404);
     await hidden.close();
 
@@ -123,7 +123,7 @@ describe('game host (one origin per version)', () => {
       storage: createStorage(),
     });
     expect(
-      (await injectHost(app, 'version1.game1.games.localhost:8080', '/index.html')).statusCode,
+      (await injectHost(app, 'version1--game1.games.localhost:8080', '/index.html')).statusCode,
     ).toBe(404);
     await app.close();
   });
@@ -133,12 +133,12 @@ describe('game host (one origin per version)', () => {
     const ready = await buildGameHost({ env, prisma: createPrisma(), storage: createStorage() });
 
     expect(
-      (await injectHost(ready, 'version1.preview.games.localhost:8080', `/${token}/index.html`))
+      (await injectHost(ready, 'version1--preview.games.localhost:8080', `/${token}/index.html`))
         .statusCode,
     ).toBe(200);
     // Missing or garbage token → 403.
     expect(
-      (await injectHost(ready, 'version1.preview.games.localhost:8080', '/index.html')).statusCode,
+      (await injectHost(ready, 'version1--preview.games.localhost:8080', '/index.html')).statusCode,
     ).toBe(403);
     await ready.close();
 
@@ -148,7 +148,7 @@ describe('game host (one origin per version)', () => {
       storage: createStorage(),
     });
     expect(
-      (await injectHost(rejected, 'version1.preview.games.localhost:8080', `/${token}/index.html`))
+      (await injectHost(rejected, 'version1--preview.games.localhost:8080', `/${token}/index.html`))
         .statusCode,
     ).toBe(404);
     await rejected.close();
@@ -174,7 +174,7 @@ describe('game host (one origin per version)', () => {
 
     const asset = await injectHost(
       app,
-      'version1.preview.games.localhost:8080',
+      'version1--preview.games.localhost:8080',
       `/${token}/assets/game.js`,
     );
 
@@ -189,7 +189,7 @@ describe('game host (one origin per version)', () => {
   it('serves health and the SDK regardless of host (reserved paths)', async () => {
     const app = await buildGameHost({ env, prisma: createPrisma(), storage: createStorage() });
     expect(
-      (await injectHost(app, 'version1.game1.games.localhost:8080', '/health/live')).statusCode,
+      (await injectHost(app, 'version1--game1.games.localhost:8080', '/health/live')).statusCode,
     ).toBe(200);
     await app.close();
   });

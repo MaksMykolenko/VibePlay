@@ -282,3 +282,9 @@ export const createFeedbackSchema = z
     page: z.string().trim().max(300).default(''),
   })
   .strict();
+
+export const adminFeedbackQuerySchema = paginationSchema.extend({
+  status: z.enum(['OPEN', 'RESOLVED']).optional(),
+});
+
+export const resolveFeedbackSchema = z.object({}).strict();
