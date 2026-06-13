@@ -47,6 +47,19 @@ describe('ZIP archive validator', () => {
     return validateArchive(file, size, customLimits, bytes.subarray(0, 4));
   }
 
+  async function markEntriesEncrypted(file: string) {
+    const bytes = await readFile(file);
+    for (let offset = 0; offset <= bytes.length - 10; offset++) {
+      const signature = bytes.readUInt32LE(offset);
+      const flagOffset =
+        signature === 0x04034b50 ? offset + 6 : signature === 0x02014b50 ? offset + 8 : -1;
+      if (flagOffset >= 0) {
+        bytes.writeUInt16LE(bytes.readUInt16LE(flagOffset) | 0x1, flagOffset);
+      }
+    }
+    await writeFile(file, bytes);
+  }
+
   it('accepts a static game with root index.html', async () => {
     const file = await makeZip([
       { name: 'index.html', contents: '<script src="game.js"></script>' },
@@ -96,6 +109,35 @@ describe('ZIP archive validator', () => {
     await expect(validate(file, { ...limits, maxUncompressedBytes: 10 })).resolves.toMatchObject({
       ok: false,
       failReason: expect.stringContaining('zip bomb'),
+    });
+  });
+
+  it('enforces single-file and file-count budgets', async () => {
+    const oversized = await makeZip([{ name: 'index.html', contents: 'x'.repeat(100) }]);
+    await expect(validate(oversized, { ...limits, maxSingleFileBytes: 10 })).resolves.toMatchObject(
+      {
+        ok: false,
+        failReason: expect.stringContaining('single-file size limit'),
+      },
+    );
+
+    const tooMany = await makeZip([
+      { name: 'index.html', contents: 'ok' },
+      { name: 'one.js', contents: '1' },
+      { name: 'two.js', contents: '2' },
+    ]);
+    await expect(validate(tooMany, { ...limits, maxFiles: 2 })).resolves.toMatchObject({
+      ok: false,
+      failReason: 'archive contains too many files',
+    });
+  });
+
+  it('rejects encrypted archives', async () => {
+    const file = await makeZip([{ name: 'index.html', contents: 'protected' }]);
+    await markEntriesEncrypted(file);
+    await expect(validate(file)).resolves.toMatchObject({
+      ok: false,
+      failReason: 'encrypted/password-protected archives are not allowed',
     });
   });
 

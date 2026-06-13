@@ -37,7 +37,8 @@
     "test:integration": "npm run test:integration -w @vibeplay/api",
     "test:e2e": "playwright test",
     "fixtures:build": "node fixtures/build-fixtures.mjs",
-    "grant-admin": "npm run grant-admin -w @vibeplay/database"
+    "grant-admin": "npm run grant-admin -w @vibeplay/database",
+    "build:demo": "npm run build:demo -w @vibeplay/web"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -49,6 +50,7 @@
     "globals": "^17.6.0",
     "prettier": "^3.6.0",
     "typescript": "~6.0.2",
-    "typescript-eslint": "^8.59.2"
+    "typescript-eslint": "^8.59.2",
+    "tsx": "^4.20.0"
   }
 }
