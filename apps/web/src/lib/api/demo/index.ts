@@ -324,10 +324,10 @@ export function createDemoClient(): ApiClient {
       return 'Demo build: account data lives only in your browser. Clear site data to remove it.';
     },
     async submitFeedback() {
-      // Demo build: nowhere to send feedback; stored nowhere by design.
+      notInDemo('Beta feedback submission');
     },
-    async requestDataExport() {
-      return 'Demo build: data lives only in this browser, so there is nothing to export server-side.';
+    async downloadDataExport() {
+      notInDemo('Server-side data export');
     },
     async updateNotificationPrefs() {
       const me = requireUser();
@@ -776,6 +776,12 @@ export function createDemoClient(): ApiClient {
     },
     async adminResolveReport() {
       notInDemo('Admin reports');
+    },
+    async adminListFeedback() {
+      notInDemo('Admin feedback workflow');
+    },
+    async adminResolveFeedback() {
+      notInDemo('Admin feedback workflow');
     },
     async adminAuditLog() {
       notInDemo('Audit log');

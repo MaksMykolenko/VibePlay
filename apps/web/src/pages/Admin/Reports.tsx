@@ -1,11 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGames } from '../../hooks/useGames';
-
+import type { FeedbackItem } from '../../lib/api/types';
+import { api } from '../../lib/api';
+import { errorMessage } from '../../lib/api/errors';
 import { toast } from '../../components/toastEvents';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 export const AdminReports: React.FC = () => {
   const { reports, resolveReport, dismissReport } = useGames();
+  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
+
+  useEffect(() => {
+    void api
+      .adminListFeedback({ page: 1 })
+      .then((result) => setFeedback(result.items))
+      .catch((error) => toast.danger(errorMessage(error)));
+  }, []);
 
   const handleResolve = (id: string) => {
     resolveReport(id);
@@ -15,6 +25,22 @@ export const AdminReports: React.FC = () => {
   const handleDismiss = (id: string) => {
     dismissReport(id);
     toast.info('Report dismissed.');
+  };
+
+  const handleFeedbackResolve = async (id: string) => {
+    try {
+      await api.adminResolveFeedback(id);
+      setFeedback((items) =>
+        items.map((item) =>
+          item.id === id
+            ? { ...item, status: 'RESOLVED', resolvedAt: new Date().toISOString() }
+            : item,
+        ),
+      );
+      toast.success('Feedback marked as resolved.');
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -39,6 +65,55 @@ export const AdminReports: React.FC = () => {
           Review complaints lodged by players regarding games or comments.
         </p>
       </div>
+
+      <hr style={hrStyle} />
+
+      <section style={listAreaStyle}>
+        <div>
+          <h2 style={{ fontSize: '1.2rem' }}>Beta Feedback</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
+            Product feedback and bug reports submitted by authenticated beta users.
+          </p>
+        </div>
+        {feedback.length === 0 ? (
+          <div style={emptyContainerStyle}>
+            <CheckCircle size={40} color="var(--success)" style={{ opacity: 0.3 }} />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              No beta feedback yet.
+            </span>
+          </div>
+        ) : (
+          feedback.map((item) => (
+            <article key={item.id} style={reportCardStyle} className="bg-glass">
+              <div style={cardHeaderStyle}>
+                <strong>{item.category === 'BUG' ? 'Bug report' : 'Feedback'}</strong>
+                <span
+                  className={`badge ${item.status === 'OPEN' ? 'badge-warning' : 'badge-success'}`}
+                >
+                  {item.status === 'OPEN' ? 'Open' : 'Resolved'}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {item.user ? `@${item.user.username}` : 'Deleted user'} ·{' '}
+                {new Date(item.createdAt).toLocaleString()} · {item.page || 'unknown page'}
+              </div>
+              <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{item.message}</p>
+              {item.status === 'OPEN' && (
+                <div style={actionsRowStyle}>
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm"
+                    onClick={() => void handleFeedbackResolve(item.id)}
+                  >
+                    <CheckCircle size={12} />
+                    Resolve feedback
+                  </button>
+                </div>
+              )}
+            </article>
+          ))
+        )}
+      </section>
 
       <hr style={hrStyle} />
 

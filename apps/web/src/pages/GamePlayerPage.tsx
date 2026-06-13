@@ -54,6 +54,7 @@ export const GamePlayerPage: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [launch, setLaunch] = useState<LaunchDescriptorDto | null>(null);
   const [iframeKey, setIframeKey] = useState(0);
+  const [sdkReady, setSdkReady] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -120,6 +121,7 @@ export const GamePlayerPage: React.FC = () => {
           }
         : null,
       events: {
+        onReady: () => setSdkReady(true),
         onFullscreenRequest: async () => {
           const container = containerRef.current;
           if (!container) return false;
@@ -374,8 +376,12 @@ export const GamePlayerPage: React.FC = () => {
         </div>
         <div style={sandboxBadgeStyle}>
           <ShieldCheck size={14} color="var(--success)" />
-          <span style={{ color: 'var(--success)' }}>
-            {IS_DEMO ? 'Demo simulation active' : 'Sandboxed game host active'}
+          <span style={{ color: 'var(--success)' }} data-testid="sandbox-status">
+            {IS_DEMO
+              ? 'Demo simulation active'
+              : sdkReady
+                ? 'Sandboxed game host active · SDK connected'
+                : 'Sandboxed game host active'}
           </span>
         </div>
       </div>

@@ -214,10 +214,9 @@ export const PrivacyPage: React.FC = () => (
 
     <h2 style={h2Style}>6. Data export</h2>
     <p style={pStyle}>
-      You can request an export of your data (account fields, games metadata, comments, play
-      history) in <strong>Settings → Account → Request data export</strong> or via{' '}
-      <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a>. During the beta exports are prepared
-      manually and delivered to your verified email within 30 days.
+      You can download a JSON export of your data (account fields, games metadata, comments and play
+      history) immediately from <strong>Settings → Account → Download data export</strong>. Contact{' '}
+      <a href={`mailto:${PRIVACY_EMAIL}`}>{PRIVACY_EMAIL}</a> if you cannot access your account.
     </p>
 
     <h2 style={h2Style}>7. Your rights and contact</h2>

@@ -19,11 +19,9 @@ export const SettingsPage: React.FC = () => {
   >('profile');
 
   // Form states
-  const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
-  const [bio, setBio] = useState(currentUser?.bio || '');
-  const [avatar, setAvatar] = useState(currentUser?.avatar || '');
-
-  const [email] = useState(currentUser?.email || '');
+  const [displayName, setDisplayName] = useState<string>();
+  const [bio, setBio] = useState<string>();
+  const [avatar, setAvatar] = useState<string>();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -35,13 +33,9 @@ export const SettingsPage: React.FC = () => {
   const [dangerBusy, setDangerBusy] = useState(false);
 
   // Checks
-  const [notifApprovals, setNotifApprovals] = useState(
-    account?.notificationPrefs.moderationUpdates ?? true,
-  );
-  const [notifComments, setNotifComments] = useState(account?.notificationPrefs.social ?? true);
-  const [notifPlatform, setNotifPlatform] = useState(
-    account?.notificationPrefs.platformNews ?? false,
-  );
+  const [notifApprovals, setNotifApprovals] = useState<boolean>();
+  const [notifComments, setNotifComments] = useState<boolean>();
+  const [notifPlatform, setNotifPlatform] = useState<boolean>();
   const [privacySearch, setPrivacySearch] = useState(true);
   const [privacyActivity, setPrivacyActivity] = useState(true);
 
@@ -72,10 +66,17 @@ export const SettingsPage: React.FC = () => {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const error = await updateProfile(displayName, bio, avatar);
+    const error = await updateProfile(
+      displayName ?? currentUser.displayName,
+      bio ?? currentUser.bio,
+      avatar ?? currentUser.avatar,
+    );
     if (error) {
       toast.danger(error);
     } else {
+      setDisplayName(undefined);
+      setBio(undefined);
+      setAvatar(undefined);
       toast.success('Profile settings updated successfully!');
     }
   };
@@ -113,6 +114,8 @@ export const SettingsPage: React.FC = () => {
     try {
       const message = await api.requestAccountDeletion();
       toast.success(message);
+      await refresh();
+      navigate('/login');
     } catch (error) {
       toast.danger(errorMessage(error));
     } finally {
@@ -123,8 +126,17 @@ export const SettingsPage: React.FC = () => {
   const handleExportRequest = async () => {
     setDangerBusy(true);
     try {
-      const message = await api.requestDataExport();
-      toast.success(message);
+      const exported = await api.downloadDataExport();
+      const blob = new Blob([JSON.stringify(exported, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `vibeplay-data-export-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('Your data export was downloaded.');
     } catch (error) {
       toast.danger(errorMessage(error));
     } finally {
@@ -157,11 +169,14 @@ export const SettingsPage: React.FC = () => {
     e.preventDefault();
     try {
       await api.updateNotificationPrefs({
-        moderationUpdates: notifApprovals,
-        social: notifComments,
-        platformNews: notifPlatform,
+        moderationUpdates: notifApprovals ?? account?.notificationPrefs.moderationUpdates ?? true,
+        social: notifComments ?? account?.notificationPrefs.social ?? true,
+        platformNews: notifPlatform ?? account?.notificationPrefs.platformNews ?? false,
       });
       await refresh();
+      setNotifApprovals(undefined);
+      setNotifComments(undefined);
+      setNotifPlatform(undefined);
       toast.success('Notification preferences saved.');
     } catch (error) {
       toast.danger(errorMessage(error));
@@ -263,12 +278,12 @@ export const SettingsPage: React.FC = () => {
               <p style={tabDescStyle}>Customize how your name and avatar appear across VibePlay.</p>
 
               <div style={avatarPreviewRowStyle}>
-                <img src={avatar || currentUser.avatar} alt="Preview" style={avatarPreviewStyle} />
+                <img src={avatar ?? currentUser.avatar} alt="Preview" style={avatarPreviewStyle} />
                 <div style={{ flex: 1 }}>
                   <label className="form-label">Avatar URL</label>
                   <input
                     type="text"
-                    value={avatar}
+                    value={avatar ?? currentUser.avatar}
                     onChange={(e) => setAvatar(e.target.value)}
                     placeholder="https://example.com/avatar.jpg"
                     className="form-input"
@@ -281,7 +296,7 @@ export const SettingsPage: React.FC = () => {
                 <label className="form-label">Display Name</label>
                 <input
                   type="text"
-                  value={displayName}
+                  value={displayName ?? currentUser.displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="form-input"
                   required
@@ -291,7 +306,7 @@ export const SettingsPage: React.FC = () => {
               <div className="form-group">
                 <label className="form-label">Biography</label>
                 <textarea
-                  value={bio}
+                  value={bio ?? currentUser.bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="form-input"
                   style={{ minHeight: '120px', resize: 'vertical' }}
@@ -325,7 +340,13 @@ export const SettingsPage: React.FC = () => {
 
               <div className="form-group">
                 <label className="form-label">Email Address</label>
-                <input type="email" value={email} className="form-input" disabled required />
+                <input
+                  type="email"
+                  value={currentUser.email}
+                  className="form-input"
+                  disabled
+                  required
+                />
                 <span style={helperStyle}>Contact support to change the registered email.</span>
               </div>
 
@@ -383,7 +404,8 @@ export const SettingsPage: React.FC = () => {
                 <a href="/privacy" style={{ color: 'var(--secondary)' }}>
                   Privacy Policy
                 </a>
-                . Both actions are processed by an administrator within 30 days.
+                . Data exports download immediately. Deletion requests are processed by an
+                administrator within 30 days.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button
@@ -393,7 +415,7 @@ export const SettingsPage: React.FC = () => {
                   style={dangerGhostBtnStyle}
                   onClick={() => void handleExportRequest()}
                 >
-                  Request data export
+                  Download data export
                 </button>
                 <button
                   type="button"
@@ -473,7 +495,7 @@ export const SettingsPage: React.FC = () => {
                 <label className="checkbox-group">
                   <input
                     type="checkbox"
-                    checked={notifApprovals}
+                    checked={notifApprovals ?? account?.notificationPrefs.moderationUpdates ?? true}
                     onChange={(e) => setNotifApprovals(e.target.checked)}
                     className="checkbox-input"
                   />
@@ -488,7 +510,7 @@ export const SettingsPage: React.FC = () => {
                 <label className="checkbox-group" style={{ marginTop: '1rem' }}>
                   <input
                     type="checkbox"
-                    checked={notifComments}
+                    checked={notifComments ?? account?.notificationPrefs.social ?? true}
                     onChange={(e) => setNotifComments(e.target.checked)}
                     className="checkbox-input"
                   />
@@ -503,7 +525,7 @@ export const SettingsPage: React.FC = () => {
                 <label className="checkbox-group" style={{ marginTop: '1rem' }}>
                   <input
                     type="checkbox"
-                    checked={notifPlatform}
+                    checked={notifPlatform ?? account?.notificationPrefs.platformNews ?? false}
                     onChange={(e) => setNotifPlatform(e.target.checked)}
                     className="checkbox-input"
                   />

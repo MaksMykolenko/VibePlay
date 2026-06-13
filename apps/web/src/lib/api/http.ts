@@ -24,6 +24,7 @@ import type {
   CreateReportInput,
   CreateVersionInput,
   CreatorGameSummary,
+  FeedbackItem,
   GamesListParams,
   LibraryResponse,
   ModerationQueueEntry,
@@ -189,12 +190,11 @@ export function createHttpClient(): ApiClient {
       });
       return r.message;
     },
-    async requestDataExport() {
-      const r = await request<{ message: string }>('/profile/export-request', {
+    async downloadDataExport() {
+      return request<unknown>('/profile/export', {
         method: 'POST',
         body: {},
       });
-      return r.message;
     },
     async updateNotificationPrefs(prefs) {
       const r = await request<{ user: CurrentUserDto }>('/profile/notification-preferences', {
@@ -413,6 +413,12 @@ export function createHttpClient(): ApiClient {
         method: 'POST',
         body: { status, note: note ?? '' },
       });
+    },
+    async adminListFeedback(params) {
+      return request<PaginatedDto<FeedbackItem>>(`/admin/feedback${qs({ ...params })}`);
+    },
+    async adminResolveFeedback(feedbackId) {
+      await request(`/admin/feedback/${feedbackId}/resolve`, { method: 'POST', body: {} });
     },
     async adminAuditLog(params) {
       return request<PaginatedDto<AuditLogEntryDto>>(`/admin/audit-log${qs({ ...params })}`);

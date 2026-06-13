@@ -109,6 +109,18 @@ export interface ModerationQueueEntry {
   game: GameDetailDto;
 }
 
+export interface FeedbackItem {
+  id: string;
+  category: 'FEEDBACK' | 'BUG';
+  status: 'OPEN' | 'RESOLVED';
+  message: string;
+  page: string;
+  user: PublicUserDto | null;
+  resolvedBy: PublicUserDto | null;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 /**
  * The single API surface the UI talks to. Two implementations:
  * - HttpApiClient (real backend)
@@ -144,7 +156,7 @@ export interface ApiClient {
     avatarUrl?: string | null;
   }): Promise<CurrentUserDto>;
   requestAccountDeletion(): Promise<string>;
-  requestDataExport(): Promise<string>;
+  downloadDataExport(): Promise<unknown>;
   updateNotificationPrefs(prefs: NotificationPrefsDto): Promise<CurrentUserDto>;
 
   // catalog
@@ -214,6 +226,11 @@ export interface ApiClient {
   adminPromoteCreator(userId: string): Promise<void>;
   adminListReports(params: { page?: number; status?: string }): Promise<PaginatedDto<ReportDto>>;
   adminResolveReport(reportId: string, status: string, note?: string): Promise<void>;
+  adminListFeedback(params: {
+    page?: number;
+    status?: 'OPEN' | 'RESOLVED';
+  }): Promise<PaginatedDto<FeedbackItem>>;
+  adminResolveFeedback(feedbackId: string): Promise<void>;
   adminAuditLog(params: { page?: number }): Promise<PaginatedDto<AuditLogEntryDto>>;
   adminCreateInvite(input: {
     email?: string;
