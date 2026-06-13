@@ -1,0 +1,45 @@
+{
+	admin off
+	email {$ACME_EMAIL}
+}
+
+# ---------------------------------------------------------------------------
+# Main app origin: SPA + API. HTTPS via standard ACME HTTP-01.
+# ---------------------------------------------------------------------------
+{$APP_DOMAIN} {
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+# ---------------------------------------------------------------------------
+# Game host: wildcard per-version origins on a SEPARATE registrable domain.
+#
+# *.{$GAME_DOMAIN} needs a wildcard certificate → DNS-01 ACME challenge.
+# Replace the tls block with your DNS provider module, e.g.:
+#
+#   tls {
+#     dns cloudflare {$CLOUDFLARE_API_TOKEN}
+#   }
+#
+# (requires a Caddy build with the provider plugin — see docs/DEPLOYMENT.md),
+# or terminate wildcard TLS at an upstream load balancer and use `auto_https off`.
+# ---------------------------------------------------------------------------
+*.{$GAME_DOMAIN}, {$GAME_DOMAIN} {
+	# tls { dns <provider> <credentials> }   ← configure for wildcard issuance
+
+	header -Server
+
+	reverse_proxy game-host:8080
+}

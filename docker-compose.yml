@@ -223,7 +223,7 @@ services:
       GAME_HOST_PORT: '8080'
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8088}
       # Browsers resolve *.games.localhost to 127.0.0.1; every published
-      # version is served from {versionId}.{gameId}.games.localhost:8080.
+      # version is served from {versionId}--{gameId}.games.localhost:8080.
       GAME_ORIGIN: ${GAME_ORIGIN:-http://games.localhost:8080}
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD:-vibeplay}@postgres:5432/vibeplay
       REDIS_URL: redis://redis:6379
@@ -246,6 +246,10 @@ services:
         VITE_API_URL: /api
         VITE_GAME_ORIGIN: ${GAME_ORIGIN:-http://games.localhost:8080}
         VITE_APP_MODE: real
+    environment:
+      # CSP wildcard used by the static web server. Override alongside
+      # GAME_ORIGIN/GAME_PORT when the browser-visible game port changes.
+      GAME_FRAME_SRC: ${GAME_FRAME_SRC:-http://*.games.localhost:8080}
 
   reverse-proxy:
     image: caddy:2-alpine

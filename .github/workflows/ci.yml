@@ -89,6 +89,28 @@ jobs:
       - name: Build apps
         run: npm run build:apps
 
+      - name: Demo build (GitHub Pages bundle)
+        run: npm run build:demo -w @vibeplay/web
+
+      - name: docker compose config is valid
+        run: |
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.production.example.yml config -q
+        env:
+          SESSION_SECRET: ci-placeholder-session-secret-0123456789abcdef
+          PASSWORD_PEPPER: ci-placeholder-pepper-0123456789
+          PREVIEW_URL_SECRET: ci-placeholder-preview-secret-0123456789abcdef
+          POSTGRES_PASSWORD: ci-placeholder
+          S3_ENDPOINT: http://minio:9000
+          S3_PUBLIC_ENDPOINT: http://localhost:9000
+          S3_ACCESS_KEY_ID: ci
+          S3_SECRET_ACCESS_KEY: ci-placeholder
+          APP_DOMAIN: beta.vibeplay.example
+          GAME_DOMAIN: games-beta.vibeplayusercontent.example
+          SMTP_HOST: smtp.example
+          SMTP_FROM: VibePlay <no-reply@vibeplay.example>
+          ACME_EMAIL: ops@vibeplay.example
+
   security:
     runs-on: ubuntu-latest
     steps:
@@ -128,6 +150,28 @@ jobs:
           VITE_APP_MODE: real
       - name: Real bundle must not contain demo auth artifacts
         run: bash infra/scripts/check-real-bundle.sh apps/web/dist
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E suite (isolated real stack)
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
 
   docker-build:
     runs-on: ubuntu-latest

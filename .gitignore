@@ -36,3 +36,6 @@ packages/database/src/generated/
 *.njsproj
 *.sln
 *.sw?
+dist-e2e/
+playwright-report/
+test-results/

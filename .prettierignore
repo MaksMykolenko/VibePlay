@@ -10,3 +10,6 @@ package-lock.json
 *.md
 *.sh
 fixtures/**/*.zip
+dist-e2e
+playwright-report
+test-results

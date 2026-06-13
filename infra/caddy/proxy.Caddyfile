@@ -21,9 +21,12 @@
 	}
 }
 
-# Separate game origin (games.localhost:8080 in local development).
+# Separate game host. Caddy matches by port and forwards the original Host
+# header, so every {versionId}.{gameId}.games.localhost subdomain reaches the
+# game-host, which routes by Host (one origin per published version).
 # In production this MUST be a different registrable domain
-# (e.g. gamesusercontent.example) — see docs/GAME_SANDBOX.md.
+# (e.g. *.games-beta.vibeplayusercontent.example with a wildcard cert) —
+# see docs/GAME_SANDBOX.md and docs/DEPLOYMENT.md.
 :8080 {
 	reverse_proxy game-host:8080
 }
