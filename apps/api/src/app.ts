@@ -107,22 +107,38 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   // attached on routes via `config: { rateLimit: rlPolicy(...) }`.
   const rateLimitRedis = createRateLimitRedis(env);
   if (rateLimitRedis) {
+    rateLimitRedis.on('error', (err) => app.log.error({ err }, 'rate limit Redis error'));
+    try {
+      await rateLimitRedis.connect();
+      await rateLimitRedis.ping();
+    } catch (err) {
+      rateLimitRedis.disconnect();
+      throw new Error('Redis-backed rate limiting is unavailable', { cause: err });
+    }
     app.log.info('rate limiting: redis store enabled');
     app.addHook('onClose', async () => {
       rateLimitRedis.disconnect();
     });
   } else if (env.NODE_ENV === 'production') {
-    app.log.warn('rate limiting: falling back to in-memory store (no usable REDIS_URL)');
+    throw new Error('Redis-backed rate limiting is required in production');
   }
   await app.register(rateLimit, {
     global: true,
+    // Session resolution runs in onRequest, so preHandler can key authenticated
+    // traffic by user id while anonymous traffic still falls back to the IP.
+    hook: 'preHandler',
     max: RATE_LIMIT_POLICIES.global.max,
     timeWindow: RATE_LIMIT_POLICIES.global.timeWindow,
     keyGenerator: (req) => `global:${rateLimitSubject(req)}`,
     ...(rateLimitRedis ? { redis: rateLimitRedis } : {}),
+    // Runtime store errors fail closed instead of admitting unlimited traffic.
+    skipOnError: false,
     allowList: () => env.NODE_ENV === 'test' && process.env.RATE_LIMIT_TESTS !== 'true',
     addHeadersOnExceeding: { 'x-ratelimit-limit': true, 'x-ratelimit-remaining': true },
+    // statusCode is required so the global error handler maps this to the
+    // unified RATE_LIMITED envelope with HTTP 429 (not a generic 500).
     errorResponseBuilder: (req) => ({
+      statusCode: 429,
       error: { code: 'RATE_LIMITED', message: 'Too many requests, slow down', requestId: req.id },
     }),
   });
@@ -231,6 +247,10 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   // --- routes ----------------------------------------------------------------
   await app.register(registerHealthRoutes, { prefix: '/api/health' });
   await registerDomainRoutes(app);
+  if (env.TEST_MAILBOX && env.NODE_ENV !== 'production') {
+    const { registerTestSupportRoutes } = await import('./routes/testSupport.js');
+    await app.register(registerTestSupportRoutes, { prefix: '/api/test' });
+  }
 
   return app;
 }

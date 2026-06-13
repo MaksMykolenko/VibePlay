@@ -68,10 +68,12 @@ export function createRateLimitRedis(env: ApiEnv): Redis | null {
     return null;
   }
   return new Redis(env.REDIS_URL, {
-    // Required by @fastify/rate-limit: fail fast instead of queueing forever.
     connectTimeout: 2_000,
+    // Fail fast on a down Redis. Production must never silently accept
+    // unlimited traffic while the shared counter store is unavailable.
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
+    lazyConnect: true,
     keyPrefix: 'vibeplay:rl:',
   });
 }
