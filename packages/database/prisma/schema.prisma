@@ -25,22 +25,22 @@ enum UserStatus {
 }
 
 model User {
-  id              String     @id @default(cuid())
-  email           String     @unique
-  username        String     @unique
-  displayName     String
-  passwordHash    String
-  avatarUrl       String?
-  bio             String     @default("")
-  role            UserRole   @default(PLAYER)
-  status          UserStatus @default(ACTIVE)
-  statusReason    String?
-  emailVerifiedAt DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  lastLoginAt     DateTime?
+  id                String     @id @default(cuid())
+  email             String     @unique
+  username          String     @unique
+  displayName       String
+  passwordHash      String
+  avatarUrl         String?
+  bio               String     @default("")
+  role              UserRole   @default(PLAYER)
+  status            UserStatus @default(ACTIVE)
+  statusReason      String?
+  emailVerifiedAt   DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  lastLoginAt       DateTime?
   /// Persisted notification preferences (validated by notificationPrefsSchema).
-  notificationPrefs Json     @default("{}")
+  notificationPrefs Json       @default("{}")
 
   sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
@@ -56,7 +56,8 @@ model User {
   notifications           Notification[]
   moderationDecisions     ModerationDecision[]
   auditLogs               AuditLog[]
-  feedback                Feedback[]
+  feedback                Feedback[]               @relation("FeedbackAuthor")
+  feedbackResolved        Feedback[]               @relation("FeedbackResolvedBy")
 
   @@index([status])
   @@index([role])
@@ -186,7 +187,7 @@ model Game {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  versions     GameVersion[] @relation("GameVersions")
+  versions     GameVersion[]    @relation("GameVersions")
   screenshots  GameScreenshot[]
   likes        Like[]
   favorites    Favorite[]
@@ -236,17 +237,17 @@ model GameVersion {
 
 /// Tracks a single presigned-upload lifecycle for a GameVersion (one-time completion).
 model Upload {
-  id            String    @id @default(cuid())
-  gameVersionId String    @unique
-  gameVersion   GameVersion @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
-  objectKey     String
-  declaredSize  BigInt
+  id             String      @id @default(cuid())
+  gameVersionId  String      @unique
+  gameVersion    GameVersion @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
+  objectKey      String
+  declaredSize   BigInt
   declaredSha256 String
-  fileName      String
-  completedAt   DateTime?
-  abandonedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  expiresAt     DateTime
+  fileName       String
+  completedAt    DateTime?
+  abandonedAt    DateTime?
+  createdAt      DateTime    @default(now())
+  expiresAt      DateTime
 
   @@index([expiresAt])
 }
@@ -308,14 +309,14 @@ model Favorite {
 }
 
 model PlaySession {
-  id              String       @id @default(cuid())
+  id              String      @id @default(cuid())
   userId          String?
-  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user            User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   gameId          String
-  game            Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  game            Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
   gameVersionId   String
-  gameVersion     GameVersion  @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
-  startedAt       DateTime     @default(now())
+  gameVersion     GameVersion @relation(fields: [gameVersionId], references: [id], onDelete: Cascade)
+  startedAt       DateTime    @default(now())
   endedAt         DateTime?
   durationSeconds Int?
   clientSessionId String?
@@ -442,15 +443,25 @@ enum FeedbackCategory {
   BUG
 }
 
+enum FeedbackStatus {
+  OPEN
+  RESOLVED
+}
+
 model Feedback {
-  id        String           @id @default(cuid())
-  userId    String?
-  category  FeedbackCategory
-  message   String
-  page      String           @default("")
-  createdAt DateTime         @default(now())
+  id           String           @id @default(cuid())
+  userId       String?
+  category     FeedbackCategory
+  status       FeedbackStatus   @default(OPEN)
+  message      String
+  page         String           @default("")
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime         @default(now())
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user       User? @relation("FeedbackAuthor", fields: [userId], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("FeedbackResolvedBy", fields: [resolvedById], references: [id], onDelete: SetNull)
 
-  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([resolvedById])
 }
