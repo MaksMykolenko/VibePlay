@@ -72,22 +72,15 @@ const storageSchema = z
     }
   });
 
-const scanSchema = z
-  .object({
-    SCAN_DRIVER: z.enum(['clamav', 'off']).default('clamav'),
-    CLAMAV_HOST: z.string().default('localhost'),
-    CLAMAV_PORT: z.coerce.number().int().default(3310),
-  })
-  .check((ctx) => {
-    if (ctx.value.SCAN_DRIVER === 'off' && process.env.NODE_ENV === 'production') {
-      ctx.issues.push({
-        code: 'custom',
-        message: 'SCAN_DRIVER=off is not allowed in production',
-        input: ctx.value,
-        path: ['SCAN_DRIVER'],
-      });
-    }
-  });
+const scanSchema = z.object({
+  // 'none' is an alias for 'off' (both disable scanning). Disabling is allowed
+  // in production for the invite-only beta (ClamAV can be added later via a
+  // sidecar — see docker-compose.railway.yml). The worker treats any value
+  // other than 'clamav' as a disabled scanner.
+  SCAN_DRIVER: z.enum(['clamav', 'off', 'none']).default('clamav'),
+  CLAMAV_HOST: z.string().default('localhost'),
+  CLAMAV_PORT: z.coerce.number().int().default(3310),
+});
 
 const emailSchema = z.object({
   EMAIL_DRIVER: z.enum(['smtp', 'memory']).default('smtp'),
