@@ -1,0 +1,178 @@
+# VibePlay — Railway deployment compose file.
+#
+# SETUP (5 min):
+#   1. In Railway: New Project → Deploy from GitHub repo → select this repo.
+#   2. Add PostgreSQL plugin  → Railway auto-injects DATABASE_URL.
+#   3. Add Redis plugin       → Railway auto-injects REDIS_URL.
+#   4. In Project Settings → Environment → set all variables from .env.railway.template.
+#   5. In Service Settings for each service, set "Docker Compose File" to
+#      docker-compose.railway.yml.
+#
+# External dependencies (not in this file):
+#   - PostgreSQL    → Railway PostgreSQL plugin (DATABASE_URL injected automatically)
+#   - Redis         → Railway Redis plugin      (REDIS_URL   injected automatically)
+#   - Object store  → Cloudflare R2 (free 10 GB, S3-compatible, no egress fees)
+#                     See RAILWAY_DEPLOY.md §3 for setup instructions.
+#   - ClamAV        → disabled (SCAN_DRIVER=none); add later via sidecar if needed
+#
+# Service communication:
+#   Railway Docker Compose services share an internal network.
+#   The `web` Caddy container proxies /api/* to http://api:3000 internally,
+#   so the browser always talks to the same origin — no CORS required.
+#
+# Game-host wildcard domain:
+#   Each published game version is served from its own subdomain:
+#   {versionId}--{gameId}.games.YOURDOMAIN.com
+#   This requires a custom wildcard domain on the `game-host` Railway service.
+#   See RAILWAY_DEPLOY.md §6 for DNS setup instructions.
+
+name: vibeplay
+
+x-storage-env: &storage-env
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: ${S3_ENDPOINT}
+  S3_REGION: ${S3_REGION:-auto}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+  S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
+  S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
+
+x-required-secrets: &required-secrets
+  SESSION_SECRET: ${SESSION_SECRET}
+  PASSWORD_PEPPER: ${PASSWORD_PEPPER}
+  PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET}
+
+services:
+  # ── Migrations ──────────────────────────────────────────────────────────────
+  # Uses the `build` stage (which includes devDependencies / Prisma CLI).
+  # Railway starts this before api/worker because of the depends_on entries.
+  # If Railway does not honour service_completed_successfully, run manually:
+  #   railway run --service migrate
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: build
+    working_dir: /repo/packages/database
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    restart: 'no'
+
+  # ── API ─────────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: [*required-secrets, *storage-env]
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      API_ORIGIN: ${WEB_ORIGIN}
+      GAME_ORIGIN: ${GAME_ORIGIN}
+      TRUST_PROXY: 'true'
+      SCAN_DRIVER: none
+      EMAIL_DRIVER: smtp
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM}
+      INVITE_ONLY: ${INVITE_ONLY:-true}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    expose:
+      - '3000'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:3000/api/health/ready'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Worker ──────────────────────────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/worker.Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *storage-env
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      SCAN_DRIVER: none
+      WORKER_HEALTH_PORT: '3002'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:3002/health/ready'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Game-host ────────────────────────────────────────────────────────────────
+  # Must be exposed on its OWN Railway service domain (separate from `web`).
+  # Add a wildcard custom domain *.games.YOURDOMAIN.com to this service.
+  game-host:
+    build:
+      context: .
+      dockerfile: infra/docker/game-host.Dockerfile
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: [*required-secrets, *storage-env]
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      WEB_ORIGIN: ${WEB_ORIGIN}
+      GAME_ORIGIN: ${GAME_ORIGIN}
+      GAME_HOST_PORT: '8080'
+      ACCESS_CACHE_TTL_SECONDS: '15'
+    expose:
+      - '8080'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:8080/health/live'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Web (SPA + Caddy proxy) ──────────────────────────────────────────────────
+  # Caddy serves the React SPA and reverse-proxies /api/* → api:3000 internally.
+  # Set GAME_ORIGIN before first deploy so the VITE_GAME_ORIGIN build arg is
+  # correct (it is baked into the JS bundle at build time).
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.railway.Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_GAME_ORIGIN: ${GAME_ORIGIN:-https://games.example.com}
+        VITE_APP_MODE: real
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      GAME_FRAME_SRC: ${GAME_FRAME_SRC:-https://*.games.example.com}
+      API_INTERNAL_URL: http://api:3000
+    expose:
+      - '80'
