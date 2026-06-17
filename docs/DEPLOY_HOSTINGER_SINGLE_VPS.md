@@ -245,6 +245,41 @@ while Caddy issues its on-demand certificate.
 > swapping `tls { on_demand }` for `tls { dns <provider> <token> }` in
 > `infra/caddy/hostinger.Caddyfile`. It is **not required** — on-demand works fully.
 
+## Verification & Recovery Reference
+
+Use these quick commands on the VPS or your local machine to verify the stack and troubleshoot images:
+
+**1. Verify a Docker image tag before deployment:**
+To ensure a pinned tag exists on Docker Hub and supports your architecture (e.g., `amd64` or `arm64`):
+```bash
+docker manifest inspect minio/minio:<TAG>
+```
+
+**2. Check the container stack health:**
+Verify that all containers are healthy or running on the VPS:
+```bash
+docker compose --env-file .env -f docker-compose.hostinger.yml ps
+```
+
+**3. Check production endpoints:**
+Verify the routing and certificate health of core public endpoints:
+```bash
+# Verify database/redis/storage are healthy via Caddy
+curl -i https://vibeplay.games/api/health/ready
+
+# Verify API configuration is accessible
+curl -i https://vibeplay.games/api/auth/config
+
+# Verify Game Host is live
+curl -i https://games.vibeplay.games/health/live
+```
+
+**4. Apply Caddyfile configuration updates:**
+If `infra/caddy/hostinger.Caddyfile` is updated, recreate the Caddy container to load the changes:
+```bash
+docker compose --env-file .env -f docker-compose.hostinger.yml up -d --force-recreate caddy
+```
+
 ---
 
 ## Troubleshooting

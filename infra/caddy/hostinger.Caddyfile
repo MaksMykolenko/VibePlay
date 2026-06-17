@@ -36,7 +36,7 @@
 {$WEB_ORIGIN} {
 	encode gzip
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
 	}
 	handle /api/* {
@@ -51,7 +51,7 @@
 {$PUBLIC_API_ORIGIN} {
 	encode gzip
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
 	}
 	reverse_proxy api:3000
@@ -61,7 +61,7 @@
 {$GAME_HOST_BASE_DOMAIN} {
 	encode gzip
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
 	}
 	reverse_proxy game-host:8080
@@ -83,7 +83,7 @@
 	}
 	encode gzip
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		-Server
 	}
 	reverse_proxy game-host:8080
