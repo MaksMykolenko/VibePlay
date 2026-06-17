@@ -1,0 +1,297 @@
+# VibePlay — single-VPS production stack (Hostinger KVM-2, Ubuntu 24.04).
+# 100% local: Hostinger DNS + Caddy/Let's Encrypt + local MinIO.
+#
+#   docker compose --env-file .env -f docker-compose.hostinger.yml up -d --build
+#
+# Domains (see docs/DEPLOY_HOSTINGER_SINGLE_VPS.md):
+#   https://vibeplay.games            → web SPA  (+ /api proxied to api, same-origin)
+#   https://api.vibeplay.games        → api      (direct API endpoint)
+#   https://*.games.vibeplay.games    → game-host (one isolated origin per version)
+#
+# Security model:
+#   - Auth/session/CSRF cookies are HOST-ONLY on vibeplay.games (never a parent
+#     domain), so the game subdomains can never receive them → origin isolation.
+#   - The SPA talks to the API SAME-ORIGIN via vibeplay.games/api so the JS-readable
+#     CSRF cookie (vp_csrf) works. api.vibeplay.games is a direct endpoint too.
+#   - Postgres / Redis / MinIO / ClamAV publish NO host ports — only Caddy does.
+
+name: vibeplay
+
+x-required-secrets: &required-secrets
+  SESSION_SECRET: ${SESSION_SECRET:?set in .env}
+  PASSWORD_PEPPER: ${PASSWORD_PEPPER:?set in .env}
+  PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET:?set in .env}
+
+x-storage-env: &storage-env
+  STORAGE_DRIVER: s3
+  # Local MinIO, internal only. The browser never hits MinIO directly:
+  # uploads go through the API (/uploads/:id/direct) and published files are
+  # streamed by game-host — so S3_PUBLIC_ENDPOINT stays internal too.
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+  S3_PUBLIC_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set in .env}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set in .env}
+  S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
+  S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+  S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+
+networks:
+  vibeplay:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  clamavdata:
+  caddydata:
+  caddyconfig:
+
+services:
+  # ── Data stores (internal only — no published ports) ────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    networks: [vibeplay]
+    environment:
+      POSTGRES_USER: vibeplay
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: vibeplay
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vibeplay -d vibeplay']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [vibeplay]
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    networks: [vibeplay]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set in .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set in .env}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: create the quarantine + published buckets, then exit.
+  minio-init:
+    image: minio/mc:latest
+    networks: [vibeplay]
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set in .env}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set in .env}
+      S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
+      S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${S3_ACCESS_KEY_ID} $${S3_SECRET_ACCESS_KEY} &&
+      mc mb --ignore-existing local/$${S3_QUARANTINE_BUCKET} &&
+      mc mb --ignore-existing local/$${S3_PUBLISHED_BUCKET} &&
+      mc ilm rule add local/$${S3_QUARANTINE_BUCKET} --expire-days 7 || true;
+      echo 'buckets ready'
+      "
+    restart: 'no'
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    networks: [vibeplay]
+    volumes:
+      - clamavdata:/var/lib/clamav
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/clamdcheck.sh']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 240s
+
+  # ── Migrations (one-shot, runs before api/worker/game-host) ──────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+      target: build
+    networks: [vibeplay]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /repo/packages/database
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    environment:
+      DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
+    restart: 'no'
+
+  # ── API (Fastify) ────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: infra/docker/api.Dockerfile
+    restart: unless-stopped
+    networks: [vibeplay]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      clamav: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      <<: [*required-secrets, *storage-env]
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # SPA reaches the API same-origin at https://vibeplay.games/api, so both
+      # WEB_ORIGIN and API_ORIGIN are the app domain (host-only cookies stay here).
+      WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
+      API_ORIGIN: ${API_ORIGIN:?set in .env}
+      GAME_ORIGIN: https://${GAME_HOST_BASE_DOMAIN:?set in .env}
+      API_PORT: '3000'
+      API_HOST: '0.0.0.0'
+      TRUST_PROXY: 'true'
+      DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
+      REDIS_URL: redis://redis:6379
+      SCAN_DRIVER: clamav
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: '3310'
+      EMAIL_DRIVER: ${EMAIL_DRIVER:-memory}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-VibePlay <no-reply@vibeplay.games>}
+      INVITE_ONLY: ${INVITE_ONLY:-true}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:3000/api/health/ready'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # ── Worker (BullMQ: ZIP processing + ClamAV scan) ───────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: infra/docker/worker.Dockerfile
+    restart: unless-stopped
+    networks: [vibeplay]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      clamav: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      <<: *storage-env
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
+      REDIS_URL: redis://redis:6379
+      SCAN_DRIVER: clamav
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: '3310'
+      WORKER_HEALTH_PORT: '3002'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:3002/health/ready'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # ── Game host (isolated per-version origins) ─────────────────────────────────
+  game-host:
+    build:
+      context: .
+      dockerfile: infra/docker/game-host.Dockerfile
+    restart: unless-stopped
+    networks: [vibeplay]
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    environment:
+      <<: [*required-secrets, *storage-env]
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GAME_HOST_PORT: '8080'
+      GAME_HOST_HOST: '0.0.0.0'
+      WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
+      GAME_ORIGIN: https://${GAME_HOST_BASE_DOMAIN:?set in .env}
+      DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
+      REDIS_URL: redis://redis:6379
+      ACCESS_CACHE_TTL_SECONDS: '15'
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'node -e "fetch(''http://localhost:8080/health/live'').then(r=>{if(r.status!==200)process.exit(1)}).catch(()=>process.exit(1))"'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Web (React/Vite SPA, real mode, served by Caddy on :80) ─────────────────
+  web:
+    build:
+      context: .
+      dockerfile: infra/docker/web.Dockerfile
+      args:
+        VITE_API_URL: /api
+        VITE_GAME_ORIGIN: https://${GAME_HOST_BASE_DOMAIN}
+        VITE_APP_MODE: real
+    restart: unless-stopped
+    networks: [vibeplay]
+    environment:
+      # CSP on the SPA: may only frame per-version game origins; API is same-origin.
+      GAME_FRAME_SRC: https://*.${GAME_HOST_BASE_DOMAIN}
+      API_CONNECT_SRC: "'self'"
+
+  # ── Caddy reverse proxy + automatic HTTPS (Let's Encrypt) ───────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    networks: [vibeplay]
+    depends_on:
+      - api
+      - web
+      - game-host
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
+      PUBLIC_API_ORIGIN: ${PUBLIC_API_ORIGIN:?set in .env}
+      GAME_HOST_BASE_DOMAIN: ${GAME_HOST_BASE_DOMAIN:?set in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set in .env}
+    volumes:
+      - ./infra/caddy/hostinger.Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config

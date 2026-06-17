@@ -6,7 +6,10 @@ import react from '@vitejs/plugin-react';
 // - demo: GitHub Pages localStorage demo (HashRouter, demo banner, no backend)
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: mode === 'demo' ? '/VibePlay/' : '/',
+  // Base path for assets. Defaults to '/VibePlay/' for the GitHub Pages project
+  // site and '/' for the real app. Override with VITE_BASE_PATH (e.g. '/' on
+  // Cloudflare Pages, where the demo is served from the domain root).
+  base: process.env.VITE_BASE_PATH ?? (mode === 'demo' ? '/VibePlay/' : '/'),
   define: {
     // Statically folded per importing module → guaranteed dead-code elimination
     // of all demo-only paths in the real bundle (verified by CI).

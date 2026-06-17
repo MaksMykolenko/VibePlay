@@ -38,5 +38,6 @@ packages/database/src/generated/
 *.sln
 *.sw?
 dist-e2e/
+dist-cf/
 playwright-report/
 test-results/

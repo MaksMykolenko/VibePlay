@@ -1,0 +1,82 @@
+# VibePlay — single-VPS Caddy config (Hostinger). 100% Let's Encrypt via Caddy.
+# No external DNS API needed. Values come from .env:
+#   WEB_ORIGIN=https://vibeplay.games
+#   PUBLIC_API_ORIGIN=https://api.vibeplay.games
+#   GAME_HOST_BASE_DOMAIN=games.vibeplay.games
+#
+# TLS:
+#   vibeplay.games / api.vibeplay.games / games.vibeplay.games → Let's Encrypt HTTP-01
+#     (issued automatically; only needs the A records + ports 80/443 open).
+#   *.games.vibeplay.games (per-version game origins) → on-demand TLS, gated so a
+#     cert is only ever issued for hostnames ending in .games.vibeplay.games.
+
+{
+	admin off
+	email {$ACME_EMAIL}
+	# On-demand TLS mints a Let's Encrypt cert the first time each per-version game
+	# subdomain is requested. The internal /check gate (below) ensures Caddy only
+	# ever issues for *.GAME_HOST_BASE_DOMAIN — never arbitrary hostnames.
+	on_demand_tls {
+		ask http://localhost:5555/check
+	}
+}
+
+# Internal-only gate for on-demand TLS (listens on loopback inside the container).
+# Allows issuance ONLY for hostnames ending in ".games.vibeplay.games".
+:5555 {
+	@allowed `{http.request.uri.query.domain}.endsWith(".{$GAME_HOST_BASE_DOMAIN}")`
+	respond @allowed 200
+	respond 403
+}
+
+# ── Frontend SPA + SAME-ORIGIN API proxy ────────────────────────────────────
+# The SPA reads its CSRF cookie (vp_csrf) via document.cookie, so the API must be
+# same-origin: /api/* is proxied to the api service here. Host-only auth cookies
+# therefore live on vibeplay.games and never reach the game subdomains.
+{$WEB_ORIGIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+	handle {
+		reverse_proxy web:80
+	}
+}
+
+# ── Direct API endpoint (api.vibeplay.games) ────────────────────────────────
+{$PUBLIC_API_ORIGIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		-Server
+	}
+	reverse_proxy api:3000
+}
+
+# ── Game host: bare base host (intentionally serves no content, but needs TLS) ─
+{$GAME_HOST_BASE_DOMAIN} {
+	header -Server
+	reverse_proxy game-host:8080
+}
+
+# ── Game host: per-version isolated origins  {versionId}--{gameId}.<base> ─────
+# On-demand TLS works immediately with the stock caddy:2-alpine image and only
+# the Hostinger A records (no DNS API token). Each new game subdomain gets its
+# own Let's Encrypt cert on first load. Origin isolation is fully preserved —
+# NEVER serve game content on {$WEB_ORIGIN}.
+#
+# Optional later: a DNS-01 wildcard cert for *.GAME_HOST_BASE_DOMAIN removes the
+# first-load issuance delay. It needs a Caddy image built with your DNS
+# provider's plugin + an API token for the zone — see
+# docs/DEPLOY_HOSTINGER_SINGLE_VPS.md. Not required; on-demand is the default.
+*.{$GAME_HOST_BASE_DOMAIN} {
+	tls {
+		on_demand
+	}
+	header -Server
+	reverse_proxy game-host:8080
+}
