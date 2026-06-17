@@ -353,7 +353,7 @@ export const RegisterPage: React.FC = () => {
                 minLength={3}
                 maxLength={20}
                 pattern="[a-z0-9_]+"
-                placeholder="neon_rider"
+                placeholder="diana_rider"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="form-input"
@@ -377,7 +377,7 @@ export const RegisterPage: React.FC = () => {
                 type="text"
                 required
                 maxLength={50}
-                placeholder="Neon Rider"
+                placeholder="Diana Rider"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="form-input"

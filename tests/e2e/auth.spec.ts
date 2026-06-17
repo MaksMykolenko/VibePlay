@@ -55,8 +55,8 @@ test.describe('authentication', () => {
 
     // Register through the real UI.
     await page.goto(`/register?invite=${encodeURIComponent(invite)}`);
-    await page.locator('input[placeholder="neon_rider"]').fill(username);
-    await page.locator('input[placeholder="Neon Rider"]').fill(username);
+    await page.locator('input[placeholder="diana_rider"]').fill(username);
+    await page.locator('input[placeholder="Diana Rider"]').fill(username);
     await page.locator('input[placeholder="you@example.com"]').fill(email);
     await page.locator('input[placeholder="At least 10 characters"]').fill(password);
     await page.locator('input[placeholder="Re-enter password"]').fill(password);
