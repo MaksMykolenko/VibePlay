@@ -68,6 +68,36 @@ const worker = new Worker<{ uploadId: string; gameVersionId: string }>(
 
 worker.on('failed', (job, err) => {
   log.error({ jobId: job?.id, err: err.message }, 'job failed');
+  if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) {
+    // All retries exhausted. Fail the version so it doesn't stay stuck in VALIDATING.
+    void (async () => {
+      try {
+        const version = await prisma.gameVersion.findUnique({
+          where: { id: job.data.gameVersionId },
+          include: { game: true },
+        });
+        if (version && version.status === 'VALIDATING') {
+          const failReason = 'Validation worker failed to process the job after all retries.';
+          const report = { ok: false, failReason, checks: [], scanner: { ok: false, detail: failReason } };
+          await prisma.gameVersion.updateMany({
+            where: { id: version.id, status: 'VALIDATING' },
+            data: { status: 'SCAN_FAILED', validationReport: report, rejectReason: failReason },
+          });
+          await prisma.notification.create({
+            data: {
+              userId: version.game.creatorId,
+              type: 'GAME_VALIDATION_FAILED',
+              title: 'Build validation failed (System Error)',
+              body: `Version ${version.version} of “${version.game.title}” could not be validated due to a system error.`,
+              metadata: { gameId: version.gameId, versionId: version.id },
+            },
+          });
+        }
+      } catch (recoveryErr) {
+        log.error({ err: (recoveryErr as Error).message }, 'failed to run stuck version recovery');
+      }
+    })();
+  }
 });
 
 // Lightweight health endpoint for docker healthchecks.

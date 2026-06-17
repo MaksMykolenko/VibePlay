@@ -13,6 +13,8 @@ export const VALIDATION_QUEUE_NAME = 'game-version-validation';
 export interface ValidationQueue {
   readonly driver: 'bullmq' | 'inline';
   enqueueValidation(job: ValidateVersionJob): Promise<void>;
+  /** Notify game-host to invalidate its access cache for a specific game. */
+  publishGameInvalidation(gameId: string): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -39,6 +41,9 @@ export function createValidationQueue(
             console.error('inline validation job failed', err);
           });
         },
+        async publishGameInvalidation() {
+          // no-op: inline driver has no Redis and no separate game-host.
+        },
         async close() {},
       },
       redisPing: null,
@@ -62,6 +67,9 @@ export function createValidationQueue(
           removeOnComplete: { count: 1000 },
           removeOnFail: { count: 5000 },
         });
+      },
+      async publishGameInvalidation(gameId: string) {
+        await connection.publish('vibeplay:game-host:invalidate', gameId);
       },
       async close() {
         await queue.close();

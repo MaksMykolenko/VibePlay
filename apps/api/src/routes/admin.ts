@@ -31,7 +31,7 @@ import { rlPolicy } from '../lib/rateLimit.js';
 import { parse } from '../lib/validate.js';
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
-  const { prisma, env } = app;
+  const { prisma, env, validationQueue } = app;
 
   app.addHook('preHandler', async (req) => {
     requireAdmin(req);
@@ -65,6 +65,51 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       select: { id: true },
     });
     return { queue: await Promise.all(versions.map((version) => moderationEntry(version.id))) };
+  });
+
+  app.post('/moderation/recover-stuck', { config: { rateLimit: rlPolicy('adminAction') } }, async (req) => {
+    const admin = requireAdmin(req);
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60_000);
+    
+    const stuckVersions = await prisma.gameVersion.findMany({
+      where: {
+        status: { in: ['VALIDATING', 'QUARANTINED'] },
+        updatedAt: { lt: thirtyMinutesAgo }
+      },
+      include: { game: true }
+    });
+
+    for (const version of stuckVersions) {
+      const failReason = 'Validation timed out or got stuck. Recovered by admin.';
+      const report = { ok: false, failReason, checks: [], scanner: { ok: false, detail: failReason } };
+      
+      await prisma.gameVersion.update({
+        where: { id: version.id },
+        data: { status: 'SCAN_FAILED', validationReport: report, rejectReason: failReason },
+      });
+      
+      await prisma.notification.create({
+        data: {
+          userId: version.game.creatorId,
+          type: 'GAME_VALIDATION_FAILED',
+          title: 'Build validation failed (System Timeout)',
+          body: `Version ${version.version} of “${version.game.title}” could not be validated due to a system timeout and was recovered.`,
+          metadata: { gameId: version.gameId, versionId: version.id },
+        },
+      });
+    }
+
+    await audit(prisma, {
+      actorId: admin.id,
+      action: 'system.recovered_stuck_versions',
+      targetType: 'SYSTEM',
+      targetId: 'admin',
+      metadata: { count: stuckVersions.length },
+      req,
+      secret: env.SESSION_SECRET,
+    });
+
+    return { recoveredCount: stuckVersions.length };
   });
 
   app.get<{ Params: { versionId: string } }>('/game-versions/:versionId', async (req) =>
@@ -136,6 +181,8 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           },
         });
       });
+      // Notify game-host to invalidate its access cache for this game immediately.
+      await validationQueue.publishGameInvalidation(version.gameId);
       reply.status(204).send();
     },
   );
@@ -222,6 +269,8 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     async (req, reply) => {
       const admin = requireAdmin(req);
       await prisma.game.update({ where: { id: req.params.gameId }, data: { status: 'HIDDEN' } });
+      // Notify game-host to stop serving this game immediately.
+      await validationQueue.publishGameInvalidation(req.params.gameId);
       await audit(prisma, {
         actorId: admin.id,
         action: 'game.hidden',
@@ -298,6 +347,14 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
           data: { status: 'SUSPENDED' },
         }),
       ]);
+      // Invalidate all published games by this user.
+      const affectedGames = await prisma.game.findMany({
+        where: { creatorId: req.params.userId, status: 'SUSPENDED' },
+        select: { id: true },
+      });
+      await Promise.all(
+        affectedGames.map((g) => validationQueue.publishGameInvalidation(g.id)),
+      );
       reply.status(204).send();
     });
   }
@@ -311,6 +368,14 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       where: { creatorId: req.params.userId, status: 'SUSPENDED' },
       data: { status: 'HIDDEN' },
     });
+    // Invalidate cache for restored games (status changed).
+    const restoredGames = await prisma.game.findMany({
+      where: { creatorId: req.params.userId, status: 'HIDDEN' },
+      select: { id: true },
+    });
+    await Promise.all(
+      restoredGames.map((g) => validationQueue.publishGameInvalidation(g.id)),
+    );
     reply.status(204).send();
   });
 
