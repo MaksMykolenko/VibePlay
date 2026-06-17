@@ -117,7 +117,7 @@ const triggerStyle: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: '6px',
-  border: '1px solid var(--border-color)',
+  border: 'none',
   background: 'transparent',
   color: 'var(--text-secondary)',
 };
