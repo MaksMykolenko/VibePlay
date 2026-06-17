@@ -16,6 +16,36 @@ import {
  * /api/auth/me → logout. Plus invite-only enforcement and suspended/banned login.
  */
 test.describe('authentication', () => {
+  // Registration UX must reflect the backend INVITE_ONLY mode (via /api/auth/config).
+  test('register UI in OPEN mode: no invite field, open copy, submit not blocked', async ({
+    page,
+  }) => {
+    await page.route('**/api/auth/config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ inviteOnly: false }),
+      }),
+    );
+    await page.goto('/register');
+    await expect(page.getByText(/registration is currently open/i)).toBeVisible();
+    await expect(page.locator('#reg-invite')).toHaveCount(0);
+  });
+
+  test('register UI in INVITE-ONLY mode: required invite field + invite copy', async ({ page }) => {
+    await page.route('**/api/auth/config', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ inviteOnly: true }),
+      }),
+    );
+    await page.goto('/register');
+    await expect(page.getByText(/requires an invite code/i)).toBeVisible();
+    await expect(page.locator('#reg-invite')).toBeVisible();
+    await expect(page.locator('#reg-invite')).toHaveAttribute('required', '');
+  });
+
   test('invite → register → verify email → login → me → logout', async ({ page }) => {
     const admin = await adminAgent();
     const username = uniq('player');

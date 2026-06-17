@@ -134,6 +134,8 @@ export interface ApiClient {
   demoLoginAs?(role: 'player' | 'creator' | 'admin'): Promise<CurrentUserDto>;
 
   // auth
+  /** Public registration mode (invite-only vs open). Safe for unauthenticated UI. */
+  authConfig(): Promise<{ inviteOnly: boolean }>;
   register(input: RegisterInput): Promise<CurrentUserDto>;
   login(email: string, password: string): Promise<CurrentUserDto>;
   logout(): Promise<void>;

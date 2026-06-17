@@ -208,6 +208,11 @@ export function createDemoClient(): ApiClient {
   return {
     mode: 'demo',
 
+    // Demo registration is always open (no backend, no invites).
+    async authConfig() {
+      return { inviteOnly: false };
+    },
+
     async demoLoginAs(role) {
       const user = getUsers().find((u) => u.email === DEMO_EMAILS[role]);
       if (!user) throw new ApiClientError('USER_NOT_FOUND', 'Demo account missing', 404);

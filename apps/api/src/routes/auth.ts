@@ -36,6 +36,12 @@ const RESET_TTL_MS = 60 * 60 * 1000;
 export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   const { prisma, env, mailer } = app;
 
+  // -------------------------------------------------------------------- config
+  // Public, unauthenticated, secrets-free. Lets the SPA render the registration
+  // form correctly for the current mode (invite required vs open). Exposes ONLY
+  // the boolean registration mode — never env values, secrets, or internals.
+  app.get('/config', async () => ({ inviteOnly: env.INVITE_ONLY === true }));
+
   // ------------------------------------------------------------------ register
   app.post('/register', { config: { rateLimit: rlPolicy('register') } }, async (req, reply) => {
     const body = parse(registerSchema, req.body);

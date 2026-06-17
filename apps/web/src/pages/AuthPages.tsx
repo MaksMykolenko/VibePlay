@@ -211,6 +211,31 @@ export const RegisterPage: React.FC = () => {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [inviteOnly, setInviteOnly] = useState<boolean | null>(null);
+  const [configError, setConfigError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .authConfig()
+      .then((cfg) => {
+        if (!cancelled) setInviteOnly(cfg.inviteOnly);
+      })
+      .catch(() => {
+        // Safe fallback: never block open registration, never crash. Show the
+        // invite field as optional and let the backend stay authoritative.
+        if (!cancelled) setConfigError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Invite field shows when registration is invite-only, or (failsafe) when the
+  // mode couldn't be loaded — so a user who has an invite is never stuck. It is
+  // required only in confirmed invite-only mode.
+  const showInvite = !IS_DEMO && (inviteOnly === true || configError);
+  const inviteRequired = inviteOnly === true;
 
   const getPasswordStrength = () => {
     if (!password) return { label: 'Empty', color: 'var(--text-secondary)', width: '0%' };
@@ -246,6 +271,10 @@ export const RegisterPage: React.FC = () => {
       setFormError('You must agree to the Terms of Service.');
       return;
     }
+    if (inviteRequired && !inviteCode.trim()) {
+      setFormError('An invite code is required to register right now.');
+      return;
+    }
 
     setLoading(true);
     const error = await register({
@@ -277,22 +306,30 @@ export const RegisterPage: React.FC = () => {
         <p style={subtitleStyle}>
           {IS_DEMO
             ? 'Join the VibePlay demo (data stays in your browser).'
-            : 'VibePlay is in private beta — an invite code is required.'}
+            : inviteOnly === true
+              ? 'VibePlay is in private beta — registration requires an invite code.'
+              : inviteOnly === false
+                ? 'Create your VibePlay account. Registration is currently open.'
+                : 'Create your VibePlay account.'}
         </p>
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
-          {!IS_DEMO && (
+          {showInvite && (
             <div className="form-group">
               <label className="form-label" htmlFor="reg-invite">
-                Invite code
+                {inviteRequired ? 'Invite code' : 'Invite code (optional)'}
               </label>
               <div style={inputWrapperStyle}>
                 <KeyRound size={16} style={inputIconStyle} aria-hidden="true" />
                 <input
                   id="reg-invite"
                   type="text"
-                  required
-                  placeholder="Paste your beta invite code"
+                  required={inviteRequired}
+                  placeholder={
+                    inviteRequired
+                      ? 'Paste your beta invite code'
+                      : 'Optional — paste an invite code if you have one'
+                  }
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
                   className="form-input"

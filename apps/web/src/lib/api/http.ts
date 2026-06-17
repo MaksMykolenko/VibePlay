@@ -111,6 +111,9 @@ export function createHttpClient(): ApiClient {
     mode: 'real',
 
     // ----- auth -----
+    async authConfig() {
+      return request<{ inviteOnly: boolean }>('/auth/config');
+    },
     async register(input: RegisterInput) {
       const r = await request<{ user: CurrentUserDto }>('/auth/register', {
         method: 'POST',

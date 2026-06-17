@@ -122,6 +122,26 @@ describe('registration', () => {
   });
 });
 
+describe('auth config', () => {
+  it('GET /api/auth/config reports open registration (inviteOnly=false)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/auth/config' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ inviteOnly: false });
+  });
+
+  it('reports invite-only registration when INVITE_ONLY=true', async () => {
+    const inviteApp = await buildApp({ env: testEnv({ INVITE_ONLY: 'true' }), prisma });
+    await inviteApp.ready();
+    try {
+      const res = await inviteApp.inject({ method: 'GET', url: '/api/auth/config' });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ inviteOnly: true });
+    } finally {
+      await inviteApp.close();
+    }
+  });
+});
+
 describe('invite-only mode', () => {
   it('requires a valid invite and binds bound-email invites', async () => {
     const inviteApp = await buildApp({ env: testEnv({ INVITE_ONLY: 'true' }), prisma });
