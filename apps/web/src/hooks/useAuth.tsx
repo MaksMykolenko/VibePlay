@@ -183,12 +183,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const becomeCreator = useCallback((): string | null => {
+    if (
+      account?.role === 'CREATOR' ||
+      account?.role === 'ADMIN' ||
+      account?.role === 'OWNER'
+    ) {
+      return null;
+    }
     if (IS_DEMO) {
       switchDemoRole('creator');
       return null;
     }
     return 'Creator access is invite-based during the private beta. Contact NeoFlux Software to get a creator invite.';
-  }, [switchDemoRole]);
+  }, [account, switchDemoRole]);
 
   const value: AuthContextType = {
     currentUser: account ? dtoToLegacyUser(account) : null,

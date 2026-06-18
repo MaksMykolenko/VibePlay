@@ -362,7 +362,7 @@ export const AppShell: React.FC = () => {
   const isAdminPath = location.pathname.startsWith('/admin');
 
   const hasCreatorAccess =
-    currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin');
+    currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin' || currentUser.role === 'owner');
   const hasAdminAccess =
     currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner');
 
@@ -927,7 +927,7 @@ export const AppShell: React.FC = () => {
                     @{currentUser.username}
                   </div>
                   <span
-                    className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                    className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                     style={{ marginTop: '6px', fontSize: '0.65rem' }}
                   >
                     {currentUser.role}
@@ -1455,7 +1455,7 @@ export const AppShell: React.FC = () => {
                       @{currentUser.username}
                     </div>
                     <span
-                      className={`badge ${currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                      className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                       style={{ marginTop: '6px', fontSize: '0.65rem' }}
                     >
                       {currentUser.role}

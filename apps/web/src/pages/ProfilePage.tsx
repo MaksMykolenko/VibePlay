@@ -21,7 +21,7 @@ export const ProfilePage: React.FC = () => {
   );
   const [profileMissing, setProfileMissing] = useState(false);
   const [activeTab, setActiveTab] = useState<'games' | 'favorites' | 'recently' | 'about'>(
-    profileUser?.role === 'creator' ? 'games' : 'favorites',
+    profileUser?.role === 'creator' || profileUser?.role === 'admin' || profileUser?.role === 'owner' ? 'games' : 'favorites',
   );
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export const ProfilePage: React.FC = () => {
           joinDate: profile.createdAt,
           followersCount: 0,
         });
-        setActiveTab(profile.role === 'CREATOR' ? 'games' : 'favorites');
+        setActiveTab(profile.role === 'CREATOR' || profile.role === 'ADMIN' || profile.role === 'OWNER' ? 'games' : 'favorites');
         setProfileMissing(false);
       })
       .catch(() => {
@@ -120,7 +120,7 @@ export const ProfilePage: React.FC = () => {
             <div style={nameRowStyle}>
               <h1 style={displayNameStyle}>{profileUser.displayName}</h1>
               <span
-                className={`badge ${profileUser.role === 'admin' ? 'badge-danger' : profileUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                className={`badge ${profileUser.role === 'owner' ? 'badge-danger' : profileUser.role === 'admin' ? 'badge-danger' : profileUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
               >
                 {profileUser.role}
               </span>
@@ -143,7 +143,7 @@ export const ProfilePage: React.FC = () => {
                 <strong>{profileUser.followersCount}</strong>
                 <span>{t('profile.followers')}</span>
               </div>
-              {profileUser.role === 'creator' && (
+              {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
                 <>
                   <div style={statDividerStyle}></div>
                   <div style={statItemStyle}>
@@ -196,7 +196,7 @@ export const ProfilePage: React.FC = () => {
 
       {/* Tabs Menu */}
       <div style={tabsContainerStyle}>
-        {profileUser.role === 'creator' && (
+        {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
           <button
             onClick={() => setActiveTab('games')}
             style={{
@@ -357,7 +357,7 @@ export const ProfilePage: React.FC = () => {
                 <div style={aboutStatValStyle}>{profileUser.followersCount}</div>
                 <div style={aboutStatLblStyle}>{t('profile.followers')}</div>
               </div>
-              {profileUser.role === 'creator' && (
+              {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
                 <>
                   <div style={aboutStatBoxStyle}>
                     <div style={aboutStatValStyle}>{creatorGames.length}</div>

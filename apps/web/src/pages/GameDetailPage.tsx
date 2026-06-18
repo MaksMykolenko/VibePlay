@@ -53,7 +53,7 @@ export const GameDetailPage: React.FC = () => {
   }
 
   const isOwner = currentUser?.id === game.creatorId;
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'owner';
 
   // Guard: If not published, only owner or admin can see
   if (game.status !== 'published' && !isOwner && !isAdmin) {

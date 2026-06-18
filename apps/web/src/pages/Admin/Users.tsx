@@ -157,7 +157,7 @@ export const AdminUsers: React.FC = () => {
                   {/* Role Badge */}
                   <td style={tdStyle}>
                     <span
-                      className={`badge ${user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                      className={`badge ${user.role === 'owner' ? 'badge-danger' : user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                     >
                       {user.role}
                     </span>

@@ -45,7 +45,7 @@ export const EditGame: React.FC = () => {
   if (isLoading || !game) return null;
 
   // Verify ownership
-  if (currentUser?.id !== game.creatorId && currentUser?.role !== 'admin') {
+  if (currentUser?.id !== game.creatorId && currentUser?.role !== 'admin' && currentUser?.role !== 'owner') {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
         <h2>Unauthorized</h2>

@@ -176,7 +176,7 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 <span
-                  className={`badge ${user.role === 'ADMIN' ? 'badge-danger' : user.role === 'CREATOR' ? 'badge-success' : 'badge-primary'}`}
+                  className={`badge ${user.role === 'OWNER' ? 'badge-danger' : user.role === 'ADMIN' ? 'badge-danger' : user.role === 'CREATOR' ? 'badge-success' : 'badge-primary'}`}
                   style={{ fontSize: '0.65rem' }}
                 >
                   {user.role.toLowerCase()}
