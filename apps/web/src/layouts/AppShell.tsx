@@ -29,7 +29,6 @@ import {
   Users,
   AlertTriangle,
   Star,
-  ChevronLeft,
   ChevronRight,
   Check,
   ChevronDown,
@@ -882,30 +881,6 @@ export const AppShell: React.FC = () => {
           )}
         </a>
 
-        {/* Collapse Sidebar (Desktop Only) */}
-        {!isMobileOrDrawer && (
-          <div
-            onClick={handleNavigationToggle}
-            className="sidebar-link"
-            style={{ cursor: 'pointer' }}
-            data-tooltip={isSidebarCollapsed ? 'Expand Sidebar' : undefined}
-            role="button"
-            aria-label={t(isSidebarCollapsed ? 'sidebar.expand' : 'sidebar.collapse')}
-            aria-expanded={!isSidebarCollapsed}
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleNavigationToggle();
-              }
-            }}
-          >
-            {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-            {!isSidebarCollapsed && (
-              <span style={{ marginLeft: '10px' }}>{t('sidebar.collapse')}</span>
-            )}
-          </div>
-        )}
         {/* Language Switcher in Sidebar (Visible when expanded or in mobile drawer) */}
         {(!isSidebarCollapsed || isMobileOrDrawer) && (
           <>
