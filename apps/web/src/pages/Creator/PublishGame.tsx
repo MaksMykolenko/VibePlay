@@ -439,7 +439,7 @@ export const PublishGame: React.FC = () => {
                 </label>
               </div>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Maximum file size limit: 50MB. Make sure `index.html` is located at the archive root
+                Maximum file size limit: 100MB. Make sure `index.html` is located at the archive root
                 folder.
               </span>
             </div>

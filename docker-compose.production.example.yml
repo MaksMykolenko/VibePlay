@@ -143,7 +143,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:?}
       INVITE_ONLY: 'true'
       SENTRY_DSN: ${SENTRY_DSN:-}
-      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
     healthcheck:
       test:
         [

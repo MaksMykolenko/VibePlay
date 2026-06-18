@@ -190,7 +190,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-VibePlay <no-reply@vibeplay.games>}
       INVITE_ONLY: ${INVITE_ONLY:-true}
-      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
       SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:
       test:

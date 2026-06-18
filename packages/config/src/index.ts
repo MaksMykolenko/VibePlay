@@ -93,10 +93,10 @@ const emailSchema = z.object({
 });
 
 const uploadSchema = z.object({
-  UPLOAD_MAX_COMPRESSED_MB: z.coerce.number().int().min(1).default(50),
+  UPLOAD_MAX_COMPRESSED_MB: z.coerce.number().int().min(1).default(100),
   UPLOAD_MAX_UNCOMPRESSED_MB: z.coerce.number().int().min(1).default(250),
   UPLOAD_MAX_FILES: z.coerce.number().int().min(1).default(5000),
-  UPLOAD_MAX_SINGLE_FILE_MB: z.coerce.number().int().min(1).default(50),
+  UPLOAD_MAX_SINGLE_FILE_MB: z.coerce.number().int().min(1).default(100),
 });
 
 const betaSchema = z.object({
