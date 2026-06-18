@@ -335,17 +335,28 @@ export function createHttpClient(): ApiClient {
       });
     },
     async uploadZipDirect(uploadId, file) {
-      // fs-storage development fallback — multipart-free raw body PUT
+      // Same-origin raw-body PUT. The browser uploads the ZIP to the API, which
+      // stores it into MinIO internally and enqueues validation — the browser
+      // never talks to MinIO. We send the CSRF token + session cookie so the
+      // mutation passes the auth/CSRF guards.
       const csrf = readCookie('vp_csrf');
-      const res = await fetch(`${API_URL}/uploads/${uploadId}/direct`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'content-type': 'application/zip', 'x-csrf-token': csrf },
-        body: file,
-      });
-      if (!res.ok) {
-        throw new ApiClientError('INTERNAL_ERROR', 'Direct upload failed', res.status);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/uploads/${uploadId}/direct`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'content-type': 'application/zip', 'x-csrf-token': csrf },
+          body: file,
+        });
+      } catch {
+        // fetch rejects only on a network-level failure (endpoint unreachable,
+        // offline, DNS/CORS) — surface a clear, actionable message.
+        throw new ApiClientError('NETWORK_ERROR', 'Upload endpoint is unreachable', 0);
       }
+      if (!res.ok) {
+        throw new ApiClientError('INTERNAL_ERROR', 'Upload failed', res.status);
+      }
+      return (await res.json()) as UploadStatusDto;
     },
     async completeUpload(uploadId) {
       return request<UploadStatusDto>(`/uploads/${uploadId}/complete`, {

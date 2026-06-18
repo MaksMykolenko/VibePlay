@@ -208,7 +208,7 @@ export interface ApiClient {
   getVersion(versionId: string): Promise<GameVersionDto>;
   hideMyGame(gameId: string): Promise<void>;
   createUploadIntent(gameId: string, input: UploadIntentInput): Promise<UploadIntentResponseDto>;
-  uploadZipDirect(uploadId: string, file: Blob): Promise<void>;
+  uploadZipDirect(uploadId: string, file: Blob): Promise<UploadStatusDto>;
   completeUpload(uploadId: string): Promise<UploadStatusDto>;
   getUploadStatus(uploadId: string): Promise<UploadStatusDto>;
 

@@ -242,49 +242,107 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
           expiresAt: new Date(Date.now() + 15 * 60_000),
         },
       });
-      const signed = await storage.presignPut(env.S3_QUARANTINE_BUCKET, upload.objectKey, {
-        contentType: 'application/zip',
-        contentLength: body.fileSize,
-        expiresSeconds: 15 * 60,
-        publicEndpoint: env.S3_PUBLIC_ENDPOINT,
-      });
+      // The browser must NEVER receive an internal MinIO URL (e.g.
+      // http://minio:9000) — MinIO is private to the Docker network and
+      // unreachable from a user's browser, which is what caused "Failed to
+      // fetch" in production. Instead we hand back a SAME-ORIGIN API endpoint;
+      // the browser PUTs the ZIP there and the API streams it into MinIO
+      // internally (see PUT /uploads/:uploadId/direct below). MinIO stays
+      // internal-only and is never exposed publicly.
       return {
         uploadId: upload.id,
-        uploadUrl: signed.url,
-        method: signed.method,
-        headers: signed.headers,
-        expiresAt: signed.expiresAt.toISOString(),
+        uploadUrl: `/api/uploads/${upload.id}/direct`,
+        method: 'PUT' as const,
+        headers: { 'content-type': 'application/zip' },
+        expiresAt: upload.expiresAt.toISOString(),
         maxBytes: env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024,
       };
     },
   );
 
+  // Same-origin upload endpoint the browser actually talks to. It accepts the
+  // raw ZIP (application/zip → Buffer, see addContentTypeParser in app.ts),
+  // stores it into the PRIVATE quarantine bucket (MinIO/S3 in prod, fs in dev),
+  // marks the upload complete, and enqueues worker validation — all server-side,
+  // so the browser never touches MinIO. Works for every storage driver.
   app.put<{ Params: { uploadId: string }; Body: Buffer }>(
     '/uploads/:uploadId/direct',
     { bodyLimit: env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024 },
-    async (req, reply) => {
-      const user = requireVerifiedEmail(req);
+    async (req) => {
+      const user = requireVerifiedEmail(req); // auth required
       const upload = await prisma.upload.findUnique({
         where: { id: req.params.uploadId },
         include: { gameVersion: { include: { game: true } } },
       });
       if (!upload) throw errors.notFound('UPLOAD_NOT_FOUND', 'Upload not found');
+      // Ownership: only the owning creator (or an admin) may upload to it.
       if (upload.gameVersion.game.creatorId !== user.id && user.role !== 'ADMIN') {
         throw errors.forbidden();
       }
-      if (storage.driver !== 'fs')
-        throw errors.conflict('Direct upload is disabled for this storage driver');
+      if (upload.expiresAt < new Date()) throw errors.conflict('Upload intent expired');
+      if (upload.completedAt || upload.gameVersion.status !== 'UPLOADING') {
+        throw errors.conflict('Upload was already completed');
+      }
       if (!Buffer.isBuffer(req.body)) throw errors.validation();
+      // Enforce the max size (bodyLimit also rejects oversized bodies with 413).
+      if (req.body.length > env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024) {
+        throw errors.tooLarge('ZIP exceeds the configured upload limit');
+      }
       if (BigInt(req.body.length) !== upload.declaredSize) {
         throw errors.validation([{ path: 'body', message: 'Uploaded size does not match intent' }]);
       }
+      // Persist into the internal quarantine bucket. MinIO is never public.
       await storage.putObject(
         env.S3_QUARANTINE_BUCKET,
         upload.objectKey,
         req.body,
         'application/zip',
       );
-      reply.status(204).send();
+      await prisma.$transaction([
+        prisma.upload.update({ where: { id: upload.id }, data: { completedAt: new Date() } }),
+        prisma.gameVersion.update({
+          where: { id: upload.gameVersionId },
+          data: {
+            status: 'QUARANTINED',
+            quarantineObjectKey: upload.objectKey,
+            declaredSha256: upload.declaredSha256,
+            compressedSize: upload.declaredSize,
+          },
+        }),
+      ]);
+      try {
+        await validationQueue.enqueueValidation({
+          uploadId: upload.id,
+          gameVersionId: upload.gameVersionId,
+        });
+      } catch (error) {
+        // Enqueue failed — roll back so the creator can retry the same draft.
+        await prisma.$transaction([
+          prisma.upload.update({ where: { id: upload.id }, data: { completedAt: null } }),
+          prisma.gameVersion.update({
+            where: { id: upload.gameVersionId },
+            data: { status: 'UPLOADING' },
+          }),
+        ]);
+        throw error;
+      }
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'upload.completed',
+        targetType: 'GAME_VERSION',
+        targetId: upload.gameVersionId,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      const version = await prisma.gameVersion.findUniqueOrThrow({
+        where: { id: upload.gameVersionId },
+      });
+      return {
+        uploadId: upload.id,
+        versionId: version.id,
+        versionStatus: version.status,
+        validationReport: version.validationReport,
+      };
     },
   );
 

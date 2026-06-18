@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import { toast } from '../../components/toastEvents';
-import { api } from '../../lib/api';
+import { api, ApiClientError } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
 import { versionStatusLabel } from '../../lib/versionStatus';
 import {
@@ -18,6 +18,20 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
+/** Turn upload/publish errors into a clear, actionable message for the creator. */
+function uploadErrorMessage(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.code === 'NETWORK_ERROR') return 'Upload endpoint is unreachable. Please try again.';
+    if (error.status === 413) return 'Upload failed: the ZIP exceeds the size limit.';
+    if (error.status === 401 || error.status === 403)
+      return 'Upload failed: your session expired. Please sign in again and retry.';
+    if (error.status === 409) return error.message || 'This build was already submitted.';
+    return error.message || 'Upload failed. Please try again.';
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return 'Upload failed. Please try again.';
+}
+
 export const PublishGame: React.FC = () => {
   const { currentUser } = useAuth();
   const { createGame, submitForReview } = useGames();
@@ -26,6 +40,9 @@ export const PublishGame: React.FC = () => {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  // Persisted across retries so a failed upload does NOT spawn duplicate
+  // game/version/upload-intent records — we reuse the existing draft instead.
+  const draftRef = useRef<{ gameId?: string; versionId?: string; uploadId?: string }>({});
 
   // --- Step 1: Basic Info ---
   const [title, setTitle] = useState('');
@@ -147,6 +164,7 @@ export const PublishGame: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    if (loading) return; // guard against double-submit while a request is in flight
     if (!zipFile) {
       toast.warning('Select a ZIP build first.');
       return;
@@ -169,75 +187,92 @@ export const PublishGame: React.FC = () => {
     const controls = [controlKeys, controlAction].filter((c) => c.length > 0);
 
     try {
-      const newGame = await createGame(
-        {
-          title,
-          shortDescription: shortDesc,
-          fullDescription: fullDesc,
-          category,
-          tags,
-          coverUrl,
-          screenshots: [screenshotUrl],
-          devices,
-          controls,
-          multiplayer,
-          aiDisclosure,
-          aiTools,
-          version: '1.0.0',
-          changelog: [
-            {
-              version: '1.0.0',
-              date: new Date().toISOString().split('T')[0],
-              notes: 'Initial public launch build submitted.',
-            },
-          ],
-          fileSize: zipFileSize || '5.4 MB',
-          fileName: zipFileName || 'game-archive.zip',
-        },
-        currentUser.id,
-        currentUser.displayName,
-        currentUser.avatar,
-      );
+      // 1. Create the game draft once. On a retry after a failed upload we reuse
+      //    the id we already have instead of creating a duplicate game.
+      let gameId = draftRef.current.gameId;
+      if (!gameId) {
+        const newGame = await createGame(
+          {
+            title,
+            shortDescription: shortDesc,
+            fullDescription: fullDesc,
+            category,
+            tags,
+            coverUrl,
+            screenshots: [screenshotUrl],
+            devices,
+            controls,
+            multiplayer,
+            aiDisclosure,
+            aiTools,
+            version: '1.0.0',
+            changelog: [
+              {
+                version: '1.0.0',
+                date: new Date().toISOString().split('T')[0],
+                notes: 'Initial public launch build submitted.',
+              },
+            ],
+            fileSize: zipFileSize || '5.4 MB',
+            fileName: zipFileName || 'game-archive.zip',
+          },
+          currentUser.id,
+          currentUser.displayName,
+          currentUser.avatar,
+        );
+        gameId = newGame.id;
+        draftRef.current.gameId = gameId;
+      }
 
       if (IS_DEMO) {
-        submitForReview(newGame.id);
+        submitForReview(gameId);
       } else {
-        const bytes = await zipFile.arrayBuffer();
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
-        const sha256 = [...new Uint8Array(digest)]
-          .map((byte) => byte.toString(16).padStart(2, '0'))
-          .join('');
+        // 2. Create the version record once (reused on retry).
+        let versionId = draftRef.current.versionId;
+        if (!versionId) {
+          const version = await api.createVersion(gameId, {
+            version: '1.0.0',
+            changelog: 'Initial private beta build.',
+            aiDisclosure:
+              aiDisclosure === 'no'
+                ? 'NONE'
+                : aiDisclosure === 'assisted'
+                  ? 'ASSISTED'
+                  : 'GENERATED',
+            toolsUsed: aiTools,
+          });
+          versionId = version.id;
+          draftRef.current.versionId = versionId;
+        }
         setUploadProgress(20);
         setUploadLog(['Game draft created.', 'Version record created.']);
-        const version = await api.createVersion(newGame.id, {
-          version: '1.0.0',
-          changelog: 'Initial private beta build.',
-          aiDisclosure:
-            aiDisclosure === 'no' ? 'NONE' : aiDisclosure === 'assisted' ? 'ASSISTED' : 'GENERATED',
-          toolsUsed: aiTools,
-        });
-        const intent = await api.createUploadIntent(newGame.id, {
-          versionId: version.id,
-          fileName: zipFile.name,
-          fileSize: zipFile.size,
-          contentType: 'application/zip',
-          sha256,
-        });
+
+        // 3. Create the upload intent once (reused on retry). We only hash the
+        //    ZIP when we actually need a fresh intent.
+        let uploadId = draftRef.current.uploadId;
+        if (!uploadId) {
+          const bytes = await zipFile.arrayBuffer();
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          const sha256 = [...new Uint8Array(digest)]
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+          const intent = await api.createUploadIntent(gameId, {
+            versionId,
+            fileName: zipFile.name,
+            fileSize: zipFile.size,
+            contentType: 'application/zip',
+            sha256,
+          });
+          uploadId = intent.uploadId;
+          draftRef.current.uploadId = uploadId;
+        }
+
         setUploadProgress(45);
         setUploadLog((lines) => [...lines, 'Uploading ZIP to quarantine storage...']);
-        if (intent.uploadUrl) {
-          const response = await fetch(intent.uploadUrl, {
-            method: intent.method,
-            headers: intent.headers,
-            body: zipFile,
-          });
-          if (!response.ok) throw new Error(`Quarantine upload failed (${response.status})`);
-        } else {
-          await api.uploadZipDirect(intent.uploadId, zipFile);
-        }
-        setUploadProgress(80);
-        setUploadLog((lines) => [...lines, 'Upload received. Queuing validation worker...']);
-        const status = await api.completeUpload(intent.uploadId);
+        // 4. Upload through the SAME-ORIGIN API (never directly to MinIO). The
+        //    API stores the bytes internally, marks the upload complete, and
+        //    enqueues the validation worker — all in this one request.
+        const status = await api.uploadZipDirect(uploadId, zipFile);
         setUploadProgress(100);
         setUploadLog((lines) => [
           ...lines,
@@ -245,6 +280,8 @@ export const PublishGame: React.FC = () => {
         ]);
       }
 
+      // Success — clear the draft so a future publish starts fresh.
+      draftRef.current = {};
       setLoading(false);
       setSuccess(true);
       toast.success(
@@ -253,8 +290,10 @@ export const PublishGame: React.FC = () => {
           : 'Build uploaded to quarantine and queued for validation.',
       );
     } catch (error) {
+      // Keep draftRef populated so the next click retries the SAME draft
+      // (re-uploading) instead of creating duplicate games/versions.
       setLoading(false);
-      toast.danger(error instanceof Error ? error.message : 'Submission failed');
+      toast.danger(uploadErrorMessage(error));
     }
   };
 

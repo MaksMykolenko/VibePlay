@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@vibeplay/database';
+import { storageKeys } from '@vibeplay/shared';
 import {
   authed,
   buildTestApp,
@@ -130,23 +131,33 @@ describe('core MVP routes', () => {
     expect(mine.json().games).toHaveLength(1);
   });
 
-  it('completes an fs quarantine upload and enqueues exactly one validation job', async () => {
-    const game = await createGame();
-    const versionRes = await app.inject({
+  async function createVersion(gameId: string, agent = creatorAgent): Promise<string> {
+    const res = await app.inject({
       method: 'POST',
-      url: `/api/creator/games/${game.id}/versions`,
-      ...authed(creatorAgent),
+      url: `/api/creator/games/${gameId}/versions`,
+      ...authed(agent),
       payload: { version: '1.0.0' },
     });
-    expect(versionRes.statusCode, versionRes.body).toBe(200);
-    const versionId = versionRes.json().version.id as string;
-    const zip = Buffer.from('PK\u0003\u0004integration-fixture');
-    const sha256 = createHash('sha256').update(zip).digest('hex');
+    expect(res.statusCode, res.body).toBe(200);
+    return res.json().version.id as string;
+  }
 
-    const intent = await app.inject({
+  function zipFixture(): { zip: Buffer; sha256: string } {
+    const zip = Buffer.from('PKintegration-fixture');
+    return { zip, sha256: createHash('sha256').update(zip).digest('hex') };
+  }
+
+  function createIntent(
+    gameId: string,
+    versionId: string,
+    zip: Buffer,
+    sha256: string,
+    agent = creatorAgent,
+  ) {
+    return app.inject({
       method: 'POST',
-      url: `/api/creator/games/${game.id}/upload-intent`,
-      ...authed(creatorAgent),
+      url: `/api/creator/games/${gameId}/upload-intent`,
+      ...authed(agent),
       payload: {
         versionId,
         fileName: 'game.zip',
@@ -155,6 +166,32 @@ describe('core MVP routes', () => {
         sha256,
       },
     });
+  }
+
+  // The production bug: the browser received an internal MinIO presigned URL
+  // (http://minio:9000/...) it could never reach -> "Failed to fetch".
+  it('upload-intent returns a same-origin API URL, never an internal MinIO URL', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const { zip, sha256 } = zipFixture();
+    const intent = await createIntent(game.id, versionId, zip, sha256);
+    expect(intent.statusCode, intent.body).toBe(200);
+    const uploadId = intent.json().uploadId as string;
+
+    expect(intent.json().uploadUrl).toBe(`/api/uploads/${uploadId}/direct`);
+    expect(intent.json().method).toBe('PUT');
+    // Browser-facing response must NOT leak any internal/Docker hostname.
+    expect(intent.body).not.toContain('minio:9000');
+    expect(intent.body).not.toContain('localhost');
+    expect(intent.body).not.toContain('127.0.0.1');
+    expect(intent.body).not.toContain('http://');
+  });
+
+  it('stores the ZIP internally and enqueues exactly one validation job on direct upload', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const { zip, sha256 } = zipFixture();
+    const intent = await createIntent(game.id, versionId, zip, sha256);
     expect(intent.statusCode, intent.body).toBe(200);
     const uploadId = intent.json().uploadId as string;
 
@@ -162,33 +199,112 @@ describe('core MVP routes', () => {
       method: 'PUT',
       url: `/api/uploads/${uploadId}/direct`,
       ...authed(creatorAgent),
-      headers: {
-        ...authed(creatorAgent).headers,
-        'content-type': 'application/zip',
-      },
+      headers: { ...authed(creatorAgent).headers, 'content-type': 'application/zip' },
       payload: zip,
     });
-    expect(direct.statusCode, direct.body).toBe(204);
+    expect(direct.statusCode, direct.body).toBe(200);
+    expect(direct.json().versionStatus).toBe('QUARANTINED');
 
-    const complete = await app.inject({
-      method: 'POST',
-      url: `/api/uploads/${uploadId}/complete`,
-      ...authed(creatorAgent),
-      payload: {},
-    });
-    expect(complete.statusCode, complete.body).toBe(200);
-    expect(complete.json().versionStatus).toBe('QUARANTINED');
+    // The bytes are persisted into the private quarantine bucket (fs in tests,
+    // MinIO in prod) - the API stored them server-side, the browser did not.
+    const stat = await app.storage.headObject(
+      app.env.S3_QUARANTINE_BUCKET,
+      storageKeys.quarantineZip(versionId),
+    );
+    expect(stat?.size).toBe(zip.length);
+
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(queuedJobs).toEqual([{ uploadId, gameVersionId: versionId }]);
 
-    const duplicate = await app.inject({
+    // The legacy /complete step is now redundant; calling it after a direct
+    // upload is a safe conflict and never enqueues a second validation job.
+    const redundant = await app.inject({
       method: 'POST',
       url: `/api/uploads/${uploadId}/complete`,
       ...authed(creatorAgent),
       payload: {},
     });
-    expect(duplicate.statusCode).toBe(409);
+    expect(redundant.statusCode).toBe(409);
     expect(queuedJobs).toHaveLength(1);
+  });
+
+  it('rejects a direct upload from an unauthenticated client', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const { zip, sha256 } = zipFixture();
+    const intent = await createIntent(game.id, versionId, zip, sha256);
+    const uploadId = intent.json().uploadId as string;
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/uploads/${uploadId}/direct`,
+      headers: { 'content-type': 'application/zip' },
+      payload: zip,
+    });
+    // No session/CSRF -> rejected by the auth or CSRF guard, nothing stored.
+    expect([401, 403]).toContain(res.statusCode);
+    const stat = await app.storage.headObject(
+      app.env.S3_QUARANTINE_BUCKET,
+      storageKeys.quarantineZip(versionId),
+    );
+    expect(stat).toBeNull();
+    expect(queuedJobs).toHaveLength(0);
+  });
+
+  it('rejects a direct upload from a creator who does not own the upload', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const { zip, sha256 } = zipFixture();
+    const intent = await createIntent(game.id, versionId, zip, sha256);
+    const uploadId = intent.json().uploadId as string;
+
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/uploads/${uploadId}/direct`,
+      ...authed(otherAgent),
+      headers: { ...authed(otherAgent).headers, 'content-type': 'application/zip' },
+      payload: zip,
+    });
+    expect(res.statusCode).toBe(403);
+    expect(queuedJobs).toHaveLength(0);
+  });
+
+  it('rejects an upload-intent whose declared ZIP size exceeds the configured limit', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const oversized = app.env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024 + 1;
+    const intent = await app.inject({
+      method: 'POST',
+      url: `/api/creator/games/${game.id}/upload-intent`,
+      ...authed(creatorAgent),
+      payload: {
+        versionId,
+        fileName: 'too-big.zip',
+        fileSize: oversized,
+        contentType: 'application/zip',
+        sha256: 'a'.repeat(64),
+      },
+    });
+    expect(intent.statusCode).toBe(413);
+  });
+
+  it('rejects a direct upload whose body size does not match the declared intent', async () => {
+    const game = await createGame();
+    const versionId = await createVersion(game.id);
+    const { zip, sha256 } = zipFixture();
+    const intent = await createIntent(game.id, versionId, zip, sha256);
+    const uploadId = intent.json().uploadId as string;
+
+    const tampered = Buffer.concat([zip, Buffer.from('-tampered')]);
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/uploads/${uploadId}/direct`,
+      ...authed(creatorAgent),
+      headers: { ...authed(creatorAgent).headers, 'content-type': 'application/zip' },
+      payload: tampered,
+    });
+    expect(res.statusCode).toBe(422);
+    expect(queuedJobs).toHaveLength(0);
   });
 
   it('publishes only READY_FOR_REVIEW versions and exposes them in catalog/launch', async () => {
