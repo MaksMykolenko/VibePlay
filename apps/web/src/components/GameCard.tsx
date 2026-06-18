@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Game } from '../types';
 import { Play, ThumbsUp, Gamepad } from 'lucide-react';
 import { useI18n } from '../i18n/useI18n';
@@ -11,6 +11,7 @@ interface GameCardProps {
 
 export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' }) => {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
   const formatPlays = (plays: number) => {
@@ -51,10 +52,36 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
 
   const badge = getBadge();
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    // Don't navigate if user clicks directly on nested anchors/buttons
+    if (target.closest('a') || target.closest('button')) {
+      return;
+    }
+    navigate(`/game/${game.slug}`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      const target = e.target as HTMLElement;
+      // Skip if event originated from a nested interactive link
+      if (target.closest('a') || target.closest('button')) {
+        return;
+      }
+      e.preventDefault();
+      navigate(`/game/${game.slug}`);
+    }
+  };
+
   return (
     <div
-      style={cardStyle}
+      style={{ ...cardStyle, cursor: 'pointer' }}
       className={`game-card animate-fade ${variant === 'continue' ? 'game-card--continue' : ''}`}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      role="link"
+      tabIndex={0}
+      aria-label={`${game.title}, ${likeRatio}% positive, ${formatPlays(game.plays)} plays`}
     >
       {/* Cover Image Container (16:9 aspect ratio) */}
       <div style={coverWrapperStyle} className="game-card__cover-wrapper">
@@ -76,12 +103,12 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
           />
         )}
 
-        {/* Play Hover Overlay */}
-        <Link to={`/game/${game.slug}`} style={overlayStyle} className="game-card-overlay">
+        {/* Play Hover Overlay (Div instead of Link to prevent nested anchor tag nesting) */}
+        <div style={overlayStyle} className="game-card-overlay">
           <div style={playBtnCircleStyle}>
             <Play size={18} fill="#fff" color="#fff" style={{ transform: 'translateX(1px)' }} />
           </div>
-        </Link>
+        </div>
 
         {/* Badge Overlay */}
         {badge && (
@@ -114,7 +141,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
               <ThumbsUp size={11} style={{ marginRight: '3px' }} />
               {likeRatio}% • {t('card.plays', { count: formatPlays(game.plays) })}
             </span>
-            <Link to={`/game/${game.slug}`} className="game-card__continue-btn">
+            <Link to={`/play/${game.slug}`} className="game-card__continue-btn">
               <span>{t('card.continue')}</span>
               <Play size={10} fill="currentColor" style={{ marginLeft: '2px' }} />
             </Link>

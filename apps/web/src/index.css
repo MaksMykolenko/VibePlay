@@ -1288,6 +1288,11 @@ select:focus {
   box-shadow: var(--card-hover-shadow) !important;
 }
 
+.game-card:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: -2px !important;
+}
+
 .game-card:hover img {
   transform: scale(1.04);
 }
