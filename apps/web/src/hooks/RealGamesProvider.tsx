@@ -122,12 +122,14 @@ export const RealGamesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const gameMap = new Map(catalog.items.map((game) => [game.id, toGame(game)]));
     const nextVersionMap: Record<string, string> = {};
 
-    if (currentUser?.role === 'creator' || currentUser?.role === 'admin') {
+    const isModerator = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+
+    if (currentUser?.role === 'creator' || isModerator) {
       const owned = await api.listMyGames();
       for (const item of owned) gameMap.set(item.game.id, toGame(item.game));
     }
 
-    if (currentUser?.role === 'admin') {
+    if (isModerator) {
       const [queue, reportPage, auditPage] = await Promise.all([
         api.adminModerationQueue(),
         api.adminListReports({ page: 1 }),

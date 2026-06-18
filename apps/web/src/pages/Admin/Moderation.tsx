@@ -16,8 +16,12 @@ export const AdminModeration: React.FC = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReasonText, setRejectReasonText] = useState('');
 
-  // Moderation queue: Status is pending
-  const pendingGames = games.filter((g) => g.status === 'pending');
+  // The moderation queue = games that have a version awaiting review. The API
+  // returns READY_FOR_REVIEW / VALIDATING / SCAN_FAILED versions regardless of the
+  // parent game's status, so a DRAFT game with a READY_FOR_REVIEW build still shows
+  // up here. We key off the moderation version id (not the game status) to honour
+  // that — requiring Game.status === 'pending' would hide DRAFT-game builds.
+  const pendingGames = games.filter((g) => Boolean(g.moderationVersionId));
 
   const selectedGame =
     pendingGames.find((game) => game.id === searchParams.get('game')) ?? pendingGames[0] ?? null;

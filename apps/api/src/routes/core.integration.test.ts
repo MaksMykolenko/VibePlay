@@ -499,6 +499,35 @@ describe('core MVP routes', () => {
     expect(decision.notes).toContain('OWNER OVERRIDE');
   });
 
+  // Regression: the moderation queue is version-driven, not game-status-driven.
+  // A freshly uploaded build leaves the Game in DRAFT while its GameVersion is
+  // READY_FOR_REVIEW — it must still appear in Admin → Moderation.
+  it('shows a READY_FOR_REVIEW version in the moderation queue even when its game is DRAFT', async () => {
+    const game = await createGame(); // game.status defaults to DRAFT
+    const dbGame = await prisma.game.findUniqueOrThrow({ where: { id: game.id } });
+    expect(dbGame.status).toBe('DRAFT');
+
+    // No submittedAt set — mirrors the worker promoting a version to READY_FOR_REVIEW.
+    const version = await prisma.gameVersion.create({
+      data: {
+        gameId: game.id,
+        version: '1.0.0',
+        status: 'READY_FOR_REVIEW',
+        publishedObjectPrefix: `games/${game.id}/ready/`,
+      },
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/admin/moderation',
+      ...authed(adminAgent),
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const queue = res.json().queue as Array<{ version: { id: string }; game: { id: string } }>;
+    expect(queue.map((e) => e.version.id)).toContain(version.id);
+    expect(queue.find((e) => e.version.id === version.id)?.game.id).toBe(game.id);
+  });
+
   it('persists likes, favorites, comments, notifications, and ownership checks', async () => {
     const game = await createGame();
     const version = await prisma.gameVersion.create({
