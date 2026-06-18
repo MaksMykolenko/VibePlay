@@ -323,6 +323,7 @@ export const uk: Record<keyof typeof en, string> = {
   'admin.activityLog': 'Журнал безпеки та операцій',
   'admin.noLogs': 'У цьому сеансі записів журналу немає.',
   'feedback.title': 'Відгук про бета-версію',
+  'feedback.shortTitle': 'Бета-відгук',
   'feedback.description':
     'Знайшли помилку або маєте ідею? Повідомлення одразу отримає NeoFlux Software.',
   'feedback.feedback': 'Відгук',

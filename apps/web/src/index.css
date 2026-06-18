@@ -928,7 +928,7 @@ a {
 
 /* Focus outline */
 *:focus-visible {
-  outline: 2px solid var(--secondary);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -1632,6 +1632,25 @@ select:focus {
 .sidebar-item:hover {
   background-color: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
+}
+
+button.sidebar-link {
+  background: transparent;
+  border: none;
+  width: calc(100% - 16px);
+  text-align: left;
+  font-family: inherit;
+}
+
+.sidebar-link:focus,
+.sidebar-item:focus {
+  outline: none;
+}
+
+.sidebar-link:focus-visible,
+.sidebar-item:focus-visible {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: -2px !important;
 }
 
 .sidebar-link.sidebar-item--active,

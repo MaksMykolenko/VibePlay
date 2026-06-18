@@ -321,6 +321,7 @@ export const en = {
   'admin.activityLog': 'Security & Operations Log',
   'admin.noLogs': 'No logs recorded in this session.',
   'feedback.title': 'Beta feedback',
+  'feedback.shortTitle': 'Beta feedback',
   'feedback.description': 'Found a bug or have an idea? It goes straight to NeoFlux Software.',
   'feedback.feedback': 'Feedback',
   'feedback.bug': 'Bug report',

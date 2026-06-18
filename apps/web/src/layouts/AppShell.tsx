@@ -746,7 +746,12 @@ export const AppShell: React.FC = () => {
           )}
 
         {/* Beta feedback (spec §38) */}
-        {currentUser && <FeedbackModal asSidebarItem />}
+        {currentUser && (
+          <FeedbackModal
+            asSidebarItem
+            collapsed={isSidebarCollapsed && !isMobileOrDrawer}
+          />
+        )}
 
         {/* Notifications */}
         <NavLink

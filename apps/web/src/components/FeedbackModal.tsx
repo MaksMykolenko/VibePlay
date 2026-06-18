@@ -10,7 +10,10 @@ import { useI18n } from '../i18n/useI18n';
  * Beta feedback / bug report widget (spec §38). Renders a small trigger
  * button; the modal posts to /api/feedback. Available to logged-in users.
  */
-export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebarItem }) => {
+export const FeedbackModal: React.FC<{ asSidebarItem?: boolean; collapsed?: boolean }> = ({
+  asSidebarItem,
+  collapsed,
+}) => {
   const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<'FEEDBACK' | 'BUG'>('FEEDBACK');
   const [message, setMessage] = useState('');
@@ -44,12 +47,15 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
         onClick={() => setOpen(true)}
         className={asSidebarItem ? 'sidebar-link' : 'btn btn-sm'}
         style={asSidebarItem ? undefined : triggerStyle}
+        data-tooltip={collapsed ? t('feedback.title') : undefined}
         aria-haspopup="dialog"
       >
         <MessageSquarePlus size={asSidebarItem ? 20 : 16} />
-        <span style={asSidebarItem ? { marginLeft: '10px', fontWeight: 500 } : undefined}>
-          {t('feedback.title')}
-        </span>
+        {!collapsed && asSidebarItem && (
+          <span style={{ marginLeft: '10px', fontWeight: 500 }}>
+            {t('feedback.shortTitle')}
+          </span>
+        )}
       </button>
 
       {open && (
