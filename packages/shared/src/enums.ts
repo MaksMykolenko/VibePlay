@@ -3,7 +3,7 @@
  * These string values MUST match the Prisma enums in packages/database.
  */
 
-export const USER_ROLES = ['PLAYER', 'CREATOR', 'ADMIN'] as const;
+export const USER_ROLES = ['PLAYER', 'CREATOR', 'ADMIN', 'OWNER'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 export const USER_STATUSES = ['ACTIVE', 'SUSPENDED', 'BANNED', 'DELETED'] as const;

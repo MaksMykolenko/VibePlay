@@ -15,6 +15,10 @@ enum UserRole {
   PLAYER
   CREATOR
   ADMIN
+  // Platform founder. Superset of ADMIN; uniquely allowed to moderate (approve/
+  // reject) their OWN game versions for solo/beta testing — but only versions
+  // that already passed validation + malware scan (READY_FOR_REVIEW).
+  OWNER
 }
 
 enum UserStatus {

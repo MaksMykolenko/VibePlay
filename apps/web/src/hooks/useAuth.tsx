@@ -172,6 +172,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Statically folded out of the real bundle by Vite.
       if (import.meta.env.APP_MODE !== 'demo') return;
       if (!DEMO_ROLES_ENABLED) return;
+      // OWNER is a real-mode founder role, not a switchable demo persona.
+      if (role === 'owner') return;
       void api.demoLoginAs?.(role).then((user) => {
         setAccount(user);
         void queryClient.invalidateQueries();

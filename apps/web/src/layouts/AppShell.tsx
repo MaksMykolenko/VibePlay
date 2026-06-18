@@ -321,7 +321,8 @@ export const AppShell: React.FC = () => {
 
   const hasCreatorAccess =
     currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin');
-  const hasAdminAccess = currentUser && currentUser.role === 'admin';
+  const hasAdminAccess =
+    currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner');
 
   interface NavItem {
     id: string;

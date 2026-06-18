@@ -84,7 +84,7 @@ export async function createUser(
   opts: {
     email: string;
     username: string;
-    role?: 'PLAYER' | 'CREATOR' | 'ADMIN';
+    role?: 'PLAYER' | 'CREATOR' | 'ADMIN' | 'OWNER';
     status?: 'ACTIVE' | 'SUSPENDED' | 'BANNED' | 'DELETED';
     verified?: boolean;
   },

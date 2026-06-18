@@ -127,9 +127,16 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         include: { game: true },
       });
       if (!version) throw errors.notFound('VERSION_NOT_FOUND', 'Version not found');
-      if (version.game.creatorId === admin.id) {
-        throw errors.forbidden('You cannot moderate your own game');
+      const isOwnGame = version.game.creatorId === admin.id;
+      // Self-moderation is blocked for everyone EXCEPT the platform OWNER, who may
+      // approve/reject their own builds for solo/beta testing.
+      if (isOwnGame && admin.role !== 'OWNER') {
+        throw errors.forbidden('Only OWNER can moderate their own games.');
       }
+      // Safety gate (applies to OWNER too): only a build that already passed
+      // validation + malware scan — READY_FOR_REVIEW with an extracted prefix —
+      // can be published. This blocks UPLOADING / VALIDATING / QUARANTINED /
+      // SCAN_FAILED / REJECTED / etc., so an unscanned or failed build never goes live.
       if (version.status !== 'READY_FOR_REVIEW' || !version.publishedObjectPrefix) {
         throw errors.invalidTransition(version.status, 'PUBLISHED');
       }
@@ -159,7 +166,8 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
             gameVersionId: version.id,
             moderatorId: admin.id,
             decision: 'APPROVE',
-            notes: body.notes,
+            // Record OWNER self-approvals as an explicit override on the decision.
+            notes: isOwnGame ? `[OWNER OVERRIDE] ${body.notes}`.trim() : body.notes,
           },
         });
         await tx.notification.create({
@@ -177,7 +185,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
             action: 'game_version.approved',
             targetType: 'GAME_VERSION',
             targetId: version.id,
-            metadata: { gameId: version.gameId },
+            metadata: { gameId: version.gameId, ownerOverride: isOwnGame },
           },
         });
       });
@@ -198,8 +206,10 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         include: { game: true },
       });
       if (!version) throw errors.notFound('VERSION_NOT_FOUND', 'Version not found');
-      if (version.game.creatorId === admin.id) {
-        throw errors.forbidden('You cannot moderate your own game');
+      const isOwnGame = version.game.creatorId === admin.id;
+      // Self-moderation is blocked for everyone EXCEPT the platform OWNER.
+      if (isOwnGame && admin.role !== 'OWNER') {
+        throw errors.forbidden('Only OWNER can moderate their own games.');
       }
       if (version.status !== 'READY_FOR_REVIEW') {
         throw errors.invalidTransition(version.status, 'REJECTED');
@@ -219,7 +229,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
             moderatorId: admin.id,
             decision: 'REJECT',
             reason: body.reason,
-            notes: body.notes,
+            notes: isOwnGame ? `[OWNER OVERRIDE] ${body.notes}`.trim() : body.notes,
           },
         }),
         prisma.notification.create({
@@ -237,7 +247,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         action: 'game_version.rejected',
         targetType: 'GAME_VERSION',
         targetId: version.id,
-        metadata: { reason: body.reason },
+        metadata: { reason: body.reason, ownerOverride: isOwnGame },
         req,
         secret: env.SESSION_SECRET,
       });

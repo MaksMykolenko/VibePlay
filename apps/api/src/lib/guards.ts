@@ -27,7 +27,8 @@ export function requireVerifiedEmail(req: FastifyRequest): User {
   return user;
 }
 
-const ROLE_ORDER: Record<UserRole, number> = { PLAYER: 0, CREATOR: 1, ADMIN: 2 };
+// OWNER is the highest privilege tier — a strict superset of ADMIN.
+const ROLE_ORDER: Record<UserRole, number> = { PLAYER: 0, CREATOR: 1, ADMIN: 2, OWNER: 3 };
 
 export function requireRole(req: FastifyRequest, role: UserRole): User {
   const user = requireActiveUser(req);
@@ -48,7 +49,7 @@ export function requireAdmin(req: FastifyRequest): User {
 /** Owner of the resource — or an admin. Prevents IDOR on creator resources. */
 export function requireOwnershipOrAdmin(req: FastifyRequest, ownerId: string): User {
   const user = requireActiveUser(req);
-  if (user.id !== ownerId && user.role !== 'ADMIN') {
+  if (user.id !== ownerId && user.role !== 'ADMIN' && user.role !== 'OWNER') {
     throw errors.forbidden('You do not own this resource');
   }
   return user;

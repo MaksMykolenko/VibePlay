@@ -47,7 +47,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
     const body = parse(registerSchema, req.body);
 
     // Invite-only beta (spec §10): the code is required and single-use.
-    let invite: { id: string; role: 'PLAYER' | 'CREATOR' | 'ADMIN' } | null = null;
+    let invite: { id: string; role: 'PLAYER' | 'CREATOR' } | null = null;
     if (env.INVITE_ONLY) {
       if (!body.inviteCode) {
         throw new ApiError(403, 'INVITE_REQUIRED', 'Registration is invite-only during the beta');
@@ -61,7 +61,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
       if (found.email && found.email !== body.email) {
         throw new ApiError(403, 'INVITE_INVALID', 'This invite is bound to a different email');
       }
-      invite = { id: found.id, role: found.role === 'ADMIN' ? 'PLAYER' : found.role };
+      // Invites may ONLY ever grant PLAYER or CREATOR. Any elevated role on the
+      // invite record (ADMIN/OWNER) is defensively downgraded to PLAYER — elevated
+      // roles are created exclusively via the grant-admin CLI.
+      invite = { id: found.id, role: found.role === 'CREATOR' ? 'CREATOR' : 'PLAYER' };
     }
 
     const [emailTaken, usernameTaken] = await Promise.all([

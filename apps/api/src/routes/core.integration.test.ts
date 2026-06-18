@@ -19,10 +19,12 @@ describe('core MVP routes', () => {
   let otherCreator: Awaited<ReturnType<typeof createUser>>;
   let player: Awaited<ReturnType<typeof createUser>>;
   let admin: Awaited<ReturnType<typeof createUser>>;
+  let owner: Awaited<ReturnType<typeof createUser>>;
   let creatorAgent: AuthedAgent;
   let otherAgent: AuthedAgent;
   let playerAgent: AuthedAgent;
   let adminAgent: AuthedAgent;
+  let ownerAgent: AuthedAgent;
   const queuedJobs: { uploadId: string; gameVersionId: string }[] = [];
 
   beforeAll(async () => {
@@ -41,7 +43,7 @@ describe('core MVP routes', () => {
     queuedJobs.length = 0;
     await resetDb(prisma);
     const env = app.env;
-    [creator, otherCreator, player, admin] = await Promise.all([
+    [creator, otherCreator, player, admin, owner] = await Promise.all([
       createUser(prisma, env, {
         email: 'creator@example.com',
         username: 'creator_one',
@@ -61,12 +63,18 @@ describe('core MVP routes', () => {
         username: 'admin_one',
         role: 'ADMIN',
       }),
+      createUser(prisma, env, {
+        email: 'owner@example.com',
+        username: 'owner_one',
+        role: 'OWNER',
+      }),
     ]);
-    [creatorAgent, otherAgent, playerAgent, adminAgent] = await Promise.all([
+    [creatorAgent, otherAgent, playerAgent, adminAgent, ownerAgent] = await Promise.all([
       loginAs(app, creator.email),
       loginAs(app, otherCreator.email),
       loginAs(app, player.email),
       loginAs(app, admin.email),
+      loginAs(app, owner.email),
     ]);
   });
 
@@ -383,6 +391,114 @@ describe('core MVP routes', () => {
     expect(invalid.statusCode).toBe(409);
   });
 
+  // ── OWNER moderation permissions ────────────────────────────────────────────
+  async function readyVersion(gameId: string, status = 'READY_FOR_REVIEW') {
+    return prisma.gameVersion.create({
+      data: {
+        gameId,
+        version: '1.0.0',
+        status: status as 'READY_FOR_REVIEW',
+        publishedObjectPrefix:
+          status === 'READY_FOR_REVIEW' ? `games/${gameId}/owner-build/` : null,
+        submittedAt: new Date(),
+      },
+    });
+  }
+
+  it('a CREATOR can never approve their own game (admin role required)', async () => {
+    const game = await createGame(creatorAgent);
+    const version = await readyVersion(game.id);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/game-versions/${version.id}/approve`,
+      ...authed(creatorAgent),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403); // blocked by the admin-role guard
+    const persisted = await prisma.gameVersion.findUniqueOrThrow({ where: { id: version.id } });
+    expect(persisted.status).toBe('READY_FOR_REVIEW'); // not published
+  });
+
+  it('blocks an ADMIN from moderating their own game with a clear message', async () => {
+    const ownGame = await createGame(adminAgent);
+    const version = await readyVersion(ownGame.id);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/game-versions/${version.id}/approve`,
+      ...authed(adminAgent),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toContain('Only OWNER can moderate their own games.');
+  });
+
+  it('lets the OWNER approve their own READY_FOR_REVIEW game and records an owner override', async () => {
+    const ownGame = await createGame(ownerAgent);
+    const version = await readyVersion(ownGame.id);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/game-versions/${version.id}/approve`,
+      ...authed(ownerAgent),
+      payload: { notes: 'solo beta test' },
+    });
+    expect(res.statusCode, res.body).toBe(204);
+
+    const persisted = await prisma.gameVersion.findUniqueOrThrow({ where: { id: version.id } });
+    expect(persisted.status).toBe('PUBLISHED');
+
+    // Override recorded on the moderation decision...
+    const decision = await prisma.moderationDecision.findFirstOrThrow({
+      where: { gameVersionId: version.id },
+    });
+    expect(decision.decision).toBe('APPROVE');
+    expect(decision.notes).toContain('OWNER OVERRIDE');
+    // ...and in the audit log.
+    const auditEntry = await prisma.auditLog.findFirstOrThrow({
+      where: { action: 'game_version.approved', targetId: version.id },
+    });
+    expect(JSON.stringify(auditEntry.metadata)).toContain('"ownerOverride":true');
+  });
+
+  it('forbids the OWNER from approving their own game when the scan failed', async () => {
+    const ownGame = await createGame(ownerAgent);
+    const version = await prisma.gameVersion.create({
+      data: {
+        gameId: ownGame.id,
+        version: '1.0.0',
+        status: 'SCAN_FAILED',
+        rejectReason: 'malware detected',
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/game-versions/${version.id}/approve`,
+      ...authed(ownerAgent),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(409); // unsafe status → invalid state transition
+    const persisted = await prisma.gameVersion.findUniqueOrThrow({ where: { id: version.id } });
+    expect(persisted.status).toBe('SCAN_FAILED'); // unchanged, never published
+    expect(await prisma.moderationDecision.count({ where: { gameVersionId: version.id } })).toBe(0);
+  });
+
+  it('lets the OWNER reject their own READY_FOR_REVIEW game (recorded as override)', async () => {
+    const ownGame = await createGame(ownerAgent);
+    const version = await readyVersion(ownGame.id);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/game-versions/${version.id}/reject`,
+      ...authed(ownerAgent),
+      payload: { reason: 'Not ready for public release yet.' },
+    });
+    expect(res.statusCode, res.body).toBe(204);
+    const persisted = await prisma.gameVersion.findUniqueOrThrow({ where: { id: version.id } });
+    expect(persisted.status).toBe('REJECTED');
+    const decision = await prisma.moderationDecision.findFirstOrThrow({
+      where: { gameVersionId: version.id },
+    });
+    expect(decision.notes).toContain('OWNER OVERRIDE');
+  });
+
   it('persists likes, favorites, comments, notifications, and ownership checks', async () => {
     const game = await createGame();
     const version = await prisma.gameVersion.create({
@@ -448,7 +564,8 @@ describe('core MVP routes', () => {
       ...authed(adminAgent),
     });
     expect(allowed.statusCode).toBe(200);
-    expect(allowed.json().total).toBe(4);
+    // creator, otherCreator, player, admin, owner (added for OWNER moderation tests).
+    expect(allowed.json().total).toBe(5);
   });
 
   it('persists account controls, exports only owned safe data, and manages beta feedback', async () => {
