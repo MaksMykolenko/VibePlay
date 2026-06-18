@@ -27,11 +27,12 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
   const [atEnd, setAtEnd] = useState(false);
   const [showArrows, setShowArrows] = useState(false);
 
-  // Mouse dragging references
+  // Mouse dragging state — track whether a real drag happened
   const isDown = useRef(false);
   const startX = useRef(0);
   const scrollLeftStart = useRef(0);
-  const isDragged = useRef(false);
+  // When true, the current gesture was a drag and link clicks should be blocked
+  const wasDragged = useRef(false);
 
   const updateScrollButtons = () => {
     const el = viewportRef.current;
@@ -78,38 +79,41 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
     }
   };
 
-  // Mouse drag-to-scroll handlers
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return; // Left click only
+  // Mouse drag-to-scroll: use mousedown/move/up instead of pointer capture
+  // to avoid capturing events away from child <a> elements.
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Only initiate drag on primary button and when directly on the viewport/track
+    // (not on interactive children like links/buttons)
+    if (e.button !== 0) return;
     const el = viewportRef.current;
     if (!el) return;
 
     isDown.current = true;
-    startX.current = e.pageX - el.offsetLeft;
+    startX.current = e.pageX;
     scrollLeftStart.current = el.scrollLeft;
-    isDragged.current = false;
-
-    el.style.cursor = 'grabbing';
-    el.style.userSelect = 'none';
-    el.setPointerCapture(e.pointerId);
+    wasDragged.current = false;
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDown.current) return;
     const el = viewportRef.current;
     if (!el) return;
 
-    const x = e.pageX - el.offsetLeft;
-    const walk = (x - startX.current) * 1.5; // Drag speed multiplier
+    const dx = e.pageX - startX.current;
 
-    if (Math.abs(walk) > 5) {
-      isDragged.current = true;
+    // Only start dragging after a meaningful threshold (8px)
+    if (Math.abs(dx) > 8) {
+      wasDragged.current = true;
+      el.style.cursor = 'grabbing';
+      el.style.userSelect = 'none';
     }
 
-    el.scrollLeft = scrollLeftStart.current - walk;
+    if (wasDragged.current) {
+      el.scrollLeft = scrollLeftStart.current - dx * 1.5;
+    }
   };
 
-  const handlePointerUp = (e: React.PointerEvent) => {
+  const handleMouseUp = () => {
     if (!isDown.current) return;
     isDown.current = false;
 
@@ -117,11 +121,10 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
     if (el) {
       el.style.cursor = '';
       el.style.removeProperty('user-select');
-      el.releasePointerCapture(e.pointerId);
     }
   };
 
-  const handlePointerCancel = (e: React.PointerEvent) => {
+  const handleMouseLeave = () => {
     if (!isDown.current) return;
     isDown.current = false;
 
@@ -129,16 +132,15 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
     if (el) {
       el.style.cursor = '';
       el.style.removeProperty('user-select');
-      el.releasePointerCapture(e.pointerId);
     }
   };
 
-  // Prevent link click if dragging occurred
-  const handleCardClickCapture = (e: React.MouseEvent) => {
-    if (isDragged.current) {
+  // Block click ONLY when a real drag just happened (threshold was crossed)
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (wasDragged.current) {
       e.preventDefault();
       e.stopPropagation();
-      isDragged.current = false; // reset
+      wasDragged.current = false;
     }
   };
 
@@ -210,16 +212,17 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
           </button>
         )}
 
-        {/* Viewport container */}
+        {/* Viewport container — drag-to-scroll via mouse events (no pointer capture) */}
         <div
           ref={viewportRef}
           className="game-carousel__viewport"
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onClickCapture={handleClickCapture}
           tabIndex={0}
           role="region"
           aria-label={`${title} carousel`}
@@ -230,7 +233,6 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
               <div
                 key={game.id}
                 className="game-carousel__item"
-                onClickCapture={handleCardClickCapture}
               >
                 <GameCard game={game} variant={isContinue ? 'continue' : 'default'} />
               </div>
