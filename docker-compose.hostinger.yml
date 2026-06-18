@@ -80,7 +80,13 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:RELEASE.2024-04-18T19-09-19Z
+    # Do NOT downgrade. The existing production miniodata volume was written by a
+    # newer MinIO (RELEASE.2025-09-07T16-13-09Z on the VPS); older releases fail to
+    # read it with "decodeXLHeaders: Unknown xl header version 3" and the container
+    # crash-loops, taking api/worker/game-host down with it. `:latest` is the
+    # confirmed-working image; only pin a specific tag after the operator validates
+    # it on the VPS against the existing volume. See docs/DEPLOY_HOSTINGER_SINGLE_VPS.md.
+    image: minio/minio:latest
     restart: unless-stopped
     networks: [vibeplay]
     command: server /data --console-address ":9001"

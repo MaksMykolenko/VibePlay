@@ -255,6 +255,11 @@ To ensure a pinned tag exists on Docker Hub and supports your architecture (e.g.
 docker manifest inspect minio/minio:<TAG>
 ```
 
+> ⚠️ `docker manifest inspect` only proves the tag **exists** and matches your
+> architecture. It does **not** prove the image can read the existing production
+> MinIO volume. For MinIO specifically, see **MinIO image policy (do not
+> downgrade)** below before changing the pin.
+
 **2. Check the container stack health:**
 Verify that all containers are healthy or running on the VPS:
 ```bash
@@ -278,6 +283,67 @@ curl -i https://games.vibeplay.games/health/live
 If `infra/caddy/hostinger.Caddyfile` is updated, recreate the Caddy container to load the changes:
 ```bash
 docker compose --env-file .env -f docker-compose.hostinger.yml up -d --force-recreate caddy
+```
+
+---
+
+## MinIO image policy (do not downgrade)
+
+The MinIO image in `docker-compose.hostinger.yml` is intentionally pinned to
+`minio/minio:latest`. This is a deliberate decision driven by a production
+incident — **do not "fix" it by re-pinning an older tag.**
+
+- **Do not downgrade MinIO after a production volume has been used by a newer
+  MinIO version.** MinIO upgrades the on-disk format (`xl.meta`) of the
+  `miniodata` volume. Once a newer release has written that volume, older
+  releases can no longer read it.
+- **`docker manifest inspect` only proves an image tag exists** (and matches your
+  CPU architecture). It does **not** prove that image can read the existing
+  production volume. A tag can be perfectly valid on Docker Hub and still be too
+  old for your data.
+- **If logs show `decodeXLHeaders: Unknown xl header version 3`, the image is too
+  old for the existing MinIO volume.** Symptom in production: the MinIO container
+  goes unhealthy / crash-loops, and api / worker / game-host fail their
+  `minio: condition: service_healthy` dependency, so `https://vibeplay.games`
+  stops responding. The error to watch for:
+  ```text
+  ERROR Unable to initialize backend: decodeXLHeaders: Unknown xl header version 3
+  ```
+- **Do not delete the MinIO Docker volume to fix this.** The `miniodata` volume
+  holds uploaded/published game files; deleting it (e.g. `docker compose down -v`
+  or `docker volume rm`) would lose creator content. The fix is to run an image
+  new enough to read the volume — not to wipe the volume.
+- **Current confirmed-working production image is `minio/minio:latest`,** which on
+  the VPS resolved to `RELEASE.2025-09-07T16-13-09Z`. After switching to it, MinIO
+  started healthy and all three health checks returned `200`:
+  `https://vibeplay.games/api/health/ready`, `https://vibeplay.games/api/auth/config`,
+  and `https://games.vibeplay.games/health/live`.
+- **Future pinning is allowed only after manual validation on the VPS against the
+  existing production volume** — i.e. confirm a candidate tag starts healthy and
+  reads `miniodata` on the VPS itself before committing a pinned tag. Until then,
+  keep `latest`.
+
+### VPS verification (to be run by the operator on VPS)
+
+> These commands are for the **operator to run on the Hostinger VPS** after the
+> repo fix is pushed. The agent that edits this repo has **no VPS access** and must
+> not run them. They confirm `origin/main` carries `minio/minio:latest`, drop any
+> local emergency edit, pull, rebuild, and re-check production health.
+
+```bash
+cd /opt/vibeplay
+git fetch origin main
+git show origin/main:docker-compose.hostinger.yml | grep -n "minio/minio"
+# only after origin/main shows minio/minio:latest:
+git restore docker-compose.hostinger.yml
+git pull
+docker compose --env-file .env -f docker-compose.hostinger.yml up -d --build
+docker compose --env-file .env -f docker-compose.hostinger.yml up -d --force-recreate caddy
+docker compose --env-file .env -f docker-compose.hostinger.yml ps
+docker compose --env-file .env -f docker-compose.hostinger.yml logs --tail=80 minio
+curl -i https://vibeplay.games/api/health/ready
+curl -i https://vibeplay.games/api/auth/config
+curl -i https://games.vibeplay.games/health/live
 ```
 
 ---
