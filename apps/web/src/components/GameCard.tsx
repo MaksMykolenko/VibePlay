@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type { Game } from '../types';
 import { Play, ThumbsUp, Gamepad } from 'lucide-react';
 import { useI18n } from '../i18n/useI18n';
@@ -11,7 +11,6 @@ interface GameCardProps {
 
 export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' }) => {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
 
   const formatPlays = (plays: number) => {
@@ -52,38 +51,20 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
 
   const badge = getBadge();
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    // Don't navigate if user clicks directly on nested anchors/buttons
-    if (target.closest('a') || target.closest('button')) {
-      return;
-    }
-    navigate(`/game/${game.slug}`);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      const target = e.target as HTMLElement;
-      // Skip if event originated from a nested interactive link
-      if (target.closest('a') || target.closest('button')) {
-        return;
-      }
-      e.preventDefault();
-      navigate(`/game/${game.slug}`);
-    }
-  };
-
   return (
     <div
-      style={{ ...cardStyle, cursor: 'pointer' }}
+      style={cardStyle}
       className={`game-card animate-fade ${variant === 'continue' ? 'game-card--continue' : ''}`}
-      onClick={handleCardClick}
-      onKeyDown={handleKeyDown}
-      role="link"
-      tabIndex={0}
-      aria-label={`${game.title}, ${likeRatio}% positive, ${formatPlays(game.plays)} plays`}
     >
-      {/* Cover Image Container (16:9 aspect ratio) */}
+      {/* Stretched Link — covers the entire card, z-index: 1 */}
+      <Link
+        className="game-card__stretched-link"
+        to={`/game/${game.slug}`}
+        aria-label={`Open ${game.title} details`}
+        tabIndex={0}
+      />
+
+      {/* Cover Image Container (16:9 aspect ratio) — decorative, pointer-events: none */}
       <div style={coverWrapperStyle} className="game-card__cover-wrapper">
         {imgError ? (
           <div style={fallbackContainerStyle} className="game-card__fallback">
@@ -103,14 +84,14 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
           />
         )}
 
-        {/* Play Hover Overlay (Div instead of Link to prevent nested anchor tag nesting) */}
+        {/* Play Hover Overlay — purely decorative */}
         <div style={overlayStyle} className="game-card-overlay">
           <div style={playBtnCircleStyle}>
             <Play size={18} fill="#fff" color="#fff" style={{ transform: 'translateX(1px)' }} />
           </div>
         </div>
 
-        {/* Badge Overlay */}
+        {/* Badge Overlay — decorative, pointer-events: none */}
         {badge && (
           <div style={badgeWrapperStyle} className="game-card__badge-wrapper">
             <span
@@ -123,16 +104,12 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
         )}
       </div>
 
-      {/* Simplified Info Area */}
+      {/* Info Area */}
       <div style={infoContainerStyle} className="game-card__info">
-        <Link
-          to={`/game/${game.slug}`}
-          style={titleStyle}
-          className="game-card__title"
-          title={game.title}
-        >
+        {/* Title — rendered as span, the stretched link handles navigation */}
+        <span style={titleStyle} className="game-card__title" title={game.title}>
           {game.title}
-        </Link>
+        </span>
 
         {variant === 'continue' ? (
           <div className="game-card__continue-action-row">
@@ -141,7 +118,8 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
               <ThumbsUp size={11} style={{ marginRight: '3px' }} />
               {likeRatio}% • {t('card.plays', { count: formatPlays(game.plays) })}
             </span>
-            <Link to={`/play/${game.slug}`} className="game-card__continue-btn">
+            {/* Continue button — elevated above stretched link */}
+            <Link to={`/play/${game.slug}`} className="game-card__continue-btn game-card__play-link">
               <span>{t('card.continue')}</span>
               <Play size={10} fill="currentColor" style={{ marginLeft: '2px' }} />
             </Link>
@@ -184,6 +162,7 @@ const coverWrapperStyle: React.CSSProperties = {
   position: 'relative',
   overflow: 'hidden',
   backgroundColor: '#0c0e17',
+  pointerEvents: 'none',
 };
 
 const coverImgStyle: React.CSSProperties = {
@@ -234,8 +213,7 @@ const overlayStyle: React.CSSProperties = {
   justifyContent: 'center',
   opacity: 0,
   transition: 'opacity 0.2s ease',
-  cursor: 'pointer',
-  zIndex: 3,
+  pointerEvents: 'none',
 };
 
 const playBtnCircleStyle: React.CSSProperties = {
@@ -256,6 +234,7 @@ const badgeWrapperStyle: React.CSSProperties = {
   top: '8px',
   left: '8px',
   zIndex: 4,
+  pointerEvents: 'none',
 };
 
 const infoContainerStyle: React.CSSProperties = {
@@ -264,6 +243,8 @@ const infoContainerStyle: React.CSSProperties = {
   flexDirection: 'column',
   gap: '0.25rem',
   flex: 1,
+  pointerEvents: 'none',
+  position: 'relative',
 };
 
 const titleStyle: React.CSSProperties = {

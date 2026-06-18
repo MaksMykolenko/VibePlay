@@ -1279,6 +1279,31 @@ select:focus {
     border-color 0.25s ease,
     background-color 0.25s ease,
     box-shadow 0.25s ease !important;
+  cursor: pointer;
+}
+
+/* Stretched Link — covers entire card */
+.game-card__stretched-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  /* No visible text/content — purely a hit target */
+  color: transparent;
+  text-decoration: none;
+}
+
+.game-card__stretched-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: inherit;
+}
+
+/* Continue / Play link elevated above stretched link */
+.game-card__play-link {
+  position: relative;
+  z-index: 2;
+  pointer-events: auto;
 }
 
 .game-card:hover {
@@ -1286,11 +1311,6 @@ select:focus {
   background-color: var(--card-hover-bg) !important;
   border-color: var(--card-hover-border) !important;
   box-shadow: var(--card-hover-shadow) !important;
-}
-
-.game-card:focus-visible {
-  outline: 2px solid var(--primary) !important;
-  outline-offset: -2px !important;
 }
 
 .game-card:hover img {
@@ -1301,7 +1321,7 @@ select:focus {
   opacity: 1 !important;
 }
 
-.game-card-overlay:hover div {
+.game-card:hover .game-card-overlay div {
   transform: scale(1.05) !important;
 }
 
