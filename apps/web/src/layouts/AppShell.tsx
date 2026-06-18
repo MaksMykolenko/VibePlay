@@ -75,6 +75,49 @@ const useIsMobile = () => {
   return isMobile;
 };
 
+const SidebarScrollContainer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+
+  const checkScroll = () => {
+    const el = containerRef.current;
+    if (!el) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    setCanScrollUp(scrollTop > 1);
+    setCanScrollDown(scrollTop + clientHeight < scrollHeight - 3);
+  };
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    checkScroll();
+
+    el.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+
+    const observer = new MutationObserver(checkScroll);
+    observer.observe(el, { childList: true, subtree: true });
+
+    return () => {
+      el.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+      observer.disconnect();
+    };
+  }, []);
+
+  return (
+    <div className="sidebar-scroll-wrapper">
+      <div className={`sidebar-scroll-fade top ${canScrollUp ? 'visible' : ''}`} />
+      <div ref={containerRef} className="sidebar-scrollable">
+        {children}
+      </div>
+      <div className={`sidebar-scroll-fade bottom ${canScrollDown ? 'visible' : ''}`} />
+    </div>
+  );
+};
+
 export const AppShell: React.FC = () => {
   const { currentUser, logout, becomeCreator, switchDemoRole, demoRolesEnabled, isDemo } =
     useAuth();
@@ -865,17 +908,22 @@ export const AppShell: React.FC = () => {
         )}
         {/* Language Switcher in Sidebar (Visible when expanded or in mobile drawer) */}
         {(!isSidebarCollapsed || isMobileOrDrawer) && (
-          <div style={{ padding: '6px 14px', margin: '4px 8px 12px' }} className="sidebar-language-control">
-            <LanguageSwitcher />
-          </div>
+          <>
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 12px' }} />
+            <div style={{ padding: '6px 14px', margin: '4px 8px 8px' }} className="sidebar-language-control">
+              <LanguageSwitcher />
+            </div>
+          </>
         )}
 
         {/* Profile Block */}
         {currentUser && (
-          <div
-            ref={sidebarProfileRef}
-            style={{ position: 'relative', padding: '6px 8px', margin: '2px 8px' }}
-          >
+          <>
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '4px 12px 8px' }} />
+            <div
+              ref={sidebarProfileRef}
+              style={{ position: 'relative', padding: '6px 8px', margin: '2px 8px' }}
+            >
             {/* Dropdown Menu (Flyout) */}
             {showSidebarProfileDropdown && (
               <div
@@ -1127,15 +1175,16 @@ export const AppShell: React.FC = () => {
               )}
             </button>
           </div>
-        )}
-      </div>
+        </>
+      )}
+    </div>
     );
   };
 
   const renderSidebarContent = (isMobileOrDrawer = false) => {
     return (
       <>
-        <div className="sidebar-scrollable">
+        <SidebarScrollContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {filteredSections.map((section) => {
               const isCreatorSection = section.id === 'creator';
@@ -1189,7 +1238,7 @@ export const AppShell: React.FC = () => {
               );
             })}
           </div>
-        </div>
+        </SidebarScrollContainer>
         {renderSidebarBottom(isMobileOrDrawer)}
       </>
     );

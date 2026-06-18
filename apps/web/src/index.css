@@ -1417,17 +1417,52 @@ select:focus {
   width: var(--sidebar-collapsed-width);
 }
 
+.sidebar-scroll-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar-scroll-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  z-index: 4;
+}
+
+.sidebar-scroll-fade.visible {
+  opacity: 1;
+}
+
+.sidebar-scroll-fade.top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--bg-sidebar) 0%, transparent 100%);
+}
+
+.sidebar-scroll-fade.bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg-sidebar) 0%, transparent 100%);
+}
+
 .sidebar-scrollable {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px 0;
-  scrollbar-width: none; /* Hide default scrollbar for clean gaming feel */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
 }
 
-/* Show subtle scrollbar on hover */
+/* Custom thin scrollbar */
 .sidebar-scrollable::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
 }
 
 .sidebar-scrollable::-webkit-scrollbar-track {
@@ -1435,12 +1470,12 @@ select:focus {
 }
 
 .sidebar-scrollable::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 2px;
+  background: var(--border-default);
+  border-radius: 999px;
 }
 
 .sidebar-scrollable:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--border-strong);
 }
 
 .sidebar-bottom {
@@ -1453,6 +1488,12 @@ select:focus {
   position: sticky;
   bottom: 0;
   z-index: 5;
+}
+
+@media (max-width: 768px) {
+  .sidebar-bottom {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
 }
 
 .main-content,
@@ -1561,7 +1602,7 @@ select:focus {
   left: 0;
   width: 280px;
   height: 100vh;
-  background-color: #0d101b;
+  background-color: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   z-index: var(--z-drawer);
   transform: translateX(-100%);
@@ -1569,7 +1610,7 @@ select:focus {
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-lg);
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .mobile-drawer.open {
