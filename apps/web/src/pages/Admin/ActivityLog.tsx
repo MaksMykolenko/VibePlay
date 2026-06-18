@@ -1,8 +1,10 @@
 import React from 'react';
+import { useI18n } from '../../i18n/useI18n';
 import { useGames } from '../../hooks/useGames';
 import { Terminal } from 'lucide-react';
 
 export const AdminActivityLog: React.FC = () => {
+  const { t } = useI18n();
   const { activityLogs } = useGames();
 
   const getActionColor = (action: string) => {
@@ -16,7 +18,7 @@ export const AdminActivityLog: React.FC = () => {
     <div style={containerStyle} className="animate-fade">
       {/* Header */}
       <div>
-        <h1>Security & Operations Log</h1>
+        <h1>{t('admin.activityLog')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
           Immutable audit trails detailing administrative mod actions.
         </p>
@@ -33,7 +35,7 @@ export const AdminActivityLog: React.FC = () => {
 
         <div style={logsContainerStyle}>
           {activityLogs.length === 0 ? (
-            <div style={emptyTextStyle}>No logs recorded in this session.</div>
+            <div style={emptyTextStyle}>{t('admin.noLogs')}</div>
           ) : (
             activityLogs.map((log) => (
               <div key={log.id} style={logItemStyle}>

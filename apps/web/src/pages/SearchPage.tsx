@@ -5,8 +5,10 @@ import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Search } from 'lucide-react';
 import { api } from '../lib/api';
+import { useI18n } from '../i18n/useI18n';
 
 export const SearchPage: React.FC = () => {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const { games } = useGames();
@@ -49,7 +51,7 @@ export const SearchPage: React.FC = () => {
       {/* Title */}
       <div style={headerStyle}>
         <Search size={28} color="var(--secondary)" />
-        <h1 style={titleStyle}>Search Results</h1>
+        <h1 style={titleStyle}>{t('search.results')}</h1>
       </div>
       <p style={subtitleStyle}>
         Showing results for "<strong>{query}</strong>" ({totalResults} matches found)
@@ -96,7 +98,7 @@ export const SearchPage: React.FC = () => {
         {totalResults === 0 ? (
           <div style={emptyContainerStyle}>
             <Search size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <h3>No results found</h3>
+            <h3>{t('search.noResults')}</h3>
             <p
               style={{
                 color: 'var(--text-secondary)',
@@ -117,7 +119,9 @@ export const SearchPage: React.FC = () => {
             {(activeTab === 'all' || activeTab === 'games') && matchedGames.length > 0 && (
               <div style={sectionStyle}>
                 {activeTab === 'all' && (
-                  <h2 style={sectionTitleStyle}>Games ({matchedGames.length})</h2>
+                  <h2 style={sectionTitleStyle}>
+                    {t('search.games', { count: matchedGames.length })}
+                  </h2>
                 )}
                 <div className="games-grid">
                   {matchedGames.map((game) => (
@@ -131,7 +135,9 @@ export const SearchPage: React.FC = () => {
             {(activeTab === 'all' || activeTab === 'creators') && matchedCreators.length > 0 && (
               <div style={{ ...sectionStyle, marginTop: activeTab === 'all' ? '3rem' : '0' }}>
                 {activeTab === 'all' && (
-                  <h2 style={sectionTitleStyle}>Creators ({matchedCreators.length})</h2>
+                  <h2 style={sectionTitleStyle}>
+                    {t('search.creators', { count: matchedCreators.length })}
+                  </h2>
                 )}
                 <div style={creatorsGridStyle}>
                   {matchedCreators.map((user) => (
@@ -147,7 +153,7 @@ export const SearchPage: React.FC = () => {
                         </Link>
                         <div style={creatorUsernameStyle}>@{user.username}</div>
                         <p style={creatorBioStyle}>{user.bio}</p>
-                        <div style={creatorFollowersStyle}>Creator profile</div>
+                        <div style={creatorFollowersStyle}>{t('search.creatorProfile')}</div>
                       </div>
                       <Link
                         to={`/profile/${user.username}`}

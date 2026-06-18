@@ -4,6 +4,7 @@ import { MessageSquarePlus, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { errorMessage } from '../lib/api/errors';
 import { toast } from './toastEvents';
+import { useI18n } from '../i18n/useI18n';
 
 /**
  * Beta feedback / bug report widget (spec §38). Renders a small trigger
@@ -15,19 +16,18 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const location = useLocation();
+  const { t } = useI18n();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (message.trim().length < 5) {
-      toast.warning('Please describe the feedback in a few words.');
+      toast.warning(t('feedback.tooShort'));
       return;
     }
     setBusy(true);
     try {
       await api.submitFeedback({ category, message: message.trim(), page: location.pathname });
-      toast.success(
-        category === 'BUG' ? 'Bug report sent — thank you!' : 'Feedback sent — thank you!',
-      );
+      toast.success(t(category === 'BUG' ? 'feedback.bugSent' : 'feedback.sent'));
       setMessage('');
       setOpen(false);
     } catch (error) {
@@ -48,26 +48,26 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
       >
         <MessageSquarePlus size={asSidebarItem ? 20 : 16} />
         <span style={asSidebarItem ? { marginLeft: '10px', fontWeight: 500 } : undefined}>
-          Beta feedback
+          {t('feedback.title')}
         </span>
       </button>
 
       {open && (
-        <div style={overlayStyle} role="dialog" aria-modal="true" aria-label="Beta feedback">
+        <div style={overlayStyle} role="dialog" aria-modal="true" aria-label={t('feedback.title')}>
           <form onSubmit={submit} style={modalStyle} className="bg-glass animate-slide-up">
             <div style={headerStyle}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Beta feedback</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('feedback.title')}</h3>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 style={closeStyle}
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X size={18} />
               </button>
             </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Found a bug or have an idea? It goes straight to the VibePlay team.
+              {t('feedback.description')}
             </p>
             <div style={{ display: 'flex', gap: '8px', margin: '0.75rem 0' }}>
               <button
@@ -75,14 +75,14 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
                 onClick={() => setCategory('FEEDBACK')}
                 style={category === 'FEEDBACK' ? pillActiveStyle : pillStyle}
               >
-                Feedback
+                {t('feedback.feedback')}
               </button>
               <button
                 type="button"
                 onClick={() => setCategory('BUG')}
                 style={category === 'BUG' ? pillActiveStyle : pillStyle}
               >
-                Bug report
+                {t('feedback.bug')}
               </button>
             </div>
             <textarea
@@ -92,8 +92,8 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
               style={{ minHeight: '120px', resize: 'vertical', width: '100%' }}
               placeholder={
                 category === 'BUG'
-                  ? 'What happened? What did you expect? Steps to reproduce…'
-                  : 'What should we improve?'
+                  ? t('feedback.bugPlaceholder')
+                  : t('feedback.feedbackPlaceholder')
               }
               maxLength={4000}
               required
@@ -104,7 +104,7 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean }> = ({ asSidebar
               disabled={busy}
               style={{ marginTop: '0.75rem', width: '100%' }}
             >
-              {busy ? 'Sending…' : 'Send to the team'}
+              {t(busy ? 'feedback.sending' : 'feedback.send')}
             </button>
           </form>
         </div>
@@ -129,7 +129,7 @@ const overlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 1000,
+  zIndex: 'var(--z-modal)',
   padding: '1rem',
 };
 

@@ -6,6 +6,7 @@ import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { CommentsSection } from '../components/CommentsSection';
 import { toast } from '../components/toastEvents';
+import { useI18n } from '../i18n/useI18n';
 import {
   Play,
   ThumbsUp,
@@ -24,6 +25,7 @@ export const GameDetailPage: React.FC = () => {
   const { games, isLoading, library, toggleLikeGame, toggleFavoriteGame, submitReport } =
     useGames();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [activeTab, setActiveTab] = useState<'info' | 'screenshots' | 'changelog'>('info');
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
@@ -32,14 +34,14 @@ export const GameDetailPage: React.FC = () => {
   const game = games.find((g) => g.slug === slug);
 
   if (isLoading && !game) {
-    return <div style={notFoundContainerStyle}>Loading game...</div>;
+    return <div style={notFoundContainerStyle}>{t('game.loading')}</div>;
   }
 
   if (!game) {
     return (
       <div style={notFoundContainerStyle}>
         <ShieldAlertStyle />
-        <h2>Game Not Found</h2>
+        <h2>{t('game.notFound')}</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
           The game you are looking for does not exist or has been removed.
         </p>
@@ -58,7 +60,7 @@ export const GameDetailPage: React.FC = () => {
     return (
       <div style={notFoundContainerStyle}>
         <ShieldAlertStyle />
-        <h2>Access Denied</h2>
+        <h2>{t('game.accessDenied')}</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
           This game is currently undergoing moderation and is unavailable.
         </p>
@@ -234,7 +236,7 @@ export const GameDetailPage: React.FC = () => {
             <div style={statsBoxStyle} className="bg-glass">
               <div style={statColStyle}>
                 <strong>{formatPlays(game.plays)}</strong>
-                <span>Plays</span>
+                <span>{t('game.plays')}</span>
               </div>
               <div style={statDividerStyle}></div>
               <div style={statColStyle}>
@@ -244,7 +246,7 @@ export const GameDetailPage: React.FC = () => {
               <div style={statDividerStyle}></div>
               <div style={statColStyle}>
                 <strong>v{game.version}</strong>
-                <span>Version</span>
+                <span>{t('game.version')}</span>
               </div>
             </div>
           </div>
@@ -257,7 +259,7 @@ export const GameDetailPage: React.FC = () => {
               style={{ flex: 2, gap: '8px', padding: '1rem' }}
             >
               <Play size={20} fill="#fff" />
-              <strong style={{ fontSize: '1.05rem' }}>Play Now</strong>
+              <strong style={{ fontSize: '1.05rem' }}>{t('game.playNow')}</strong>
             </button>
 
             <button
@@ -339,14 +341,14 @@ export const GameDetailPage: React.FC = () => {
             {activeTab === 'info' && (
               <div style={infoTabStyle} className="animate-fade">
                 <div style={descBoxStyle}>
-                  <h3 style={tabHeadingStyle}>About the Game</h3>
+                  <h3 style={tabHeadingStyle}>{t('game.about')}</h3>
                   <p style={descriptionStyle}>{game.fullDescription}</p>
                 </div>
 
                 <div style={metaGridStyle}>
                   {/* Controls Box */}
                   <div style={metaCardStyle} className="bg-glass">
-                    <h4 style={metaCardTitleStyle}>Controls</h4>
+                    <h4 style={metaCardTitleStyle}>{t('game.controls')}</h4>
                     <ul style={listStyle}>
                       {game.controls.map((ctrl, i) => (
                         <li key={i} style={listItemStyle}>
@@ -358,7 +360,7 @@ export const GameDetailPage: React.FC = () => {
 
                   {/* Compatibility Box */}
                   <div style={metaCardStyle} className="bg-glass">
-                    <h4 style={metaCardTitleStyle}>Supported Input & Devices</h4>
+                    <h4 style={metaCardTitleStyle}>{t('game.devices')}</h4>
                     <div style={devicesRowStyle}>
                       {game.devices.includes('desktop') && (
                         <span style={deviceBadgeStyle}>
@@ -461,7 +463,7 @@ export const GameDetailPage: React.FC = () => {
             {/* Changelog Tab */}
             {activeTab === 'changelog' && (
               <div style={changelogTabStyle} className="animate-fade">
-                <h3 style={tabHeadingStyle}>Update History</h3>
+                <h3 style={tabHeadingStyle}>{t('game.history')}</h3>
                 <div style={timelineStyle}>
                   {game.changelog.map((log, i) => (
                     <div key={i} style={timelineItemStyle}>
@@ -490,7 +492,7 @@ export const GameDetailPage: React.FC = () => {
 
         {/* Sidebar Column: Related Games */}
         <aside style={rightColStyle}>
-          <h3 style={sidebarTitleStyle}>Related Games</h3>
+          <h3 style={sidebarTitleStyle}>{t('game.related')}</h3>
           <div style={sidebarGridStyle}>
             {fallbackRelated.map((g) => (
               <GameCard key={g.id} game={g} />
@@ -551,7 +553,7 @@ const backdropStyle: React.CSSProperties = {
 
 const warnBannerStyle: React.CSSProperties = {
   position: 'relative',
-  zIndex: 10,
+  zIndex: 'var(--z-content-raised)',
   display: 'flex',
   gap: '12px',
   alignItems: 'center',

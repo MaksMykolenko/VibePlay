@@ -6,6 +6,8 @@ import { toast } from '../../components/toastEvents';
 import { api, ApiClientError } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
 import { versionStatusLabel } from '../../lib/versionStatus';
+import { useI18n } from '../../i18n/useI18n';
+import { DEFAULT_UPLOAD_LIMITS } from '@vibeplay/shared';
 import {
   FileCode,
   UploadCloud,
@@ -36,6 +38,7 @@ export const PublishGame: React.FC = () => {
   const { currentUser } = useAuth();
   const { createGame, submitForReview } = useGames();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,13 @@ export const PublishGame: React.FC = () => {
     if (!file) return;
 
     if (!file.name.endsWith('.zip')) {
-      toast.danger('Invalid file format. Please upload a ZIP archive.');
+      toast.danger(t('publish.invalidZip'));
+      return;
+    }
+
+    if (file.size > DEFAULT_UPLOAD_LIMITS.maxCompressedBytes) {
+      toast.danger(t('publish.archiveTooLarge'));
+      e.target.value = '';
       return;
     }
 
@@ -131,7 +140,7 @@ export const PublishGame: React.FC = () => {
   const handleNext = () => {
     if (step === 1) {
       if (!title.trim() || !shortDesc.trim() || !fullDesc.trim()) {
-        toast.warning('Please fill out all required basic information.');
+        toast.warning(t('publish.required'));
         return;
       }
     }
@@ -166,7 +175,7 @@ export const PublishGame: React.FC = () => {
     if (!currentUser) return;
     if (loading) return; // guard against double-submit while a request is in flight
     if (!zipFile) {
-      toast.warning('Select a ZIP build first.');
+      toast.warning(t('publish.selectZipWarning'));
       return;
     }
 
@@ -303,7 +312,7 @@ export const PublishGame: React.FC = () => {
         <div style={successIconBoxStyle}>
           <CheckCircle size={40} color="var(--success)" />
         </div>
-        <h1>Submission Received!</h1>
+        <h1>{t('publish.successTitle')}</h1>
         <p style={successDescStyle}>
           {IS_DEMO
             ? 'This demo submission is stored only in this browser. No backend scan or moderation was performed.'
@@ -369,13 +378,13 @@ export const PublishGame: React.FC = () => {
         {/* STEP 1: Basic Info */}
         {step === 1 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 1 — Basic Game Information</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepBasic')}</h2>
             <p style={stepDescStyle}>
               Provide a catchy title and clear descriptions to attract players.
             </p>
 
             <div className="form-group">
-              <label className="form-label">Game Title *</label>
+              <label className="form-label">{t('publish.gameTitle')}</label>
               <input
                 type="text"
                 required
@@ -387,7 +396,7 @@ export const PublishGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Category *</label>
+              <label className="form-label">{t('publish.category')}</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -415,7 +424,7 @@ export const PublishGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Short Description (Max 120 chars) *</label>
+              <label className="form-label">{t('publish.shortDescription')}</label>
               <input
                 type="text"
                 required
@@ -429,7 +438,7 @@ export const PublishGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Full Description *</label>
+              <label className="form-label">{t('publish.fullDescription')}</label>
               <textarea
                 required
                 placeholder="Describe your gameplay mechanics, goals, features, and engine specifications..."
@@ -441,7 +450,7 @@ export const PublishGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Tags (separated by comma)</label>
+              <label className="form-label">{t('publish.tags')}</label>
               <input
                 type="text"
                 placeholder="three.js, canvas, physics, synthwave, retro"
@@ -456,7 +465,7 @@ export const PublishGame: React.FC = () => {
         {/* STEP 2: Game Build Upload */}
         {step === 2 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 2 — Upload Game Archive</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepUpload')}</h2>
             <p style={stepDescStyle}>
               {IS_DEMO
                 ? 'Select a `.zip` archive to demonstrate the publishing flow. The demo does not upload or scan it.'
@@ -468,7 +477,7 @@ export const PublishGame: React.FC = () => {
               <UploadCloud size={48} color="var(--text-secondary)" style={{ opacity: 0.6 }} />
               <div style={{ margin: '1rem 0' }}>
                 <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }}>
-                  <span>Select Game ZIP</span>
+                  <span>{t('publish.selectZip')}</span>
                   <input
                     type="file"
                     accept=".zip"
@@ -478,8 +487,7 @@ export const PublishGame: React.FC = () => {
                 </label>
               </div>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Maximum file size limit: 100MB. Make sure `index.html` is located at the archive root
-                folder.
+                {t('publish.archiveLimitHint')}
               </span>
             </div>
 
@@ -548,11 +556,11 @@ export const PublishGame: React.FC = () => {
         {/* STEP 3: Media */}
         {step === 3 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 3 — Media & Covers</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepMedia')}</h2>
             <p style={stepDescStyle}>Upload eye-catching cover graphics and screenshot layouts.</p>
 
             <div className="form-group">
-              <label className="form-label">Cover Image URL</label>
+              <label className="form-label">{t('publish.coverUrl')}</label>
               <input
                 type="text"
                 placeholder="https://images.unsplash.com/photo-..."
@@ -566,7 +574,7 @@ export const PublishGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Screenshot 1 URL</label>
+              <label className="form-label">{t('publish.screenshotUrl')}</label>
               <input
                 type="text"
                 placeholder="https://images.unsplash.com/photo-..."
@@ -604,7 +612,7 @@ export const PublishGame: React.FC = () => {
         {/* STEP 4: Compatibility */}
         {step === 4 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 4 — Compatibility & Inputs</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepCompatibility')}</h2>
             <p style={stepDescStyle}>
               Specify which systems and input controls are required for gameplay.
             </p>
@@ -705,13 +713,13 @@ export const PublishGame: React.FC = () => {
         {/* STEP 5: AI Disclosure */}
         {step === 5 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 5 — AI-Assisted Disclosures</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepAi')}</h2>
             <p style={stepDescStyle}>
               Honest disclosure helps players discover and understand your development tools.
             </p>
 
             <div className="form-group">
-              <label className="form-label">Was AI used to create this game? *</label>
+              <label className="form-label">{t('publish.aiQuestion')}</label>
               <div style={radioRowStyle}>
                 <label
                   style={{
@@ -728,7 +736,7 @@ export const PublishGame: React.FC = () => {
                     style={{ marginRight: '8px' }}
                   />
                   <div>
-                    <strong>No AI tools used</strong>
+                    <strong>{t('publish.noAi')}</strong>
                     <div
                       style={{
                         fontSize: '0.75rem',
@@ -758,7 +766,7 @@ export const PublishGame: React.FC = () => {
                     style={{ marginRight: '8px' }}
                   />
                   <div>
-                    <strong>AI-Assisted</strong>
+                    <strong>{t('publish.aiAssisted')}</strong>
                     <div
                       style={{
                         fontSize: '0.75rem',
@@ -788,7 +796,7 @@ export const PublishGame: React.FC = () => {
                     style={{ marginRight: '8px' }}
                   />
                   <div>
-                    <strong>Mostly AI-Generated</strong>
+                    <strong>{t('publish.aiGenerated')}</strong>
                     <div
                       style={{
                         fontSize: '0.75rem',
@@ -805,7 +813,7 @@ export const PublishGame: React.FC = () => {
 
             {aiDisclosure !== 'no' && (
               <div className="form-group" style={{ marginTop: '1.5rem' }}>
-                <label className="form-label">Specify the tools used:</label>
+                <label className="form-label">{t('publish.tools')}</label>
                 <div style={aiToolsGridStyle}>
                   {[
                     'Claude',
@@ -835,7 +843,7 @@ export const PublishGame: React.FC = () => {
         {/* STEP 6: Review & Submit */}
         {step === 6 && (
           <div className="animate-fade">
-            <h2 style={stepTitleStyle}>Step 6 — Review Submission</h2>
+            <h2 style={stepTitleStyle}>{t('publish.stepReview')}</h2>
             <p style={stepDescStyle}>
               Review all details before committing build to the moderation queue.
             </p>

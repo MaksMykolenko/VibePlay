@@ -5,8 +5,10 @@ import { useGames } from '../../hooks/useGames';
 import { Users, AlertTriangle, Play, HelpCircle } from 'lucide-react';
 import { api } from '../../lib/api';
 import { toast } from '../../components/toastEvents';
+import { useI18n } from '../../i18n/useI18n';
 
 export const AdminDashboard: React.FC = () => {
+  const { t } = useI18n();
   const { games } = useGames();
   const [stats, setStats] = useState<Record<string, number>>({});
   const [recentUsers, setRecentUsers] = useState<CurrentUserDto[]>([]);
@@ -42,9 +44,9 @@ export const AdminDashboard: React.FC = () => {
     <div style={containerStyle} className="animate-fade">
       {/* Title */}
       <div>
-        <h1 style={titleStyle}>Platform Overview</h1>
+        <h1 style={titleStyle}>{t('admin.platformOverview')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-          Administrative dashboard for VibePlay platform controls.
+          {t('admin.platformDescription')}
         </p>
       </div>
 
@@ -52,20 +54,20 @@ export const AdminDashboard: React.FC = () => {
       <div style={statsGridStyle}>
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Total Registrants</span>
+            <span style={statTitleStyle}>{t('admin.totalRegistrants')}</span>
             <Users size={18} color="var(--secondary)" />
           </div>
           <div style={statValueStyle}>{totalUsers}</div>
-          <div style={statSubStyle}>{totalCreators} verified creators</div>
+          <div style={statSubStyle}>{t('admin.verifiedCreators', { count: totalCreators })}</div>
         </div>
 
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Published Games</span>
+            <span style={statTitleStyle}>{t('admin.publishedGames')}</span>
             <Play size={18} color="var(--success)" />
           </div>
           <div style={statValueStyle}>{publishedGames}</div>
-          <div style={statSubStyle}>{totalPlays.toLocaleString()} total plays</div>
+          <div style={statSubStyle}>{t('admin.totalPlaysText', { count: totalPlays.toLocaleString() })}</div>
         </div>
 
         <div
@@ -77,7 +79,7 @@ export const AdminDashboard: React.FC = () => {
           }}
         >
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Pending Reviews</span>
+            <span style={statTitleStyle}>{t('admin.pendingReviews')}</span>
             <HelpCircle size={18} color="var(--warning)" />
           </div>
           <div
@@ -88,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
           >
             {pendingReviews}
           </div>
-          <div style={statSubStyle}>Moderation queue items</div>
+          <div style={statSubStyle}>{t('admin.moderationQueueItems')}</div>
         </div>
 
         <div
@@ -100,7 +102,7 @@ export const AdminDashboard: React.FC = () => {
           }}
         >
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Open Complaints</span>
+            <span style={statTitleStyle}>{t('admin.openComplaints')}</span>
             <AlertTriangle size={18} color="var(--danger)" />
           </div>
           <div
@@ -111,7 +113,7 @@ export const AdminDashboard: React.FC = () => {
           >
             {openReports}
           </div>
-          <div style={statSubStyle}>Reports needing resolution</div>
+          <div style={statSubStyle}>{t('admin.reportsNeedingResolution')}</div>
         </div>
       </div>
 
@@ -120,15 +122,17 @@ export const AdminDashboard: React.FC = () => {
         {/* Pending Submissions */}
         <div style={cardBoxStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
-            <h3 style={cardTitleStyle}>Pending Moderation ({pendingReviews})</h3>
+            <h3 style={cardTitleStyle}>
+              {t('admin.pendingModeration', { count: pendingReviews })}
+            </h3>
             <Link to="/admin/moderation" style={cardLinkStyle}>
-              Moderation Queue
+              {t('admin.moderationQueueLink')}
             </Link>
           </div>
 
           <div style={listStyle}>
             {pendingGames.length === 0 ? (
-              <div style={emptyTextStyle}>No builds currently pending review.</div>
+              <div style={emptyTextStyle}>{t('admin.noPending')}</div>
             ) : (
               pendingGames.map((g) => (
                 <div key={g.id} style={listItemStyle}>
@@ -136,7 +140,7 @@ export const AdminDashboard: React.FC = () => {
                   <div style={itemMetaStyle}>
                     <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{g.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      by @{g.creatorName} • {g.category}
+                      {t('common.by', { creator: g.creatorName })} • {g.category}
                     </div>
                   </div>
                   <Link
@@ -144,7 +148,7 @@ export const AdminDashboard: React.FC = () => {
                     className="btn btn-secondary btn-sm"
                     style={{ padding: '4px 10px', fontSize: '0.75rem' }}
                   >
-                    Review
+                    {t('common.review')}
                   </Link>
                 </div>
               ))
@@ -155,9 +159,9 @@ export const AdminDashboard: React.FC = () => {
         {/* Recent user accounts */}
         <div style={cardBoxStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
-            <h3 style={cardTitleStyle}>Recent Registrations</h3>
+            <h3 style={cardTitleStyle}>{t('admin.recentRegistrations')}</h3>
             <Link to="/admin/users" style={cardLinkStyle}>
-              Manage Users
+              {t('admin.manageUsers')}
             </Link>
           </div>
 

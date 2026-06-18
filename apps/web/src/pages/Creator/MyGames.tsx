@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { Game } from '../../types';
 import { toast } from '../../components/toastEvents';
+import { useI18n } from '../../i18n/useI18n';
 import { IS_DEMO } from '../../lib/appMode';
 import {
   Edit2,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 
 export const MyGames: React.FC = () => {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const { games, submitForReview, hideGame, publishGameDraft, deleteGame } = useGames();
 
@@ -77,14 +79,14 @@ export const MyGames: React.FC = () => {
       {/* Title Header */}
       <div style={headerStyle}>
         <div>
-          <h1>My Browser Games</h1>
+          <h1>{t('myGames.title')}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
             Upload, submit, and manage versions of your browser builds.
           </p>
         </div>
         <Link to="/creator/publish" className="btn btn-primary btn-sm" style={{ gap: '6px' }}>
           <Plus size={16} />
-          <span>Publish New Game</span>
+          <span>{t('myGames.publish')}</span>
         </Link>
       </div>
 
@@ -93,7 +95,7 @@ export const MyGames: React.FC = () => {
       {myGames.length === 0 ? (
         <div style={emptyContainerStyle}>
           <LayoutGrid size={48} style={{ opacity: 0.15, marginBottom: '1rem' }} />
-          <h3>No games uploaded yet</h3>
+          <h3>{t('myGames.empty')}</h3>
           <p
             style={{
               color: 'var(--text-secondary)',
@@ -114,13 +116,13 @@ export const MyGames: React.FC = () => {
           <table style={tableStyle}>
             <thead>
               <tr style={tableHeaderRowStyle}>
-                <th style={{ ...thStyle, width: '80px' }}>Build</th>
-                <th style={thStyle}>Game Title</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Plays</th>
-                <th style={thStyle}>Likes</th>
-                <th style={thStyle}>Last Updated</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
+                <th style={{ ...thStyle, width: '80px' }}>{t('myGames.build')}</th>
+                <th style={thStyle}>{t('myGames.gameTitle')}</th>
+                <th style={thStyle}>{t('myGames.status')}</th>
+                <th style={thStyle}>{t('game.plays')}</th>
+                <th style={thStyle}>{t('myGames.likes')}</th>
+                <th style={thStyle}>{t('myGames.updated')}</th>
+                <th style={{ ...thStyle, textAlign: 'right' }}>{t('myGames.actions')}</th>
               </tr>
             </thead>
             <tbody>

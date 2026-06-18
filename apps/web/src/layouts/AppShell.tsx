@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, NavLink, useNavigate, useLocation, matchPath } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
-import { ToastContainer } from '../components/Toast';
 import { toast } from '../components/toastEvents';
 import { FeedbackModal } from '../components/FeedbackModal';
 import {
@@ -40,6 +39,8 @@ import {
   Monitor,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { useI18n } from '../i18n/useI18n';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() => {
@@ -78,6 +79,7 @@ export const AppShell: React.FC = () => {
   const { currentUser, logout, becomeCreator, switchDemoRole, demoRolesEnabled, isDemo } =
     useAuth();
   const { theme, setTheme } = useTheme();
+  const { t } = useI18n();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(
     currentUser?.id,
   );
@@ -279,12 +281,10 @@ export const AppShell: React.FC = () => {
 
   const handlePublishClick = () => {
     if (!currentUser) {
-      toast.info('Please log in to publish a game.');
+      toast.info(t('app.publishLogin'));
       navigate('/login');
     } else if (currentUser.role === 'player') {
-      toast.info(
-        'Please become a Creator to publish games! Click "Become a Creator" in the sidebar.',
-      );
+      toast.info(t('app.creatorRequired'));
     } else {
       navigate('/creator/publish');
     }
@@ -292,7 +292,7 @@ export const AppShell: React.FC = () => {
 
   const handleBecomeCreatorClick = () => {
     if (!currentUser) {
-      toast.info('Please log in first.');
+      toast.info(t('app.loginFirst'));
       navigate('/login');
       return;
     }
@@ -302,13 +302,13 @@ export const AppShell: React.FC = () => {
       toast.info(notice);
       return;
     }
-    toast.success('You are now a Creator! Access your Creator Dashboard to publish games.');
+    toast.success(t('app.creatorSuccess'));
     navigate('/creator');
   };
 
   const handleDemoSwitch = (role: 'player' | 'creator' | 'admin') => {
     switchDemoRole(role);
-    toast.success(`Switched to demo ${role} account!`);
+    toast.success(t('app.demoSwitched', { role }));
     setShowDemoDropdown(false);
     if (role === 'creator') navigate('/creator');
     else if (role === 'admin') navigate('/admin');
@@ -363,24 +363,24 @@ export const AppShell: React.FC = () => {
     {
       id: 'primary',
       items: [
-        { id: 'home', label: 'Home', icon: Home, path: '/', matchPaths: ['/', '/home'] },
+        { id: 'home', label: t('nav.home'), icon: Home, path: '/', matchPaths: ['/', '/home'] },
         {
           id: 'discover',
-          label: 'Discover',
+          label: t('nav.discover'),
           icon: Compass,
           path: '/discover',
           matchPaths: ['/discover'],
         },
         {
           id: 'browse',
-          label: 'Browse',
+          label: t('nav.browse'),
           icon: Gamepad2,
           path: '/games',
           matchPaths: ['/games', '/browse'],
         },
         {
           id: 'categories',
-          label: 'Categories',
+          label: t('nav.categories'),
           icon: Layers,
           path: '/categories',
           matchPaths: ['/categories'],
@@ -389,25 +389,25 @@ export const AppShell: React.FC = () => {
     },
     {
       id: 'library',
-      label: 'Library',
+      label: t('nav.library'),
       items: [
         {
           id: 'library',
-          label: 'My Library',
+          label: t('nav.myLibrary'),
           icon: LibraryIcon,
           path: '/library',
           matchPaths: ['/library', '/library/favorites', '/library/liked'],
           children: [
             {
               id: 'favorites',
-              label: 'Favorites',
+              label: t('nav.favorites'),
               icon: Star,
               path: '/library/favorites',
               matchPaths: ['/library/favorites'],
             },
             {
               id: 'liked',
-              label: 'Liked Games',
+              label: t('nav.likedGames'),
               icon: ThumbsUp,
               path: '/library/liked',
               matchPaths: ['/library/liked'],
@@ -416,7 +416,7 @@ export const AppShell: React.FC = () => {
         },
         {
           id: 'recent',
-          label: 'Recently Played',
+          label: t('nav.recentlyPlayed'),
           icon: History,
           path: '/recently-played',
           matchPaths: ['/recent', '/recently-played'],
@@ -425,18 +425,18 @@ export const AppShell: React.FC = () => {
     },
     {
       id: 'creator',
-      label: 'Creator',
+      label: t('nav.creator'),
       items: [
         {
           id: 'creator-overview',
-          label: 'Overview',
+          label: t('nav.overview'),
           icon: LayoutDashboard,
           path: '/creator',
           matchPaths: ['/creator'],
         },
         {
           id: 'creator-games',
-          label: 'My Games',
+          label: t('nav.myGames'),
           icon: Gamepad2,
           path: '/creator/my-games',
           matchPaths: [
@@ -448,14 +448,14 @@ export const AppShell: React.FC = () => {
         },
         {
           id: 'creator-publish',
-          label: 'Publish Game',
+          label: t('nav.publishGame'),
           icon: PlusCircle,
           path: '/creator/publish',
           matchPaths: ['/creator/publish'],
         },
         {
           id: 'creator-analytics',
-          label: 'Analytics',
+          label: t('nav.analytics'),
           icon: BarChart2,
           path: '/creator/analytics',
           matchPaths: ['/creator/analytics'],
@@ -464,32 +464,32 @@ export const AppShell: React.FC = () => {
     },
     {
       id: 'admin',
-      label: 'Admin',
+      label: t('nav.admin'),
       items: [
         {
           id: 'admin-overview',
-          label: 'Overview',
+          label: t('nav.overview'),
           icon: Shield,
           path: '/admin',
           matchPaths: ['/admin'],
         },
         {
           id: 'admin-moderation',
-          label: 'Moderation',
+          label: t('nav.moderation'),
           icon: Eye,
           path: '/admin/moderation',
           matchPaths: ['/admin/moderation', '/admin/moderation/:id'],
         },
         {
           id: 'admin-users',
-          label: 'Users',
+          label: t('nav.users'),
           icon: Users,
           path: '/admin/users',
           matchPaths: ['/admin/users'],
         },
         {
           id: 'admin-reports',
-          label: 'Reports',
+          label: t('nav.reports'),
           icon: AlertTriangle,
           path: '/admin/reports',
           matchPaths: ['/admin/reports'],
@@ -561,7 +561,7 @@ export const AppShell: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                     }}
-                    aria-label="Toggle Library Submenu"
+                    aria-label={t('sidebar.toggleLibrary')}
                   >
                     {isLibraryExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   </button>
@@ -624,13 +624,13 @@ export const AppShell: React.FC = () => {
   const renderSidebarBottom = (isMobileOrDrawer = false) => {
     const isNotificationsActive = isNavigationItemActive({
       id: 'notifications',
-      label: 'Notifications',
+      label: t('nav.notifications'),
       path: '/notifications',
       matchPaths: ['/notifications'],
     } as NavItem);
     const isSettingsActive = isNavigationItemActive({
       id: 'settings',
-      label: 'Settings',
+      label: t('nav.settings'),
       path: '/settings',
       matchPaths: ['/settings'],
     } as NavItem);
@@ -752,7 +752,9 @@ export const AppShell: React.FC = () => {
         <NavLink
           to="/notifications"
           className={`sidebar-link ${isNotificationsActive ? 'sidebar-item--active' : ''}`}
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Notifications' : undefined}
+          data-tooltip={
+            isSidebarCollapsed && !isMobileOrDrawer ? t('nav.notifications') : undefined
+          }
           aria-current={isNotificationsActive ? 'page' : undefined}
         >
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -777,7 +779,7 @@ export const AppShell: React.FC = () => {
               style={{ display: 'flex', alignItems: 'center', width: '100%', marginLeft: '10px' }}
             >
               <span style={{ flex: 1, fontWeight: isNotificationsActive ? 600 : 500 }}>
-                Notifications
+                {t('nav.notifications')}
               </span>
               {unreadCount > 0 && (
                 <span
@@ -809,13 +811,13 @@ export const AppShell: React.FC = () => {
         <NavLink
           to="/settings"
           className={`sidebar-link ${isSettingsActive ? 'sidebar-item--active' : ''}`}
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Settings' : undefined}
+          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? t('nav.settings') : undefined}
           aria-current={isSettingsActive ? 'page' : undefined}
         >
           <Settings size={20} />
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
             <span style={{ marginLeft: '10px', fontWeight: isSettingsActive ? 600 : 500 }}>
-              Settings
+              {t('nav.settings')}
             </span>
           )}
         </NavLink>
@@ -824,11 +826,11 @@ export const AppShell: React.FC = () => {
         <a
           href="#help"
           className="sidebar-link"
-          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Help Center' : undefined}
+          data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? t('nav.help') : undefined}
         >
           <HelpCircle size={20} />
           {(!isSidebarCollapsed || isMobileOrDrawer) && (
-            <span style={{ marginLeft: '10px' }}>Help Center</span>
+            <span style={{ marginLeft: '10px' }}>{t('nav.help')}</span>
           )}
         </a>
 
@@ -840,7 +842,7 @@ export const AppShell: React.FC = () => {
             style={{ cursor: 'pointer' }}
             data-tooltip={isSidebarCollapsed ? 'Expand Sidebar' : undefined}
             role="button"
-            aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            aria-label={t(isSidebarCollapsed ? 'sidebar.expand' : 'sidebar.collapse')}
             aria-expanded={!isSidebarCollapsed}
             tabIndex={0}
             onKeyDown={(e) => {
@@ -851,7 +853,15 @@ export const AppShell: React.FC = () => {
             }}
           >
             {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-            {!isSidebarCollapsed && <span style={{ marginLeft: '10px' }}>Collapse Sidebar</span>}
+            {!isSidebarCollapsed && (
+              <span style={{ marginLeft: '10px' }}>{t('sidebar.collapse')}</span>
+            )}
+          </div>
+        )}
+        {/* Language Switcher in Sidebar (Visible when expanded or in mobile drawer) */}
+        {(!isSidebarCollapsed || isMobileOrDrawer) && (
+          <div style={{ padding: '6px 14px', margin: '4px 8px 12px' }} className="sidebar-language-control">
+            <LanguageSwitcher />
           </div>
         )}
 
@@ -875,7 +885,7 @@ export const AppShell: React.FC = () => {
                   borderRadius: '12px',
                   padding: '6px',
                   boxShadow: 'var(--shadow-lg)',
-                  zIndex: 10000,
+                  zIndex: 'var(--z-dropdown)',
                   marginBottom: '8px',
                 }}
               >
@@ -902,7 +912,7 @@ export const AppShell: React.FC = () => {
                   style={profileDropdownItemStyle}
                 >
                   <UserIcon size={14} />
-                  <span>My Profile</span>
+                  <span>{t('profile.myProfile')}</span>
                 </Link>
                 <Link
                   to="/settings"
@@ -910,7 +920,7 @@ export const AppShell: React.FC = () => {
                   style={profileDropdownItemStyle}
                 >
                   <Settings size={14} />
-                  <span>Settings</span>
+                  <span>{t('nav.settings')}</span>
                 </Link>
                 {hasCreatorAccess && (
                   <Link
@@ -919,7 +929,7 @@ export const AppShell: React.FC = () => {
                     style={profileDropdownItemStyle}
                   >
                     <LayoutDashboard size={14} />
-                    <span>Creator Studio</span>
+                    <span>{t('profile.creatorStudio')}</span>
                   </Link>
                 )}
                 {hasAdminAccess && (
@@ -929,7 +939,7 @@ export const AppShell: React.FC = () => {
                     style={profileDropdownItemStyle}
                   >
                     <Shield size={14} />
-                    <span>Admin Control</span>
+                    <span>{t('profile.adminControl')}</span>
                   </Link>
                 )}
                 <hr style={hrStyle} />
@@ -942,7 +952,7 @@ export const AppShell: React.FC = () => {
                       marginBottom: '6px',
                     }}
                   >
-                    Appearance
+                    {t('profile.appearance')}
                   </div>
                   <div
                     style={{
@@ -973,7 +983,7 @@ export const AppShell: React.FC = () => {
                       }}
                     >
                       <Sun size={11} />
-                      <span>Light</span>
+                      <span>{t('profile.light')}</span>
                     </button>
                     <button
                       onClick={() => setTheme('dark')}
@@ -995,7 +1005,7 @@ export const AppShell: React.FC = () => {
                       }}
                     >
                       <Moon size={11} />
-                      <span>Dark</span>
+                      <span>{t('profile.dark')}</span>
                     </button>
                     <button
                       onClick={() => setTheme('system')}
@@ -1017,15 +1027,19 @@ export const AppShell: React.FC = () => {
                       }}
                     >
                       <Monitor size={11} />
-                      <span>System</span>
+                      <span>{t('profile.system')}</span>
                     </button>
                   </div>
+                </div>
+                <hr style={hrStyle} />
+                <div style={{ padding: '4px 8px 6px' }}>
+                  <LanguageSwitcher />
                 </div>
                 <hr style={hrStyle} />
                 <button
                   onClick={() => {
                     logout();
-                    toast.success('Logged out successfully.');
+                    toast.success(t('app.loggedOut'));
                     navigate('/');
                     setShowSidebarProfileDropdown(false);
                   }}
@@ -1040,7 +1054,7 @@ export const AppShell: React.FC = () => {
                   }}
                 >
                   <LogOut size={14} />
-                  <span>Log Out</span>
+                  <span>{t('profile.logout')}</span>
                 </button>
               </div>
             )}
@@ -1143,7 +1157,7 @@ export const AppShell: React.FC = () => {
                           style={{ width: 'calc(100% - 16px)', margin: '4px 8px' }}
                         >
                           <PlusCircle size={16} />
-                          <span>Become a Creator</span>
+                          <span>{t('home.becomeCreator')}</span>
                         </button>
                       ) : (
                         <button
@@ -1157,7 +1171,7 @@ export const AppShell: React.FC = () => {
                             margin: '4px auto',
                           }}
                           data-tooltip="Become a Creator"
-                          aria-label="Become a Creator"
+                          aria-label={t('home.becomeCreator')}
                         >
                           <PlusCircle size={20} />
                         </button>
@@ -1178,16 +1192,14 @@ export const AppShell: React.FC = () => {
 
   const toggleLabel = isMobile
     ? isMobileDrawerOpen
-      ? 'Close navigation'
-      : 'Open navigation'
+      ? t('common.close')
+      : t('sidebar.expand')
     : isSidebarCollapsed
-      ? 'Expand sidebar'
-      : 'Collapse sidebar';
+      ? t('sidebar.expand')
+      : t('sidebar.collapse');
 
   return (
     <div className={`app-shell ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <ToastContainer />
-
       {/* Top Header */}
       <header className="top-header app-header">
         {/* Left header group */}
@@ -1223,13 +1235,13 @@ export const AppShell: React.FC = () => {
           <form onSubmit={handleSearchSubmit} style={searchFormStyle} className="desktop-only">
             <input
               type="text"
-              placeholder="Search games, creators..."
+              placeholder={t('header.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={searchInputStyle}
               className="header-search"
             />
-            <button type="submit" style={searchButtonStyle} aria-label="Search">
+            <button type="submit" style={searchButtonStyle} aria-label={t('nav.search')}>
               <Search size={14} color="var(--text-secondary)" />
             </button>
           </form>
@@ -1240,6 +1252,8 @@ export const AppShell: React.FC = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}
           className="mobile-header__right-group"
         >
+          <LanguageSwitcher compact className="header-language-switcher" />
+
           {/* Search Button (Mobile Only) */}
           <button
             onClick={() => navigate('/search')}
@@ -1250,7 +1264,7 @@ export const AppShell: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
             }}
-            aria-label="Search"
+            aria-label={t('nav.search')}
           >
             <Search size={20} color="var(--text-primary)" />
           </button>
@@ -1307,7 +1321,7 @@ export const AppShell: React.FC = () => {
             style={{ gap: '4px' }}
           >
             <Plus size={16} />
-            <span className="desktop-only">Publish</span>
+            <span className="desktop-only">{t('header.publish')}</span>
           </button>
 
           {/* Notifications Dropdown */}
@@ -1330,16 +1344,18 @@ export const AppShell: React.FC = () => {
               {showNotifDropdown && (
                 <div style={notifDropdownStyle} className="animate-fade">
                   <div style={dropdownHeaderStyle}>
-                    <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>Notifications</h3>
+                    <h3 style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                      {t('nav.notifications')}
+                    </h3>
                     {unreadCount > 0 && (
                       <button onClick={markAllAsRead} style={textLinkStyle}>
-                        Mark all read
+                        {t('header.markAllRead')}
                       </button>
                     )}
                   </div>
                   <div style={notifListStyle}>
                     {notifications.length === 0 ? (
-                      <div style={emptyNotifStyle}>No notifications</div>
+                      <div style={emptyNotifStyle}>{t('header.noNotifications')}</div>
                     ) : (
                       notifications.slice(0, 5).map((n) => (
                         <div
@@ -1376,7 +1392,7 @@ export const AppShell: React.FC = () => {
                     onClick={() => setShowNotifDropdown(false)}
                     style={viewAllNotifStyle}
                   >
-                    View all notifications
+                    {t('header.viewAllNotifications')}
                   </Link>
                 </div>
               )}
@@ -1425,7 +1441,7 @@ export const AppShell: React.FC = () => {
                     style={profileDropdownItemStyle}
                   >
                     <UserIcon size={14} />
-                    <span>My Profile</span>
+                    <span>{t('profile.myProfile')}</span>
                   </Link>
 
                   <Link
@@ -1434,7 +1450,7 @@ export const AppShell: React.FC = () => {
                     style={profileDropdownItemStyle}
                   >
                     <Settings size={14} />
-                    <span>Settings</span>
+                    <span>{t('nav.settings')}</span>
                   </Link>
 
                   {hasCreatorAccess && (
@@ -1444,7 +1460,7 @@ export const AppShell: React.FC = () => {
                       style={profileDropdownItemStyle}
                     >
                       <LayoutDashboard size={14} />
-                      <span>Creator Studio</span>
+                      <span>{t('profile.creatorStudio')}</span>
                     </Link>
                   )}
 
@@ -1455,7 +1471,7 @@ export const AppShell: React.FC = () => {
                       style={profileDropdownItemStyle}
                     >
                       <Shield size={14} />
-                      <span>Admin Control</span>
+                      <span>{t('profile.adminControl')}</span>
                     </Link>
                   )}
 
@@ -1469,7 +1485,7 @@ export const AppShell: React.FC = () => {
                         marginBottom: '6px',
                       }}
                     >
-                      Appearance
+                      {t('profile.appearance')}
                     </div>
                     <div
                       style={{
@@ -1500,7 +1516,7 @@ export const AppShell: React.FC = () => {
                         }}
                       >
                         <Sun size={11} />
-                        <span>Light</span>
+                        <span>{t('profile.light')}</span>
                       </button>
                       <button
                         onClick={() => setTheme('dark')}
@@ -1522,7 +1538,7 @@ export const AppShell: React.FC = () => {
                         }}
                       >
                         <Moon size={11} />
-                        <span>Dark</span>
+                        <span>{t('profile.dark')}</span>
                       </button>
                       <button
                         onClick={() => setTheme('system')}
@@ -1544,9 +1560,14 @@ export const AppShell: React.FC = () => {
                         }}
                       >
                         <Monitor size={11} />
-                        <span>System</span>
+                        <span>{t('profile.system')}</span>
                       </button>
                     </div>
+                  </div>
+
+                  <hr style={hrStyle} />
+                  <div style={{ padding: '4px 8px 6px' }}>
+                    <LanguageSwitcher />
                   </div>
 
                   <hr style={hrStyle} />
@@ -1554,7 +1575,7 @@ export const AppShell: React.FC = () => {
                   <button
                     onClick={() => {
                       logout();
-                      toast.success('Logged out successfully.');
+                      toast.success(t('app.loggedOut'));
                       navigate('/');
                       setShowProfileDropdown(false);
                     }}
@@ -1569,7 +1590,7 @@ export const AppShell: React.FC = () => {
                     }}
                   >
                     <LogOut size={14} />
-                    <span>Log Out</span>
+                    <span>{t('profile.logout')}</span>
                   </button>
                 </div>
               )}
@@ -1581,14 +1602,14 @@ export const AppShell: React.FC = () => {
                 className="btn btn-secondary btn-sm"
                 style={{ padding: '0.4rem 0.8rem' }}
               >
-                Log In
+                {t('header.login')}
               </Link>
               <Link
                 to="/register"
                 className="btn btn-primary btn-sm"
                 style={{ padding: '0.4rem 0.8rem' }}
               >
-                Sign Up
+                {t('header.signUp')}
               </Link>
             </div>
           )}
@@ -1716,35 +1737,35 @@ export const AppShell: React.FC = () => {
           className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
         >
           <Home className="mobile-bottom-nav__icon" />
-          <span className="mobile-bottom-nav__label">Home</span>
+          <span className="mobile-bottom-nav__label">{t('nav.home')}</span>
         </NavLink>
         <NavLink
           to="/games"
           className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
         >
           <Compass className="mobile-bottom-nav__icon" />
-          <span className="mobile-bottom-nav__label">Discover</span>
+          <span className="mobile-bottom-nav__label">{t('nav.discover')}</span>
         </NavLink>
         <NavLink
           to="/search"
           className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
         >
           <Search className="mobile-bottom-nav__icon" />
-          <span className="mobile-bottom-nav__label">Search</span>
+          <span className="mobile-bottom-nav__label">{t('nav.search')}</span>
         </NavLink>
         <NavLink
           to="/library"
           className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
         >
           <FolderHeart className="mobile-bottom-nav__icon" />
-          <span className="mobile-bottom-nav__label">Library</span>
+          <span className="mobile-bottom-nav__label">{t('nav.library')}</span>
         </NavLink>
         <NavLink
           to={currentUser ? `/profile/${currentUser.username}` : '/login'}
           className={({ isActive }) => `mobile-bottom-nav__item ${isActive ? 'active' : ''}`}
         >
           <UserIcon className="mobile-bottom-nav__icon" />
-          <span className="mobile-bottom-nav__label">Profile</span>
+          <span className="mobile-bottom-nav__label">{t('nav.profile')}</span>
         </NavLink>
       </nav>
     </div>
@@ -1909,7 +1930,7 @@ const demoDropdownContentStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '4px',
-  zIndex: 100,
+  zIndex: 'var(--z-dropdown)',
 };
 
 const dropdownTitleStyle: React.CSSProperties = {
@@ -1969,7 +1990,7 @@ const notifDropdownStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   borderRadius: '12px',
   boxShadow: 'var(--shadow-lg)',
-  zIndex: 100,
+  zIndex: 'var(--z-dropdown)',
   overflow: 'hidden',
 };
 
@@ -2052,7 +2073,7 @@ const profileDropdownStyle: React.CSSProperties = {
   borderRadius: '12px',
   padding: '6px',
   boxShadow: 'var(--shadow-lg)',
-  zIndex: 100,
+  zIndex: 'var(--z-dropdown)',
 };
 
 const userHeaderInfoStyle: React.CSSProperties = {

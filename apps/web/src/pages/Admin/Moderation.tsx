@@ -4,11 +4,13 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { Game } from '../../types';
 import { toast } from '../../components/toastEvents';
+import { useI18n } from '../../i18n/useI18n';
 import { Check, X, Cpu, Eye } from 'lucide-react';
 import { api } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
 
 export const AdminModeration: React.FC = () => {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const { games, approveGame, rejectGame } = useGames();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,10 +36,10 @@ export const AdminModeration: React.FC = () => {
     if (!selectedGame || !currentUser) return;
 
     if (
-      window.confirm(`Approve "${selectedGame.title}" and publish it to the live VibePlay catalog?`)
+      window.confirm(t('admin.approveConfirm', { title: selectedGame.title }))
     ) {
       approveGame(selectedGame.id, currentUser.id, currentUser.displayName);
-      toast.success(`"${selectedGame.title}" approved and published!`);
+      toast.success(t('admin.approvedToast', { title: selectedGame.title }));
       setSearchParams({});
     }
   };
@@ -50,12 +52,12 @@ export const AdminModeration: React.FC = () => {
   const handleConfirmReject = () => {
     if (!selectedGame || !currentUser) return;
     if (!rejectReasonText.trim()) {
-      toast.warning('Please provide a reason for rejection.');
+      toast.warning(t('admin.rejectReasonRequired'));
       return;
     }
 
     rejectGame(selectedGame.id, rejectReasonText.trim(), currentUser.id, currentUser.displayName);
-    toast.danger(`Build "${selectedGame.title}" was rejected.`);
+    toast.danger(t('admin.rejectedToast', { title: selectedGame.title }));
     setShowRejectModal(false);
     setSearchParams({});
   };
@@ -67,14 +69,14 @@ export const AdminModeration: React.FC = () => {
       return;
     }
     if (!selectedGame.moderationVersionId) {
-      toast.danger('The moderation version is unavailable.');
+      toast.danger(t('admin.moderationUnavailable'));
       return;
     }
     void api
       .adminPreviewUrl(selectedGame.moderationVersionId)
       .then((url) => window.open(url, '_blank', 'noopener,noreferrer'))
       .catch((error) =>
-        toast.danger(error instanceof Error ? error.message : 'Could not create preview URL'),
+        toast.danger(error instanceof Error ? error.message : t('admin.previewUrlError')),
       );
   };
 
@@ -85,7 +87,7 @@ export const AdminModeration: React.FC = () => {
         <div style={modalOverlayStyle}>
           <div style={modalStyle} className="bg-glass animate-slide-up">
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-              Reject Submission
+              {t('admin.rejectSubmission')}
             </h3>
             <p
               style={{
@@ -94,8 +96,7 @@ export const AdminModeration: React.FC = () => {
                 marginBottom: '1.25rem',
               }}
             >
-              Specify why the build <strong>{selectedGame.title}</strong> is being rejected. The
-              creator will see this note.
+              {t('admin.rejectInstructions', { title: selectedGame.title })}
             </p>
             <textarea
               placeholder="e.g. Asset check failed: Missing textures. File index.html is empty. Contains malicious script triggers..."
@@ -109,10 +110,10 @@ export const AdminModeration: React.FC = () => {
                 onClick={() => setShowRejectModal(false)}
                 className="btn btn-secondary btn-sm"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={handleConfirmReject} className="btn btn-danger btn-sm">
-                Confirm Rejection
+                {t('admin.confirmRejection')}
               </button>
             </div>
           </div>
@@ -123,15 +124,15 @@ export const AdminModeration: React.FC = () => {
       <div style={layoutGridStyle}>
         {/* Left Side: Pending List */}
         <div style={listColStyle}>
-          <h2 style={titleStyle}>Moderation Queue ({pendingGames.length})</h2>
+          <h2 style={titleStyle}>{t('admin.moderationQueue', { count: pendingGames.length })}</h2>
 
           <div style={listContainerStyle}>
             {pendingGames.length === 0 ? (
               <div style={emptyQueueStyle}>
                 <Check size={36} color="var(--success)" style={{ marginBottom: '0.5rem' }} />
-                <h3>Queue Empty</h3>
+                <h3>{t('admin.queueEmpty')}</h3>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  All uploaded browser builds have been moderated.
+                  {t('admin.allModerated')}
                 </span>
               </div>
             ) : (
@@ -151,11 +152,11 @@ export const AdminModeration: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{g.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      by @{g.creatorName}
+                      {t('common.by', { creator: g.creatorName })}
                     </div>
                   </div>
                   <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
-                    Pending
+                    {t('admin.pending')}
                   </span>
                 </div>
               ))
@@ -174,8 +175,7 @@ export const AdminModeration: React.FC = () => {
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}
                   >
-                    Uploaded by <strong>@{selectedGame.creatorName}</strong> • Category:{' '}
-                    <strong>{selectedGame.category}</strong>
+                    {t('admin.uploadedBy', { creator: selectedGame.creatorName, category: selectedGame.category })}
                   </div>
                 </div>
 
@@ -185,14 +185,14 @@ export const AdminModeration: React.FC = () => {
                     className="btn btn-success btn-sm"
                     style={{ gap: '4px' }}
                   >
-                    <Check size={14} /> Approve
+                    <Check size={14} /> {t('admin.approve')}
                   </button>
                   <button
                     onClick={handleRejectClick}
                     className="btn btn-danger btn-sm"
                     style={{ gap: '4px' }}
                   >
-                    <X size={14} /> Reject
+                    <X size={14} /> {t('admin.reject')}
                   </button>
                 </div>
               </div>
@@ -201,7 +201,7 @@ export const AdminModeration: React.FC = () => {
 
               {/* Worker validation report */}
               <div style={scansSectionStyle}>
-                <h4 style={sectionHeadingStyle}>Worker Validation Report</h4>
+                <h4 style={sectionHeadingStyle}>{t('admin.workerReport')}</h4>
                 <div style={logsBoxStyle}>
                   {selectedGame.validationReport ? (
                     <>
@@ -222,8 +222,8 @@ export const AdminModeration: React.FC = () => {
                   ) : (
                     <div style={logLineStyle}>
                       {IS_DEMO
-                        ? 'Demo mode has no server-generated validation report.'
-                        : 'No validation report was returned for this version.'}
+                        ? t('admin.noValidationReportDemo')
+                        : t('admin.noValidationReport')}
                     </div>
                   )}
                 </div>
@@ -232,50 +232,47 @@ export const AdminModeration: React.FC = () => {
               {/* Basic metadata */}
               <div style={infoGridStyle}>
                 <div style={metaCardStyle}>
-                  <strong>Archive File details:</strong>
+                  <strong>{t('admin.archiveDetails')}</strong>
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>ZIP Name: {selectedGame.fileName || 'Not retained in this response'}</div>
-                    <div>ZIP Size: {selectedGame.fileSize || 'Unknown'}</div>
-                    <div>Build Version: v{selectedGame.version}</div>
+                    <div>{t('admin.zipName', { name: selectedGame.fileName || t('admin.noneListed') })}</div>
+                    <div>{t('admin.zipSize', { size: selectedGame.fileSize || t('admin.noneListed') })}</div>
+                    <div>{t('admin.buildVersion', { version: selectedGame.version })}</div>
                   </div>
                 </div>
 
                 <div style={metaCardStyle}>
-                  <strong>AI Disclosure:</strong>
+                  <strong>{t('admin.aiDisclosureTitle')}</strong>
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>Type: {selectedGame.aiDisclosure.toUpperCase()}</div>
+                    <div>{t('admin.aiDisclosureType', { type: selectedGame.aiDisclosure.toUpperCase() })}</div>
                     <div>
-                      Tools:{' '}
-                      {selectedGame.aiTools.length > 0
-                        ? selectedGame.aiTools.join(', ')
-                        : 'None listed'}
+                      {t('admin.aiToolsList', { tools: selectedGame.aiTools.length > 0 ? selectedGame.aiTools.join(', ') : t('admin.noneListed') })}
                     </div>
                   </div>
                 </div>
 
                 <div style={metaCardStyle}>
-                  <strong>Compatibilities:</strong>
+                  <strong>{t('admin.compatibilities')}</strong>
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>Inputs: {selectedGame.devices.join(', ')}</div>
-                    <div>Multiplayer: {selectedGame.multiplayer ? 'Yes' : 'No'}</div>
+                    <div>{t('admin.inputs', { inputs: selectedGame.devices.join(', ') })}</div>
+                    <div>{t('admin.multiplayerText', { multiplayer: selectedGame.multiplayer ? t('admin.yes') : t('admin.no') })}</div>
                   </div>
                 </div>
               </div>
 
               {/* Descriptions */}
               <div>
-                <strong>Short Hook Description:</strong>
+                <strong>{t('admin.shortDescTitle')}</strong>
                 <p style={descTextStyle}>{selectedGame.shortDescription}</p>
               </div>
 
               <div>
-                <strong>Full Description:</strong>
+                <strong>{t('admin.fullDescTitle')}</strong>
                 <p style={descTextStyle}>{selectedGame.fullDescription}</p>
               </div>
 
@@ -288,14 +285,14 @@ export const AdminModeration: React.FC = () => {
                   style={{ gap: '6px' }}
                 >
                   <Eye size={14} />
-                  <span>{IS_DEMO ? 'Open Demo Detail' : 'Launch Moderation Preview'}</span>
+                  <span>{IS_DEMO ? t('admin.openDemoDetail') : t('admin.launchPreview')}</span>
                 </button>
               </div>
             </div>
           ) : (
             <div style={emptyDetailStyle} className="bg-glass">
               <Cpu size={32} style={{ opacity: 0.15, marginBottom: '6px' }} />
-              <span>Select a game build from the left queue to audit diagnostics.</span>
+              <span>{t('admin.selectBuildPrompt')}</span>
             </div>
           )}
         </div>
@@ -329,7 +326,7 @@ const modalOverlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 9999,
+  zIndex: 'var(--z-modal)',
   padding: '1.5rem',
 };
 

@@ -118,10 +118,11 @@ export const Footer: React.FC = () => {
 
       <div style={bottomBarStyle} className="container">
         <div style={copyrightStyle}>
-          &copy; {new Date().getFullYear()} VibePlay. All rights reserved.
+          &copy; {new Date().getFullYear()} VibePlay by NeoFlux Software. All rights reserved.
         </div>
         <div style={developerCreditStyle}>
-          Built by <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>NeoFlux</span>
+          Operated by{' '}
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>NeoFlux Software</span>
         </div>
       </div>
     </footer>

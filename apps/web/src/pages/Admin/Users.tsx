@@ -3,10 +3,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import type { User, UserRole } from '../../types';
 import { toast } from '../../components/toastEvents';
+import { useI18n } from '../../i18n/useI18n';
 import { ShieldAlert, Award, UserMinus, UserCheck } from 'lucide-react';
 import { api } from '../../lib/api';
 
 export const AdminUsers: React.FC = () => {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const { games, suspendUserGames } = useGames();
   const [users, setUsers] = useState<User[]>([]);
@@ -96,7 +98,7 @@ export const AdminUsers: React.FC = () => {
       {/* Header */}
       <div style={headerStyle}>
         <div>
-          <h1>User Directory</h1>
+          <h1>{t('admin.userDirectory')}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
             Auditing and managing roles, privileges, and platform bans.
           </p>

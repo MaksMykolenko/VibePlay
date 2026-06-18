@@ -4,10 +4,12 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import { Play, ThumbsUp, Layers, HelpCircle, Activity, ArrowRight, Eye, Edit } from 'lucide-react';
+import { useI18n } from '../../i18n/useI18n';
 
 export const CreatorOverview: React.FC = () => {
   const { currentUser } = useAuth();
   const { games, comments } = useGames();
+  const { t } = useI18n();
 
   if (!currentUser) return null;
 
@@ -35,17 +37,17 @@ export const CreatorOverview: React.FC = () => {
     <div style={containerStyle} className="animate-fade">
       <OnboardingCard
         storageKey="creator_v1"
-        title="Publishing on VibePlay — how it works"
+        title={t('creator.onboardingTitle')}
         steps={[
-          'Create a game draft with title, description and cover art.',
-          'Upload your build as a ZIP with index.html at the root (static files only — limits are shown on the upload screen).',
-          'The pipeline validates the archive and scans it for malware; you see the real status at every step.',
-          'A moderator reviews the build. Approved versions go live; rejections always include a reason so you can fix and re-upload.',
+          t('creator.onboardingDraft'),
+          t('creator.onboardingUpload'),
+          t('creator.onboardingScan'),
+          t('creator.onboardingModeration'),
         ]}
       />
       {/* Welcome Message */}
       <div style={welcomeStyle}>
-        <h1>Welcome, {currentUser.displayName}</h1>
+        <h1>{t('creator.welcome', { name: currentUser.displayName })}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
           Here is a summary of how your published browser builds are performing.
         </p>
@@ -55,7 +57,7 @@ export const CreatorOverview: React.FC = () => {
       <div style={statsGridStyle}>
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Total Games</span>
+            <span style={statTitleStyle}>{t('creator.totalGames')}</span>
             <Layers size={18} color="var(--secondary)" />
           </div>
           <div style={statValueStyle}>{myGames.length}</div>
@@ -64,7 +66,7 @@ export const CreatorOverview: React.FC = () => {
 
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Total Plays</span>
+            <span style={statTitleStyle}>{t('creator.totalPlays')}</span>
             <Play size={18} color="var(--primary)" />
           </div>
           <div style={statValueStyle}>{totalPlays.toLocaleString()}</div>
@@ -73,7 +75,7 @@ export const CreatorOverview: React.FC = () => {
 
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>Total Likes</span>
+            <span style={statTitleStyle}>{t('creator.totalLikes')}</span>
             <ThumbsUp size={18} color="var(--success)" />
           </div>
           <div style={statValueStyle}>{totalLikes.toLocaleString()}</div>
@@ -82,7 +84,7 @@ export const CreatorOverview: React.FC = () => {
 
         <div style={statBoxStyle} className="bg-glass">
           <div style={statHeaderStyle}>
-            <span style={statTitleStyle}>In Moderation</span>
+            <span style={statTitleStyle}>{t('creator.inModeration')}</span>
             <HelpCircle size={18} color="var(--warning)" />
           </div>
           <div style={statValueStyle}>{pendingReviews}</div>
@@ -94,7 +96,7 @@ export const CreatorOverview: React.FC = () => {
       <div style={layoutGridStyle}>
         <div style={chartCardStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
-            <h3 style={cardTitleStyle}>Build Status</h3>
+            <h3 style={cardTitleStyle}>{t('creator.buildStatus')}</h3>
             <span style={chartTotalStyle}>{myGames.length} total</span>
           </div>
 
@@ -131,7 +133,7 @@ export const CreatorOverview: React.FC = () => {
         {/* Recent comments/feedback activity */}
         <div style={activityCardStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
-            <h3 style={cardTitleStyle}>Player Interactions</h3>
+            <h3 style={cardTitleStyle}>{t('creator.playerInteractions')}</h3>
             <Link
               to="/creator/my-games"
               style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600 }}
@@ -173,14 +175,14 @@ export const CreatorOverview: React.FC = () => {
             My Published Builds ({myGames.filter((g) => g.status === 'published').length})
           </h2>
           <Link to="/creator/my-games" style={linkBtnStyle}>
-            <span>Manage All</span>
+            <span>{t('creator.manageAll')}</span>
             <ArrowRight size={14} />
           </Link>
         </div>
 
         {myGames.length === 0 ? (
           <div style={emptyGamesStyle}>
-            <p>You haven't uploaded any browser builds yet.</p>
+            <p>{t('creator.noBuilds')}</p>
             <Link
               to="/creator/publish"
               className="btn btn-primary btn-sm"

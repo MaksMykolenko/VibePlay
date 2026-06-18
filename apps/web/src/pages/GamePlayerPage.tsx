@@ -22,6 +22,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { useI18n } from '../i18n/useI18n';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 const LOADING_TEXTS = [
   'Securing browser sandbox environment...',
@@ -39,6 +41,7 @@ interface WebkitFullscreenElement extends HTMLElement {
 
 interface WebkitFullscreenDocument extends Document {
   webkitExitFullscreen?: () => Promise<void> | void;
+  webkitFullscreenElement?: Element | null;
 }
 
 export const GamePlayerPage: React.FC = () => {
@@ -46,6 +49,7 @@ export const GamePlayerPage: React.FC = () => {
   const { currentUser } = useAuth();
   const { games, isLoading, addRecentlyPlayed } = useGames();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -60,6 +64,11 @@ export const GamePlayerPage: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const translateRef = useRef(t);
+
+  useEffect(() => {
+    translateRef.current = t;
+  }, [t]);
 
   const game = games.find((g) => g.slug === slug);
   const gameId = game?.id;
@@ -67,10 +76,10 @@ export const GamePlayerPage: React.FC = () => {
 
   useEffect(() => {
     if (!isLoading && !game) {
-      toast.danger('Game could not be loaded.');
+      toast.danger(t('player.loadError'));
       navigate('/games');
     }
-  }, [game, isLoading, navigate]);
+  }, [game, isLoading, navigate, t]);
 
   useEffect(() => {
     if (IS_DEMO || !gameId) return;
@@ -86,7 +95,7 @@ export const GamePlayerPage: React.FC = () => {
         // The launch URL must be a unique per-version subdomain of the
         // configured game host base — never the shared base origin itself.
         if (!isAllowedGameLaunchUrl(descriptor.gameUrl, GAME_ORIGIN)) {
-          throw new Error('The game launch origin does not match the configured game host.');
+          throw new Error(translateRef.current('player.originError'));
         }
         sessionId = descriptor.sessionId;
         if (!active) {
@@ -98,7 +107,9 @@ export const GamePlayerPage: React.FC = () => {
       })
       .catch((error) => {
         if (!active) return;
-        toast.danger(error instanceof Error ? error.message : 'Game launch failed.');
+        toast.danger(
+          error instanceof Error ? error.message : translateRef.current('player.launchError'),
+        );
       });
 
     return () => {
@@ -132,7 +143,8 @@ export const GamePlayerPage: React.FC = () => {
           await (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
           return true;
         },
-        onGameError: (message) => toast.danger(`Game error: ${message}`),
+        onGameError: (message) =>
+          toast.danger(translateRef.current('player.gameError', { message })),
       },
     });
     return () => bridge.destroy();
@@ -310,46 +322,55 @@ export const GamePlayerPage: React.FC = () => {
     };
   }, [loading, isPlaying, isMuted]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     if (!containerRef.current) return;
     const container = containerRef.current;
 
-    if (!isFullscreen) {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
+    try {
+      if (!isFullscreen) {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+        } else {
+          await (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
+        }
       } else {
-        void (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else {
+          await (document as WebkitFullscreenDocument).webkitExitFullscreen?.();
+        }
       }
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else {
-        void (document as WebkitFullscreenDocument).webkitExitFullscreen?.();
-      }
-      setIsFullscreen(false);
+    } catch {
+      toast.warning(t('player.fullscreenError'));
     }
   };
 
   // Listen to escape key exit fullscreen
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
+      setIsFullscreen(
+        !!document.fullscreenElement ||
+          !!(document as WebkitFullscreenDocument).webkitFullscreenElement,
+      );
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+    };
   }, []);
 
   const handleRestart = () => {
     if (!IS_DEMO) {
       setIframeKey((key) => key + 1);
-      toast.info('Reloading the published game build...');
+      toast.info(t('player.reloading'));
       return;
     }
     setLoading(true);
     setLoadingStep(0);
     setIsPlaying(false);
-    toast.info('Restarting the demo canvas...');
+    toast.info(t('player.restartingDemo'));
   };
 
   const handleExit = () => {
@@ -363,89 +384,85 @@ export const GamePlayerPage: React.FC = () => {
   if (!game) return null;
 
   return (
-    <div style={playerPageWrapperStyle}>
+    <div className="game-player-page">
       {/* Sandbox Warning header */}
-      <div style={warningsHeaderStyle}>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      <div className="game-player-notice">
+        <div className="game-player-notice__message">
           <AlertCircle size={16} color="var(--warning)" />
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            {IS_DEMO
-              ? 'This demo uses a local simulated game canvas. No uploaded build is executed.'
-              : 'This published build is isolated on the configured game origin in a sandboxed iframe.'}
-          </span>
+          <span>{t(IS_DEMO ? 'player.demoNotice' : 'player.sandboxNotice')}</span>
         </div>
-        <div style={sandboxBadgeStyle}>
-          <ShieldCheck size={14} color="var(--success)" />
-          <span style={{ color: 'var(--success)' }} data-testid="sandbox-status">
-            {IS_DEMO
-              ? 'Demo simulation active'
-              : sdkReady
-                ? 'Sandboxed game host active · SDK connected'
-                : 'Sandboxed game host active'}
-          </span>
+        <div className="game-player-notice__actions">
+          <LanguageSwitcher compact />
+          <div className="game-player-sandbox-badge">
+            <ShieldCheck size={14} color="var(--success)" />
+            <span style={{ color: 'var(--success)' }} data-testid="sandbox-status">
+              {IS_DEMO
+                ? t('player.demoActive')
+                : sdkReady
+                  ? t('player.sdkConnected')
+                  : t('player.sandboxActive')}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Main Play Area */}
-      <div
-        ref={containerRef}
-        style={{ ...theaterContainerStyle, padding: isFullscreen ? '0' : '2rem' }}
-      >
+      <div ref={containerRef} className="game-theater" data-fullscreen={isFullscreen}>
         {/* Top Control Bar */}
-        <div style={controlBarStyle}>
-          <button onClick={handleExit} style={controlBtnStyle}>
+        <div className="game-theater__controls">
+          <button onClick={handleExit} className="game-control-button game-control-button--exit">
             <ArrowLeft size={16} />
-            <span>Exit Game</span>
+            <span>{t('player.exit')}</span>
           </button>
 
-          <div style={gameTitleBlockStyle}>
-            <span style={{ fontWeight: 700 }}>{game.title}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              by @{game.creatorName}
-            </span>
+          <div className="game-theater__title">
+            <strong>{game.title}</strong>
+            <span>{t('common.by', { creator: game.creatorName })}</span>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={handleRestart} style={controlIconBtnStyle} title="Restart Game">
+          <div className="game-theater__actions">
+            <button
+              onClick={handleRestart}
+              className="game-control-button"
+              title={t('player.restartTitle')}
+            >
               <RotateCcw size={16} />
+              <span className="game-control-button__label">{t('player.restart')}</span>
             </button>
             {IS_DEMO && (
               <button
                 onClick={() => setIsMuted(!isMuted)}
-                style={controlIconBtnStyle}
-                title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
+                className="game-control-button game-control-button--icon"
+                title={t(isMuted ? 'player.unmute' : 'player.mute')}
               >
                 {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
             )}
             <button
-              onClick={toggleFullscreen}
-              style={controlIconBtnStyle}
-              title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              onClick={() => void toggleFullscreen()}
+              className="game-control-button"
+              title={t(isFullscreen ? 'player.exitFullscreen' : 'player.enterFullscreen')}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              <span className="game-control-button__label">
+                {t(isFullscreen ? 'player.exitFullscreen' : 'player.fullscreen')}
+              </span>
             </button>
           </div>
         </div>
 
         {/* Display Wrapper */}
-        <div style={displayWrapperStyle}>
+        <div className="game-theater__viewport">
           {/* Loading Layer */}
           {launchLoading && (
-            <div style={loadingLayerStyle}>
-              <div style={spinnerStyle}></div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, letterSpacing: '-0.01em' }}>
-                Launching Game Build
-              </h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
-                {IS_DEMO
-                  ? LOADING_TEXTS[loadingStep]
-                  : 'Requesting a server-authorized launch descriptor...'}
-              </p>
-              <div style={progressOuterStyle}>
+            <div className="game-theater__loading">
+              <div className="game-theater__spinner"></div>
+              <h2>{t('player.launching')}</h2>
+              <p>{IS_DEMO ? LOADING_TEXTS[loadingStep] : t('player.authorizing')}</p>
+              <div className="game-theater__progress">
                 <div
+                  className="game-theater__progress-value"
                   style={{
-                    ...progressInnerStyle,
                     width: IS_DEMO ? `${((loadingStep + 1) / LOADING_TEXTS.length) * 100}%` : '35%',
                   }}
                 ></div>
@@ -463,169 +480,15 @@ export const GamePlayerPage: React.FC = () => {
               allow="fullscreen"
               allowFullScreen
               referrerPolicy="no-referrer"
-              style={iframeStyle}
+              className="game-theater__frame"
             />
           )}
 
           {IS_DEMO && !loading && isPlaying && (
-            <canvas ref={canvasRef} style={canvasStyle}></canvas>
+            <canvas ref={canvasRef} className="game-theater__frame game-theater__canvas"></canvas>
           )}
         </div>
       </div>
     </div>
   );
-};
-
-// Styles
-const playerPageWrapperStyle: React.CSSProperties = {
-  backgroundColor: '#05070D',
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const warningsHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '10px 1.5rem',
-  borderBottom: '1px solid var(--border-color)',
-  backgroundColor: 'var(--bg-main)',
-  flexWrap: 'wrap',
-  gap: '8px',
-};
-
-const sandboxBadgeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  padding: '3px 8px',
-  borderRadius: '4px',
-  backgroundColor: 'rgba(61, 220, 151, 0.1)',
-  fontSize: '0.75rem',
-  fontWeight: 600,
-};
-
-const theaterContainerStyle: React.CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  backgroundColor: '#000000',
-  position: 'relative',
-};
-
-const controlBarStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: '800px',
-  height: '48px',
-  backgroundColor: 'var(--bg-card)',
-  border: '1px solid var(--border-color)',
-  borderBottom: 'none',
-  borderTopLeftRadius: '8px',
-  borderTopRightRadius: '8px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0 1rem',
-  zIndex: 10,
-};
-
-const controlBtnStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  background: 'none',
-  border: 'none',
-  color: 'var(--text-primary)',
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const gameTitleBlockStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  fontSize: '0.85rem',
-  lineHeight: 1.2,
-};
-
-const controlIconBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: 'var(--text-secondary)',
-  cursor: 'pointer',
-  padding: '4px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-
-const displayWrapperStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: '800px',
-  height: '450px',
-  backgroundColor: '#080A12',
-  border: '1px solid var(--border-color)',
-  borderBottomLeftRadius: '8px',
-  borderBottomRightRadius: '8px',
-  overflow: 'hidden',
-  position: 'relative',
-  boxShadow: 'var(--shadow-lg)',
-};
-
-const loadingLayerStyle: React.CSSProperties = {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: '#080A12',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 20,
-};
-
-const spinnerStyle: React.CSSProperties = {
-  width: '40px',
-  height: '40px',
-  borderRadius: '50%',
-  border: '3px solid rgba(124, 92, 255, 0.1)',
-  borderTopColor: 'var(--primary)',
-  animation: 'pulse 1s infinite linear', // Handled simple spinner or keyframe in CSS
-  marginBottom: '1rem',
-};
-
-const progressOuterStyle: React.CSSProperties = {
-  width: '240px',
-  height: '4px',
-  backgroundColor: 'var(--bg-hover)',
-  borderRadius: '2px',
-  marginTop: '1.25rem',
-  overflow: 'hidden',
-};
-
-const progressInnerStyle: React.CSSProperties = {
-  height: '100%',
-  backgroundColor: 'var(--secondary)',
-  transition: 'width 0.3s ease',
-};
-
-const canvasStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
-  display: 'block',
-  cursor: 'crosshair',
-};
-
-const iframeStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
-  display: 'block',
-  border: 0,
-  backgroundColor: '#080A12',
 };

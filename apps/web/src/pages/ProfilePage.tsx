@@ -5,10 +5,12 @@ import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Calendar, UserCheck, Edit3, ShieldAlert, Sparkles } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { useI18n } from '../i18n/useI18n';
 import { api } from '../lib/api';
 import type { User } from '../types';
 
 export const ProfilePage: React.FC = () => {
+  const { t } = useI18n();
   const { username } = useParams<{ username: string }>();
   const { currentUser, becomeCreator } = useAuth();
   const { games, library } = useGames();
@@ -55,7 +57,7 @@ export const ProfilePage: React.FC = () => {
     return (
       <div style={notFoundContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
-        <h2 style={{ marginTop: '1rem' }}>User Not Found</h2>
+        <h2 style={{ marginTop: '1rem' }}>{t('profile.notFound')}</h2>
         <p style={{ color: 'var(--text-secondary)' }}>
           The profile you are looking for does not exist or has been suspended.
         </p>
@@ -139,19 +141,19 @@ export const ProfilePage: React.FC = () => {
             <div style={statsRowStyle}>
               <div style={statItemStyle}>
                 <strong>{profileUser.followersCount}</strong>
-                <span>followers</span>
+                <span>{t('profile.followers')}</span>
               </div>
               {profileUser.role === 'creator' && (
                 <>
                   <div style={statDividerStyle}></div>
                   <div style={statItemStyle}>
                     <strong>{creatorGames.length}</strong>
-                    <span>games</span>
+                    <span>{t('profile.games')}</span>
                   </div>
                   <div style={statDividerStyle}></div>
                   <div style={statItemStyle}>
                     <strong>{totalPlays.toLocaleString()}</strong>
-                    <span>plays</span>
+                    <span>{t('profile.plays')}</span>
                   </div>
                 </>
               )}
@@ -243,9 +245,9 @@ export const ProfilePage: React.FC = () => {
         {/* Games Panel */}
         {activeTab === 'games' && (
           <div className="animate-fade">
-            <h2 style={panelTitleStyle}>Published Games</h2>
+            <h2 style={panelTitleStyle}>{t('profile.publishedGames')}</h2>
             {creatorGames.length === 0 ? (
-              <div style={emptyPanelStyle}>This creator hasn't published any games yet.</div>
+              <div style={emptyPanelStyle}>{t('profile.noPublished')}</div>
             ) : (
               <div className="games-grid">
                 {creatorGames.map((game) => (
@@ -272,7 +274,7 @@ export const ProfilePage: React.FC = () => {
         {/* Favorites Panel */}
         {activeTab === 'favorites' && (
           <div className="animate-fade">
-            <h2 style={panelTitleStyle}>Favorite Games</h2>
+            <h2 style={panelTitleStyle}>{t('profile.favoriteGames')}</h2>
             {favoriteGames.length === 0 ? (
               <div style={emptyPanelStyle}>
                 {isOwnProfile
@@ -301,7 +303,7 @@ export const ProfilePage: React.FC = () => {
         {/* Recently Played Panel */}
         {activeTab === 'recently' && (
           <div className="animate-fade">
-            <h2 style={panelTitleStyle}>Recently Played</h2>
+            <h2 style={panelTitleStyle}>{t('profile.recentlyPlayed')}</h2>
             {recentlyPlayed.length === 0 ? (
               <div style={emptyPanelStyle}>
                 {isOwnProfile
@@ -330,7 +332,7 @@ export const ProfilePage: React.FC = () => {
         {/* About Panel */}
         {activeTab === 'about' && (
           <div style={aboutCardStyle} className="animate-fade">
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>Biography</h2>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>{t('profile.biography')}</h2>
             <p style={bioTextStyle}>{profileUser.bio || 'No biography provided yet.'}</p>
 
             <hr
@@ -349,21 +351,21 @@ export const ProfilePage: React.FC = () => {
             <div style={aboutStatsGridStyle}>
               <div style={aboutStatBoxStyle}>
                 <div style={aboutStatValStyle}>{profileUser.role.toUpperCase()}</div>
-                <div style={aboutStatLblStyle}>Account Role</div>
+                <div style={aboutStatLblStyle}>{t('profile.accountRole')}</div>
               </div>
               <div style={aboutStatBoxStyle}>
                 <div style={aboutStatValStyle}>{profileUser.followersCount}</div>
-                <div style={aboutStatLblStyle}>Followers</div>
+                <div style={aboutStatLblStyle}>{t('profile.followers')}</div>
               </div>
               {profileUser.role === 'creator' && (
                 <>
                   <div style={aboutStatBoxStyle}>
                     <div style={aboutStatValStyle}>{creatorGames.length}</div>
-                    <div style={aboutStatLblStyle}>Active Games</div>
+                    <div style={aboutStatLblStyle}>{t('profile.activeGames')}</div>
                   </div>
                   <div style={aboutStatBoxStyle}>
                     <div style={aboutStatValStyle}>{totalLikes}</div>
-                    <div style={aboutStatLblStyle}>Total Likes</div>
+                    <div style={aboutStatLblStyle}>{t('profile.totalLikes')}</div>
                   </div>
                 </>
               )}

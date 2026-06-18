@@ -18,25 +18,37 @@ import {
   XCircle,
 } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { useI18n } from '../i18n/useI18n';
 
 const PasswordToggle: React.FC<{ shown: boolean; onToggle: () => void }> = ({
   shown,
   onToggle,
-}) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    style={eyeButtonStyle}
-    aria-label={shown ? 'Hide password' : 'Show password'}
-    aria-pressed={shown}
-  >
-    {shown ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-  </button>
+}) => {
+  const { t } = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={eyeButtonStyle}
+      aria-label={t(shown ? 'auth.hidePassword' : 'auth.showPassword')}
+      aria-pressed={shown}
+    >
+      {shown ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+    </button>
+  );
+};
+
+const AuthLanguageControl = () => (
+  <div className="auth-language-control">
+    <LanguageSwitcher />
+  </div>
 );
 
 export const LoginPage: React.FC = () => {
   const { login, switchDemoRole, demoRolesEnabled } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,10 +64,12 @@ export const LoginPage: React.FC = () => {
     setLoading(false);
 
     if (error) {
-      setFormError(error);
-      toast.danger(error);
+      const localizedError =
+        error === 'Invalid email or password' ? t('auth.invalidCredentials') : error;
+      setFormError(localizedError);
+      toast.danger(localizedError);
     } else {
-      toast.success('Logged in successfully!');
+      toast.success(t('auth.loginSuccess'));
       navigate('/');
     }
   };
@@ -71,13 +85,14 @@ export const LoginPage: React.FC = () => {
   return (
     <div style={containerStyle}>
       <div style={cardStyle} className="animate-slide-up">
-        <h1 style={titleStyle}>Welcome back</h1>
-        <p style={subtitleStyle}>Log in to VibePlay to play games and publish creations.</p>
+        <AuthLanguageControl />
+        <h1 style={titleStyle}>{t('auth.welcomeBack')}</h1>
+        <p style={subtitleStyle}>{t('auth.loginSubtitle')}</p>
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">
-              Email Address
+              {t('auth.email')}
             </label>
             <div style={inputWrapperStyle}>
               <Mail size={16} style={inputIconStyle} aria-hidden="true" />
@@ -100,10 +115,10 @@ export const LoginPage: React.FC = () => {
               style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}
             >
               <label className="form-label" htmlFor="login-password" style={{ marginBottom: 0 }}>
-                Password
+                {t('auth.password')}
               </label>
               <Link to="/forgot-password" style={forgotStyle}>
-                Forgot password?
+                {t('auth.forgotPassword')}
               </Link>
             </div>
             <div style={inputWrapperStyle}>
@@ -136,14 +151,14 @@ export const LoginPage: React.FC = () => {
             className="btn btn-primary"
             style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
           >
-            {loading ? 'Logging in…' : 'Log In'}
+            {t(loading ? 'auth.loggingIn' : 'auth.login')}
           </button>
         </form>
 
         <div style={footerTextStyle}>
-          Don't have an account?{' '}
+          {t('auth.noAccount')}{' '}
           <Link to="/register" style={{ color: 'var(--secondary)' }}>
-            Sign up
+            {t('auth.signUp')}
           </Link>
         </div>
 
@@ -197,6 +212,7 @@ export const LoginPage: React.FC = () => {
 
 export const RegisterPage: React.FC = () => {
   const { register } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -238,9 +254,10 @@ export const RegisterPage: React.FC = () => {
   const inviteRequired = inviteOnly === true;
 
   const getPasswordStrength = () => {
-    if (!password) return { label: 'Empty', color: 'var(--text-secondary)', width: '0%' };
+    if (!password)
+      return { label: t('auth.strengthEmpty'), color: 'var(--text-secondary)', width: '0%' };
     if (password.length < 10)
-      return { label: 'Too short (min 10)', color: 'var(--danger)', width: '25%' };
+      return { label: t('auth.strengthShort'), color: 'var(--danger)', width: '25%' };
 
     let score = 0;
     if (/[A-Z]/.test(password)) score++;
@@ -248,9 +265,10 @@ export const RegisterPage: React.FC = () => {
     if (/[^A-Za-z0-9]/.test(password)) score++;
     if (password.length >= 16) score++;
 
-    if (score <= 1) return { label: 'OK', color: 'var(--warning)', width: '50%' };
-    if (score <= 2) return { label: 'Strong', color: 'var(--success)', width: '75%' };
-    return { label: 'Very strong', color: '#10B981', width: '100%' };
+    if (score <= 1) return { label: t('auth.strengthOk'), color: 'var(--warning)', width: '50%' };
+    if (score <= 2)
+      return { label: t('auth.strengthStrong'), color: 'var(--success)', width: '75%' };
+    return { label: t('auth.strengthVeryStrong'), color: '#10B981', width: '100%' };
   };
 
   const strength = getPasswordStrength();
@@ -260,19 +278,19 @@ export const RegisterPage: React.FC = () => {
     setFormError(null);
 
     if (password !== confirmPassword) {
-      setFormError('Passwords do not match.');
+      setFormError(t('auth.passwordMismatch'));
       return;
     }
     if (password.length < 10) {
-      setFormError('Password must be at least 10 characters.');
+      setFormError(t('auth.passwordMinimum'));
       return;
     }
     if (!agreeTerms) {
-      setFormError('You must agree to the Terms of Service.');
+      setFormError(t('auth.termsRequired'));
       return;
     }
     if (inviteRequired && !inviteCode.trim()) {
-      setFormError('An invite code is required to register right now.');
+      setFormError(t('auth.inviteRequired'));
       return;
     }
 
@@ -290,11 +308,7 @@ export const RegisterPage: React.FC = () => {
       setFormError(error);
       toast.danger(error);
     } else {
-      toast.success(
-        IS_DEMO
-          ? 'Demo account created (browser-local).'
-          : 'Account created! Check your inbox to verify your email.',
-      );
+      toast.success(IS_DEMO ? 'Demo account created (browser-local).' : t('auth.accountCreated'));
       navigate('/');
     }
   };
@@ -302,22 +316,23 @@ export const RegisterPage: React.FC = () => {
   return (
     <div style={containerStyle}>
       <div style={{ ...cardStyle, maxWidth: '440px' }} className="animate-slide-up">
-        <h1 style={titleStyle}>Create an account</h1>
+        <AuthLanguageControl />
+        <h1 style={titleStyle}>{t('auth.createAccountTitle')}</h1>
         <p style={subtitleStyle}>
           {IS_DEMO
             ? 'Join the VibePlay demo (data stays in your browser).'
             : inviteOnly === true
-              ? 'VibePlay is in private beta — registration requires an invite code.'
+              ? t('auth.registerInvite')
               : inviteOnly === false
-                ? 'Create your VibePlay account. Registration is currently open.'
-                : 'Create your VibePlay account.'}
+                ? t('auth.registerOpen')
+                : t('auth.registerDefault')}
         </p>
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
           {showInvite && (
             <div className="form-group">
               <label className="form-label" htmlFor="reg-invite">
-                {inviteRequired ? 'Invite code' : 'Invite code (optional)'}
+                {t(inviteRequired ? 'auth.inviteCode' : 'auth.inviteOptional')}
               </label>
               <div style={inputWrapperStyle}>
                 <KeyRound size={16} style={inputIconStyle} aria-hidden="true" />
@@ -327,8 +342,8 @@ export const RegisterPage: React.FC = () => {
                   required={inviteRequired}
                   placeholder={
                     inviteRequired
-                      ? 'Paste your beta invite code'
-                      : 'Optional — paste an invite code if you have one'
+                      ? t('auth.invitePlaceholder')
+                      : t('auth.inviteOptionalPlaceholder')
                   }
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
@@ -341,7 +356,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label" htmlFor="reg-username">
-              Username
+              {t('auth.username')}
             </label>
             <div style={inputWrapperStyle}>
               <User size={16} style={inputIconStyle} aria-hidden="true" />
@@ -362,13 +377,13 @@ export const RegisterPage: React.FC = () => {
               />
             </div>
             <p id="reg-username-hint" style={hintStyle}>
-              3–20 characters: lowercase letters, numbers, underscore.
+              {t('auth.usernameHint')}
             </p>
           </div>
 
           <div className="form-group">
             <label className="form-label" htmlFor="reg-displayname">
-              Display Name
+              {t('auth.displayName')}
             </label>
             <div style={inputWrapperStyle}>
               <User size={16} style={inputIconStyle} aria-hidden="true" />
@@ -388,7 +403,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label" htmlFor="reg-email">
-              Email Address
+              {t('auth.email')}
             </label>
             <div style={inputWrapperStyle}>
               <Mail size={16} style={inputIconStyle} aria-hidden="true" />
@@ -408,7 +423,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="form-group" style={{ marginBottom: '0.75rem' }}>
             <label className="form-label" htmlFor="reg-password">
-              Password
+              {t('auth.password')}
             </label>
             <div style={inputWrapperStyle}>
               <Lock size={16} style={inputIconStyle} aria-hidden="true" />
@@ -418,7 +433,7 @@ export const RegisterPage: React.FC = () => {
                 autoComplete="new-password"
                 required
                 minLength={10}
-                placeholder="At least 10 characters"
+                placeholder={t('auth.passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="form-input"
@@ -441,7 +456,7 @@ export const RegisterPage: React.FC = () => {
                     marginBottom: '3px',
                   }}
                 >
-                  <span>Password strength:</span>
+                  <span>{t('auth.passwordStrength')}</span>
                   <span style={{ color: strength.color, fontWeight: 600 }}>{strength.label}</span>
                 </div>
                 <div
@@ -468,7 +483,7 @@ export const RegisterPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label" htmlFor="reg-confirm">
-              Confirm Password
+              {t('auth.confirmPassword')}
             </label>
             <div style={inputWrapperStyle}>
               <Lock size={16} style={inputIconStyle} aria-hidden="true" />
@@ -477,7 +492,7 @@ export const RegisterPage: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 required
-                placeholder="Re-enter password"
+                placeholder={t('auth.confirmPlaceholder')}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="form-input"
@@ -496,19 +511,19 @@ export const RegisterPage: React.FC = () => {
                 className="checkbox-input"
               />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                I agree to the{' '}
+                {t('auth.agreePrefix')}{' '}
                 <Link
                   to="/terms"
                   style={{ color: 'var(--secondary)', textDecoration: 'underline' }}
                 >
-                  Terms of Service
+                  {t('auth.terms')}
                 </Link>{' '}
-                and{' '}
+                {t('auth.and')}{' '}
                 <Link
                   to="/privacy"
                   style={{ color: 'var(--secondary)', textDecoration: 'underline' }}
                 >
-                  Privacy Policy
+                  {t('auth.privacy')}
                 </Link>
                 .
               </span>
@@ -525,14 +540,14 @@ export const RegisterPage: React.FC = () => {
             className="btn btn-primary"
             style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
           >
-            {loading ? 'Creating Account…' : 'Create Account'}
+            {t(loading ? 'auth.creating' : 'auth.create')}
           </button>
         </form>
 
         <div style={footerTextStyle}>
-          Already have an account?{' '}
+          {t('auth.hasAccount')}{' '}
           <Link to="/login" style={{ color: 'var(--secondary)' }}>
-            Log in
+            {t('auth.login')}
           </Link>
         </div>
       </div>
@@ -541,6 +556,7 @@ export const RegisterPage: React.FC = () => {
 };
 
 export const ForgotPasswordPage: React.FC = () => {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -564,7 +580,8 @@ export const ForgotPasswordPage: React.FC = () => {
   return (
     <div style={containerStyle}>
       <div style={cardStyle} className="animate-slide-up">
-        <h1 style={titleStyle}>Reset Password</h1>
+        <AuthLanguageControl />
+        <h1 style={titleStyle}>{t('auth.resetTitle')}</h1>
 
         {success ? (
           <div style={{ textAlign: 'center' }}>
@@ -572,23 +589,20 @@ export const ForgotPasswordPage: React.FC = () => {
               <Mail size={32} color="var(--success)" aria-hidden="true" />
             </div>
             <p style={{ fontSize: '0.95rem', margin: '1rem 0 1.5rem', lineHeight: 1.6 }}>
-              If an account exists for <strong>{email}</strong>, a reset link is on its way. The
-              link is valid for 60 minutes and can be used once.
+              {t('auth.resetSent', { email })}
             </p>
             <Link to="/login" className="btn btn-primary" style={{ width: '100%' }}>
-              Back to Login
+              {t('auth.backToLogin')}
             </Link>
           </div>
         ) : (
           <>
-            <p style={subtitleStyle}>
-              Enter your email below and we will send you instructions to reset your password.
-            </p>
+            <p style={subtitleStyle}>{t('auth.resetInstructions')}</p>
 
             <form onSubmit={handleSubmit} style={formStyle} noValidate>
               <div className="form-group">
                 <label className="form-label" htmlFor="forgot-email">
-                  Email Address
+                  {t('auth.email')}
                 </label>
                 <div style={inputWrapperStyle}>
                   <Mail size={16} style={inputIconStyle} aria-hidden="true" />
@@ -616,14 +630,14 @@ export const ForgotPasswordPage: React.FC = () => {
                 className="btn btn-primary"
                 style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
               >
-                {loading ? 'Sending link…' : 'Send Reset Link'}
+                {t(loading ? 'auth.sendingLink' : 'auth.sendResetLink')}
               </button>
             </form>
 
             <div style={footerTextStyle}>
-              Remembered password?{' '}
+              {t('auth.remembered')}{' '}
               <Link to="/login" style={{ color: 'var(--secondary)' }}>
-                Log in
+                {t('auth.login')}
               </Link>
             </div>
           </>
@@ -634,6 +648,7 @@ export const ForgotPasswordPage: React.FC = () => {
 };
 
 export const ResetPasswordPage: React.FC = () => {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token') ?? '';
@@ -648,17 +663,17 @@ export const ResetPasswordPage: React.FC = () => {
     e.preventDefault();
     setFormError(null);
     if (password !== confirm) {
-      setFormError('Passwords do not match.');
+      setFormError(t('auth.passwordMismatch'));
       return;
     }
     if (password.length < 10) {
-      setFormError('Password must be at least 10 characters.');
+      setFormError(t('auth.passwordMinimum'));
       return;
     }
     setLoading(true);
     try {
       await api.resetPassword(token, password);
-      toast.success('Password updated. Log in with your new password.');
+      toast.success(t('auth.passwordUpdated'));
       navigate('/login');
     } catch (err) {
       setFormError(errorMessage(err));
@@ -671,12 +686,11 @@ export const ResetPasswordPage: React.FC = () => {
     return (
       <div style={containerStyle}>
         <div style={cardStyle} className="animate-slide-up">
-          <h1 style={titleStyle}>Invalid link</h1>
-          <p style={subtitleStyle}>
-            This password reset link is missing its token. Request a new one below.
-          </p>
+          <AuthLanguageControl />
+          <h1 style={titleStyle}>{t('auth.invalidLink')}</h1>
+          <p style={subtitleStyle}>{t('auth.invalidLinkBody')}</p>
           <Link to="/forgot-password" className="btn btn-primary" style={{ width: '100%' }}>
-            Request a new link
+            {t('auth.requestNewLink')}
           </Link>
         </div>
       </div>
@@ -686,13 +700,14 @@ export const ResetPasswordPage: React.FC = () => {
   return (
     <div style={containerStyle}>
       <div style={cardStyle} className="animate-slide-up">
-        <h1 style={titleStyle}>Choose a new password</h1>
-        <p style={subtitleStyle}>The link is valid for 60 minutes and can be used once.</p>
+        <AuthLanguageControl />
+        <h1 style={titleStyle}>{t('auth.choosePassword')}</h1>
+        <p style={subtitleStyle}>{t('auth.linkValidity')}</p>
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
           <div className="form-group">
             <label className="form-label" htmlFor="reset-password">
-              New password
+              {t('auth.newPassword')}
             </label>
             <div style={inputWrapperStyle}>
               <Lock size={16} style={inputIconStyle} aria-hidden="true" />
@@ -702,7 +717,7 @@ export const ResetPasswordPage: React.FC = () => {
                 autoComplete="new-password"
                 required
                 minLength={10}
-                placeholder="At least 10 characters"
+                placeholder={t('auth.passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="form-input"
@@ -717,7 +732,7 @@ export const ResetPasswordPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label" htmlFor="reset-confirm">
-              Confirm new password
+              {t('auth.confirmNewPassword')}
             </label>
             <div style={inputWrapperStyle}>
               <Lock size={16} style={inputIconStyle} aria-hidden="true" />
@@ -726,7 +741,7 @@ export const ResetPasswordPage: React.FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="new-password"
                 required
-                placeholder="Re-enter password"
+                placeholder={t('auth.confirmPlaceholder')}
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 className="form-input"
@@ -745,7 +760,7 @@ export const ResetPasswordPage: React.FC = () => {
             className="btn btn-primary"
             style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
           >
-            {loading ? 'Updating…' : 'Set new password'}
+            {t(loading ? 'auth.updating' : 'auth.setNewPassword')}
           </button>
         </form>
       </div>
@@ -754,12 +769,13 @@ export const ResetPasswordPage: React.FC = () => {
 };
 
 export const VerifyEmailPage: React.FC = () => {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const { refresh } = useAuth();
   const token = searchParams.get('token') ?? '';
   const [state, setState] = useState<'pending' | 'success' | 'error'>(token ? 'pending' : 'error');
   const [message, setMessage] = useState(
-    token ? 'Verifying your email…' : 'This verification link is missing its token.',
+    token ? t('auth.verifying') : t('auth.verificationMissing'),
   );
 
   useEffect(() => {
@@ -770,7 +786,7 @@ export const VerifyEmailPage: React.FC = () => {
       .then(async () => {
         if (cancelled) return;
         setState('success');
-        setMessage('Your email is verified. Welcome to the VibePlay beta!');
+        setMessage(t('auth.verified'));
         await refresh();
       })
       .catch((err) => {
@@ -781,12 +797,13 @@ export const VerifyEmailPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [token, refresh]);
+  }, [token, refresh, t]);
 
   return (
     <div style={containerStyle}>
       <div style={{ ...cardStyle, textAlign: 'center' }} className="animate-slide-up">
-        <h1 style={titleStyle}>Email verification</h1>
+        <AuthLanguageControl />
+        <h1 style={titleStyle}>{t('auth.verificationTitle')}</h1>
         <div
           style={{
             ...successBoxStyle,
@@ -806,7 +823,7 @@ export const VerifyEmailPage: React.FC = () => {
           {message}
         </p>
         <Link to="/" className="btn btn-primary" style={{ width: '100%' }}>
-          Go to VibePlay
+          {t('auth.goToVibePlay')}
         </Link>
       </div>
     </div>

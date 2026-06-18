@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../i18n/useI18n';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
@@ -6,6 +7,7 @@ import { GameCard } from '../components/GameCard';
 import { BookOpen, Star, Clock, ThumbsUp, ShieldAlert } from 'lucide-react';
 
 export const LibraryPage: React.FC = () => {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const { games, library } = useGames();
   const navigate = useNavigate();
@@ -39,7 +41,7 @@ export const LibraryPage: React.FC = () => {
     return (
       <div style={unauthContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
-        <h2 style={{ marginTop: '1rem' }}>Log in to view Library</h2>
+        <h2 style={{ marginTop: '1rem' }}>{t('library.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
           Your game library is tied to your account.
         </p>
@@ -70,7 +72,7 @@ export const LibraryPage: React.FC = () => {
       {/* Title */}
       <div style={headerStyle}>
         <BookOpen size={28} color="var(--secondary)" />
-        <h1 style={titleStyle}>My Library</h1>
+        <h1 style={titleStyle}>{t('library.title')}</h1>
       </div>
 
       {/* Tabs */}
@@ -117,7 +119,7 @@ export const LibraryPage: React.FC = () => {
         {activeGames.length === 0 ? (
           <div style={emptyContainerStyle}>
             <BookOpen size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <h3>No games found</h3>
+            <h3>{t('library.empty')}</h3>
             <p
               style={{
                 color: 'var(--text-secondary)',

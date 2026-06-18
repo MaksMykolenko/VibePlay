@@ -3,20 +3,25 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { GameCard } from './GameCard';
 import type { Game } from '../types';
+import { useI18n } from '../i18n/useI18n';
 
 interface GameCarouselProps {
   title: string;
   gamesList: Game[];
   linkTo?: string;
   emptyText?: string;
+  variant?: 'default' | 'continue';
 }
 
 export const GameCarousel: React.FC<GameCarouselProps> = ({
   title,
   gamesList,
   linkTo,
-  emptyText = 'No games found.',
+  emptyText,
+  variant = 'default',
 }) => {
+  const { t } = useI18n();
+  const isContinue = variant === 'continue';
   const viewportRef = useRef<HTMLDivElement>(null);
   const [atStart, setAtStart] = useState(true);
   const [atEnd, setAtEnd] = useState(false);
@@ -155,7 +160,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
   }, [gamesList]);
 
   if (gamesList.length === 0) {
-    if (title === 'Continue Playing') {
+    if (isContinue) {
       return null; // Don't render empty Continue Playing section
     }
     return (
@@ -164,7 +169,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
           <h2>{title}</h2>
         </div>
         <div style={{ padding: '1rem 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-          {emptyText}
+          {emptyText ?? t('carousel.empty')}
         </div>
       </section>
     );
@@ -172,7 +177,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
 
   return (
     <section
-      className={`game-carousel ${title === 'Continue Playing' ? 'game-carousel--continue' : ''}`}
+      className={`game-carousel ${isContinue ? 'game-carousel--continue' : ''}`}
       aria-label={title}
     >
       <div className="game-carousel__header">
@@ -180,9 +185,11 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
         {linkTo && (
           <Link
             to={linkTo}
-            aria-label={title === 'Continue Playing' ? 'View history' : `See all ${title}`}
+            aria-label={
+              isContinue ? t('carousel.viewHistory') : t('carousel.seeAllLabel', { title })
+            }
           >
-            <span>{title === 'Continue Playing' ? 'View history' : 'See All'}</span>
+            <span>{t(isContinue ? 'carousel.viewHistory' : 'carousel.seeAll')}</span>
             <ChevronRight size={14} />
           </Link>
         )}
@@ -196,7 +203,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
           <button
             onClick={() => scrollCarousel('prev')}
             className="game-carousel__arrow game-carousel__arrow--prev"
-            aria-label="Previous games"
+            aria-label={t('carousel.previous')}
             disabled={atStart}
           >
             <ChevronLeft size={20} />
@@ -225,10 +232,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
                 className="game-carousel__item"
                 onClickCapture={handleCardClickCapture}
               >
-                <GameCard
-                  game={game}
-                  variant={title === 'Continue Playing' ? 'continue' : 'default'}
-                />
+                <GameCard game={game} variant={isContinue ? 'continue' : 'default'} />
               </div>
             ))}
           </div>
@@ -239,7 +243,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
           <button
             onClick={() => scrollCarousel('next')}
             className="game-carousel__arrow game-carousel__arrow--next"
-            aria-label="Next games"
+            aria-label={t('carousel.next')}
             disabled={atEnd}
           >
             <ChevronRight size={20} />

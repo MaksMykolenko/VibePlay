@@ -93,7 +93,14 @@ const emailSchema = z.object({
 });
 
 const uploadSchema = z.object({
-  UPLOAD_MAX_COMPRESSED_MB: z.coerce.number().int().min(1).default(100),
+  // Product hard cap: stale deployment env values above 50 MB are safely
+  // clamped so API intent/direct-upload and worker validation stay aligned.
+  UPLOAD_MAX_COMPRESSED_MB: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(50)
+    .transform((value) => Math.min(value, 50)),
   UPLOAD_MAX_UNCOMPRESSED_MB: z.coerce.number().int().min(1).default(250),
   UPLOAD_MAX_FILES: z.coerce.number().int().min(1).default(5000),
   UPLOAD_MAX_SINGLE_FILE_MB: z.coerce.number().int().min(1).default(100),

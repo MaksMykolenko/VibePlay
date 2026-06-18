@@ -6,11 +6,13 @@ import { GameCarousel } from '../components/GameCarousel';
 import { OnboardingCard } from '../components/OnboardingCard';
 import { UploadCloud } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { useI18n } from '../i18n/useI18n';
 
 export const LandingPage: React.FC = () => {
   const { games, library } = useGames();
   const { currentUser, becomeCreator } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   // Filter published games
   const publishedGames = games.filter((g) => g.status === 'published');
@@ -18,14 +20,14 @@ export const LandingPage: React.FC = () => {
   // Time-aware greeting logic
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return 'Good morning';
-    if (hour >= 12 && hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour >= 5 && hour < 12) return t('home.goodMorning');
+    if (hour >= 12 && hour < 18) return t('home.goodAfternoon');
+    return t('home.goodEvening');
   };
 
   const handleBecomeCreator = () => {
     if (!currentUser) {
-      toast.info('Please log in first.');
+      toast.info(t('app.loginFirst'));
       navigate('/login');
       return;
     }
@@ -34,7 +36,7 @@ export const LandingPage: React.FC = () => {
       toast.info(notice);
       return;
     }
-    toast.success('You are now a Creator! Access your Creator Dashboard to publish games.');
+    toast.success(t('app.creatorSuccess'));
     navigate('/creator');
   };
 
@@ -78,14 +80,12 @@ export const LandingPage: React.FC = () => {
               {getGreeting()},{' '}
               <span style={{ color: 'var(--primary)' }}>{currentUser.displayName}</span>
             </h1>
-            <p className="home-greeting__subtitle">What will you play today?</p>
+            <p className="home-greeting__subtitle">{t('home.playToday')}</p>
           </div>
         ) : (
           <div>
-            <h1 className="home-greeting__title">Discover something new</h1>
-            <p className="home-greeting__subtitle">
-              Play instantly in your browser. No downloads required.
-            </p>
+            <h1 className="home-greeting__title">{t('home.discoverNew')}</h1>
+            <p className="home-greeting__subtitle">{t('home.guestSubtitle')}</p>
           </div>
         )}
       </div>
@@ -93,50 +93,59 @@ export const LandingPage: React.FC = () => {
       {currentUser && (
         <OnboardingCard
           storageKey="player_v1"
-          title="Welcome to the VibePlay beta"
+          title={t('home.onboardingTitle')}
           steps={[
-            'Browse the catalog and hit Play — games run instantly in a sandboxed window, nothing installs.',
-            'Like and favorite games to build your library; recently played is tracked automatically.',
-            'See something broken or suspicious? Use Report on the game page or the Beta feedback button in the sidebar.',
+            t('home.onboardingBrowse'),
+            t('home.onboardingLibrary'),
+            t('home.onboardingReport'),
           ]}
         />
       )}
 
       {/* Horizontal Carousels */}
       <GameCarousel
-        title="Continue Playing"
+        title={t('home.continuePlaying')}
         gamesList={continuePlayingGames}
         linkTo="/library?tab=recent"
+        variant="continue"
       />
 
-      <GameCarousel title="Recommended for You" gamesList={recommendedGames} linkTo="/games" />
-
-      <GameCarousel title="Trending Now" gamesList={trendingGames} linkTo="/games?sort=trending" />
+      <GameCarousel title={t('home.recommended')} gamesList={recommendedGames} linkTo="/games" />
 
       <GameCarousel
-        title="New & Rising"
+        title={t('home.trending')}
+        gamesList={trendingGames}
+        linkTo="/games?sort=trending"
+      />
+
+      <GameCarousel
+        title={t('home.newRising')}
         gamesList={newAndRisingGames}
         linkTo="/games?sort=newest"
       />
 
       <GameCarousel
-        title="AI-Powered Creations"
+        title={t('home.aiCreations')}
         gamesList={aiPoweredGames}
         linkTo="/games?ai=true"
       />
 
       <GameCarousel
-        title="Popular Simulators"
+        title={t('home.simulators')}
         gamesList={simulatorsGames}
         linkTo="/games?category=simulator"
       />
 
-      <GameCarousel title="Puzzle Games" gamesList={puzzleGames} linkTo="/games?category=puzzle" />
+      <GameCarousel
+        title={t('home.puzzles')}
+        gamesList={puzzleGames}
+        linkTo="/games?category=puzzle"
+      />
 
       {/* Explore Categories Box */}
       <section style={sectionWrapperStyle}>
         <div style={sectionHeaderStyle}>
-          <h2 style={sectionTitleStyle}>Explore Categories</h2>
+          <h2 style={sectionTitleStyle}>{t('home.exploreCategories')}</h2>
         </div>
         <div style={categoriesGridStyle}>
           {[
@@ -191,7 +200,7 @@ export const LandingPage: React.FC = () => {
                 {cat.name}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                {cat.count} games
+                {t('home.gamesCount', { count: cat.count })}
               </div>
             </Link>
           ))}
@@ -202,16 +211,11 @@ export const LandingPage: React.FC = () => {
       <section style={{ marginTop: '1rem' }}>
         <div style={creatorCtaBoxStyle} className="bg-glass">
           <div style={creatorCtaInfoColStyle}>
-            <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>
-              Built something cool? Publish it on VibePlay
-            </h2>
-            <p style={creatorCtaDescStyle}>
-              We support raw HTML5, Phaser, PixiJS, Three.js, Babylon.js and WebGL project builds.
-              Upload your project ZIP, pass security diagnostics, and launch to players instantly.
-            </p>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{t('home.creatorTitle')}</h2>
+            <p style={creatorCtaDescStyle}>{t('home.creatorDescription')}</p>
             {currentUser?.role === 'creator' || currentUser?.role === 'admin' ? (
               <Link to="/creator" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
-                Go to Dashboard
+                {t('home.creatorDashboard')}
               </Link>
             ) : (
               <button
@@ -219,7 +223,7 @@ export const LandingPage: React.FC = () => {
                 className="btn btn-primary"
                 style={{ alignSelf: 'flex-start' }}
               >
-                Become a Creator
+                {t('home.becomeCreator')}
               </button>
             )}
           </div>

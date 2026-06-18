@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { Game } from '../types';
 import { Play, ThumbsUp, Gamepad } from 'lucide-react';
+import { useI18n } from '../i18n/useI18n';
 
 interface GameCardProps {
   game: Game;
@@ -9,6 +10,7 @@ interface GameCardProps {
 }
 
 export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' }) => {
+  const { t } = useI18n();
   const [imgError, setImgError] = useState(false);
 
   const formatPlays = (plays: number) => {
@@ -110,10 +112,10 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
             <span className="game-card__last-played mobile-only">Active play</span>
             <span className="game-card__meta desktop-only" style={metaRowStyle}>
               <ThumbsUp size={11} style={{ marginRight: '3px' }} />
-              {likeRatio}% • {formatPlays(game.plays)} plays
+              {likeRatio}% • {t('card.plays', { count: formatPlays(game.plays) })}
             </span>
             <Link to={`/game/${game.slug}`} className="game-card__continue-btn">
-              <span>Continue</span>
+              <span>{t('card.continue')}</span>
               <Play size={10} fill="currentColor" style={{ marginLeft: '2px' }} />
             </Link>
           </div>
@@ -127,7 +129,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
               •
             </span>
             <span style={playsStyle} className="game-card__plays">
-              {formatPlays(game.plays)} plays
+              {t('card.plays', { count: formatPlays(game.plays) })}
             </span>
           </div>
         )}

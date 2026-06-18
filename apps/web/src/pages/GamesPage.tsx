@@ -4,8 +4,10 @@ import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { Search, RefreshCw, Gamepad, SlidersHorizontal, Check, X } from 'lucide-react';
 import { toast } from '../components/toastEvents';
+import { useI18n } from '../i18n/useI18n';
 
 export const GamesPage: React.FC = () => {
+  const { t } = useI18n();
   const { games } = useGames();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -60,7 +62,7 @@ export const GamesPage: React.FC = () => {
     setIsMultiplayer(false);
     setSortBy('trending');
     setSearchParams({});
-    toast.success('Filters cleared.');
+    toast.success(t('games.filtersCleared'));
   };
 
   // Filtered games logic
@@ -110,7 +112,7 @@ export const GamesPage: React.FC = () => {
 
   const handleLoadMore = () => {
     setVisibleCount((prev) => prev + 8);
-    toast.info('Loading next page...');
+    toast.info(t('games.loadingMore'));
   };
 
   return (
@@ -118,7 +120,7 @@ export const GamesPage: React.FC = () => {
       {/* Title & Description */}
       <div style={headerBlockStyle}>
         <div>
-          <h1 style={titleStyle}>Browse Games</h1>
+          <h1 style={titleStyle}>{t('games.title')}</h1>
           <p style={subtitleStyle}>
             Discover and launch browser creations instantly. No client required.
           </p>
@@ -130,7 +132,7 @@ export const GamesPage: React.FC = () => {
             <Search size={14} style={searchIconStyle} />
             <input
               type="text"
-              placeholder="Search title, tags, creators..."
+              placeholder={t('games.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               style={searchInputStyle}
@@ -158,7 +160,7 @@ export const GamesPage: React.FC = () => {
             className="form-input form-select"
             style={filterSelectStyle}
           >
-            <option value="">All Categories</option>
+            <option value="">{t('games.allCategories')}</option>
             {[
               'Action',
               'Adventure',
@@ -186,10 +188,10 @@ export const GamesPage: React.FC = () => {
             className="form-input form-select"
             style={filterSelectStyle}
           >
-            <option value="all">Any Device</option>
-            <option value="desktop">Desktop-Only</option>
-            <option value="mobile">Mobile-Friendly</option>
-            <option value="tablet">Tablet-Friendly</option>
+            <option value="all">{t('games.anyDevice')}</option>
+            <option value="desktop">{t('games.desktop')}</option>
+            <option value="mobile">{t('games.mobile')}</option>
+            <option value="tablet">{t('games.tablet')}</option>
           </select>
 
           {/* AI Disclosure Dropdown */}
@@ -214,7 +216,7 @@ export const GamesPage: React.FC = () => {
               color: isMultiplayer ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}
           >
-            <span>Multiplayer</span>
+            <span>{t('games.multiplayer')}</span>
             {isMultiplayer && <Check size={12} color="var(--primary)" />}
           </button>
 
@@ -226,7 +228,7 @@ export const GamesPage: React.FC = () => {
               style={moreBtnStyle}
             >
               <SlidersHorizontal size={14} />
-              <span>More Filters</span>
+              <span>{t('games.moreFilters')}</span>
             </button>
 
             {showMore && (
@@ -285,7 +287,7 @@ export const GamesPage: React.FC = () => {
               color="var(--text-secondary)"
               style={{ opacity: 0.3, marginBottom: '1rem' }}
             />
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>No games matched your criteria</h3>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{t('games.noMatches')}</h3>
             <p
               style={{
                 color: 'var(--text-secondary)',
@@ -320,7 +322,7 @@ export const GamesPage: React.FC = () => {
                   style={{ gap: '8px' }}
                 >
                   <RefreshCw size={16} />
-                  <span>Load More Games</span>
+                  <span>{t('games.loadMore')}</span>
                 </button>
               </div>
             )}
@@ -479,7 +481,7 @@ const popoverStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   padding: '12px',
   boxShadow: 'var(--shadow-lg)',
-  zIndex: 100,
+  zIndex: 'var(--z-dropdown)',
   display: 'flex',
   flexDirection: 'column',
   gap: '10px',

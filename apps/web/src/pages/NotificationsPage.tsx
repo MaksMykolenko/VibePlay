@@ -1,4 +1,5 @@
 import React from 'react';
+import { useI18n } from '../i18n/useI18n';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
@@ -6,6 +7,7 @@ import { Bell, Check, ArrowRight, ShieldAlert, Sparkles, Cpu, AlertTriangle } fr
 import { toast } from '../components/toastEvents';
 
 export const NotificationsPage: React.FC = () => {
+  const { t } = useI18n();
   const { currentUser } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications(currentUser?.id);
   const navigate = useNavigate();
@@ -14,7 +16,7 @@ export const NotificationsPage: React.FC = () => {
     return (
       <div style={unauthContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
-        <h2 style={{ marginTop: '1rem' }}>Log in to view Notifications</h2>
+        <h2 style={{ marginTop: '1rem' }}>{t('notifications.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
           Please authenticate to access your notifications stream.
         </p>
@@ -27,7 +29,7 @@ export const NotificationsPage: React.FC = () => {
 
   const handleMarkAllRead = () => {
     markAllAsRead();
-    toast.success('All notifications marked as read.');
+    toast.success(t('notifications.markedRead'));
   };
 
   const getNotifIcon = (type: string) => {
@@ -60,7 +62,7 @@ export const NotificationsPage: React.FC = () => {
       <div style={headerStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Bell size={28} color="var(--secondary)" />
-          <h1 style={titleStyle}>Notifications</h1>
+          <h1 style={titleStyle}>{t('nav.notifications')}</h1>
         </div>
         {notifications.some((n) => !n.isRead) && (
           <button
@@ -69,7 +71,7 @@ export const NotificationsPage: React.FC = () => {
             style={{ gap: '6px' }}
           >
             <Check size={14} />
-            <span>Mark all read</span>
+            <span>{t('header.markAllRead')}</span>
           </button>
         )}
       </div>
@@ -81,7 +83,7 @@ export const NotificationsPage: React.FC = () => {
         {notifications.length === 0 ? (
           <div style={emptyContainerStyle}>
             <Bell size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-            <h3>No notifications yet</h3>
+            <h3>{t('notifications.empty')}</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
               We will alert you here when your games get reviewed or users comment on your builds.
             </p>
@@ -116,7 +118,7 @@ export const NotificationsPage: React.FC = () => {
                     onClick={() => markAsRead(n.id)}
                     style={linkStyle}
                   >
-                    <span>View Game Details</span>
+                    <span>{t('notifications.viewGame')}</span>
                     <ArrowRight size={12} />
                   </Link>
                 )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { useI18n } from '../i18n/useI18n';
 
 /**
  * Dismissible onboarding card (spec §38). Dismissal is a pure UI preference,
@@ -11,6 +12,7 @@ export const OnboardingCard: React.FC<{
   steps: string[];
   footer?: React.ReactNode;
 }> = ({ storageKey, title, steps, footer }) => {
+  const { t } = useI18n();
   const key = `vibeplay_onboarding_${storageKey}`;
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -35,7 +37,12 @@ export const OnboardingCard: React.FC<{
     <section style={cardStyle} className="bg-glass animate-fade" aria-label={title}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <h2 style={titleStyle}>{title}</h2>
-        <button type="button" onClick={dismiss} style={closeStyle} aria-label="Dismiss onboarding">
+        <button
+          type="button"
+          onClick={dismiss}
+          style={closeStyle}
+          aria-label={t('common.dismissOnboarding')}
+        >
           <X size={16} />
         </button>
       </div>

@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       switchDemoRole('creator');
       return null;
     }
-    return 'Creator access is invite-based during the private beta. Contact the VibePlay team to get a creator invite.';
+    return 'Creator access is invite-based during the private beta. Contact NeoFlux Software to get a creator invite.';
   }, [switchDemoRole]);
 
   const value: AuthContextType = {

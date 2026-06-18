@@ -7,11 +7,14 @@ import { toast } from '../components/toastEvents';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../lib/api';
 import { errorMessage } from '../lib/api/errors';
+import { useI18n } from '../i18n/useI18n';
+import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, account, refresh, updateProfile, logoutAll } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<
@@ -53,7 +56,7 @@ export const SettingsPage: React.FC = () => {
   if (!currentUser) {
     return (
       <div style={unauthStyle}>
-        <h2>Please Log In</h2>
+        <h2>{t('settings.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
           You must be authenticated to view account settings.
         </p>
@@ -190,7 +193,7 @@ export const SettingsPage: React.FC = () => {
 
   return (
     <div style={containerStyle}>
-      <h1 style={titleStyle}>Settings</h1>
+      <h1 style={titleStyle}>{t('settings.title')}</h1>
 
       <div style={settingsLayoutStyle}>
         {/* Settings Sidebar Links */}
@@ -204,7 +207,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <User size={16} />
-            <span>Profile</span>
+            <span>{t('settings.profile')}</span>
           </button>
 
           <button
@@ -216,7 +219,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <Shield size={16} />
-            <span>Account</span>
+            <span>{t('settings.account')}</span>
           </button>
 
           <button
@@ -228,7 +231,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <Key size={16} />
-            <span>Password</span>
+            <span>{t('settings.password')}</span>
           </button>
 
           <button
@@ -241,7 +244,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <Bell size={16} />
-            <span>Notifications</span>
+            <span>{t('settings.notifications')}</span>
           </button>
 
           <button
@@ -253,7 +256,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <Eye size={16} />
-            <span>Privacy & Safety</span>
+            <span>{t('settings.privacy')}</span>
           </button>
 
           <button
@@ -265,7 +268,7 @@ export const SettingsPage: React.FC = () => {
             }}
           >
             <Palette size={16} />
-            <span>Appearance</span>
+            <span>{t('settings.appearance')}</span>
           </button>
         </aside>
 
@@ -274,7 +277,7 @@ export const SettingsPage: React.FC = () => {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSave} className="animate-fade">
-              <h2 style={tabTitleStyle}>Profile Customization</h2>
+              <h2 style={tabTitleStyle}>{t('settings.profileTitle')}</h2>
               <p style={tabDescStyle}>Customize how your name and avatar appear across VibePlay.</p>
 
               <div style={avatarPreviewRowStyle}>
@@ -323,7 +326,7 @@ export const SettingsPage: React.FC = () => {
           {/* Account Tab */}
           {activeTab === 'account' && (
             <form onSubmit={handleAccountSave} className="animate-fade">
-              <h2 style={tabTitleStyle}>Account Details</h2>
+              <h2 style={tabTitleStyle}>{t('settings.accountTitle')}</h2>
               <p style={tabDescStyle}>Manage your platform credentials and contact details.</p>
 
               <div className="form-group">
@@ -433,7 +436,7 @@ export const SettingsPage: React.FC = () => {
           {/* Password Tab */}
           {activeTab === 'password' && (
             <form onSubmit={handlePasswordSave} className="animate-fade">
-              <h2 style={tabTitleStyle}>Change Password</h2>
+              <h2 style={tabTitleStyle}>{t('settings.passwordTitle')}</h2>
               <p style={tabDescStyle}>
                 Maintain your account security by updating passwords regularly.
               </p>
@@ -486,7 +489,7 @@ export const SettingsPage: React.FC = () => {
           {/* Notifications Tab */}
           {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationsSave} className="animate-fade">
-              <h2 style={tabTitleStyle}>Notification Preferences</h2>
+              <h2 style={tabTitleStyle}>{t('settings.notificationsTitle')}</h2>
               <p style={tabDescStyle}>
                 Decide which triggers deliver alerts to your dashboard and email inbox.
               </p>
@@ -547,7 +550,7 @@ export const SettingsPage: React.FC = () => {
           {/* Privacy Tab */}
           {activeTab === 'privacy' && (
             <form onSubmit={handlePrivacySave} className="animate-fade">
-              <h2 style={tabTitleStyle}>Privacy Controls</h2>
+              <h2 style={tabTitleStyle}>{t('settings.privacyTitle')}</h2>
               <p style={tabDescStyle}>
                 Control who can discover your VibePlay account and gameplay history.
               </p>
@@ -593,10 +596,18 @@ export const SettingsPage: React.FC = () => {
           {/* Appearance Tab */}
           {activeTab === 'appearance' && (
             <div className="animate-fade">
-              <h2 style={tabTitleStyle}>Appearance Settings</h2>
+              <h2 style={tabTitleStyle}>{t('settings.appearanceTitle')}</h2>
               <p style={tabDescStyle}>
                 Customize the visual theme and styling of your VibePlay experience.
               </p>
+
+              <div className="settings-language-panel">
+                <div>
+                  <strong>{t('settings.languageTitle')}</strong>
+                  <p>{t('settings.languageDescription')}</p>
+                </div>
+                <LanguageSwitcher />
+              </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div
@@ -642,7 +653,7 @@ export const SettingsPage: React.FC = () => {
                     >
                       <Sun size={20} />
                     </div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Light Theme</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('profile.light')}</div>
                   </button>
 
                   {/* Dark Theme Option */}
@@ -680,7 +691,7 @@ export const SettingsPage: React.FC = () => {
                     >
                       <Moon size={20} />
                     </div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Dark Theme</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('profile.dark')}</div>
                   </button>
 
                   {/* System Theme Option */}
@@ -718,7 +729,7 @@ export const SettingsPage: React.FC = () => {
                     >
                       <Monitor size={20} />
                     </div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>System Default</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('profile.system')}</div>
                   </button>
                 </div>
               </div>

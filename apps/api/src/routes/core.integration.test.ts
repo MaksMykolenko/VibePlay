@@ -9,6 +9,7 @@ import {
   createUser,
   loginAs,
   resetDb,
+  testEnv,
   type AuthedAgent,
 } from '../test/helpers.js';
 
@@ -26,6 +27,10 @@ describe('core MVP routes', () => {
   let adminAgent: AuthedAgent;
   let ownerAgent: AuthedAgent;
   const queuedJobs: { uploadId: string; gameVersionId: string }[] = [];
+
+  it('caps a stale configured ZIP upload limit at 50 MB', () => {
+    expect(testEnv({ UPLOAD_MAX_COMPRESSED_MB: '100' }).UPLOAD_MAX_COMPRESSED_MB).toBe(50);
+  });
 
   beforeAll(async () => {
     const ctx = await buildTestApp({}, async (job) => {
@@ -278,6 +283,7 @@ describe('core MVP routes', () => {
   });
 
   it('rejects an upload-intent whose declared ZIP size exceeds the configured limit', async () => {
+    expect(app.env.UPLOAD_MAX_COMPRESSED_MB).toBe(50);
     const game = await createGame();
     const versionId = await createVersion(game.id);
     const oversized = app.env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024 + 1;

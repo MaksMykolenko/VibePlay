@@ -4,9 +4,11 @@ import type { FeedbackItem } from '../../lib/api/types';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/api/errors';
 import { toast } from '../../components/toastEvents';
+import { useI18n } from '../../i18n/useI18n';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 export const AdminReports: React.FC = () => {
+  const { t } = useI18n();
   const { reports, resolveReport, dismissReport } = useGames();
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
 
@@ -60,7 +62,7 @@ export const AdminReports: React.FC = () => {
     <div style={containerStyle} className="animate-fade">
       {/* Header */}
       <div>
-        <h1>System Reports</h1>
+        <h1>{t('admin.systemReports')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
           Review complaints lodged by players regarding games or comments.
         </p>
@@ -126,7 +128,7 @@ export const AdminReports: React.FC = () => {
               color="var(--success)"
               style={{ opacity: 0.3, marginBottom: '1rem' }}
             />
-            <h3>No Reports</h3>
+            <h3>{t('admin.noReports')}</h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               VibePlay platform is running smoothly.
             </span>
