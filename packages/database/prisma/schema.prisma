@@ -51,6 +51,7 @@ model User {
   notificationPrefs Json       @default("{}")
 
   sessions                Session[]
+  oauthAccounts           OAuthAccount[]
   emailVerificationTokens EmailVerificationToken[]
   passwordResetTokens     PasswordResetToken[]
   invitesCreated          Invite[]                 @relation("InviteCreatedBy")
@@ -69,6 +70,20 @@ model User {
 
   @@index([status])
   @@index([role])
+}
+
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  provider          String
+  providerAccountId String
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@unique([provider, userId])
+  @@index([userId])
 }
 
 model Session {

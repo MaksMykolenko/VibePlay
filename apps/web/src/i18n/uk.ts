@@ -98,6 +98,15 @@ export const uk: Record<keyof typeof en, string> = {
   'auth.signUp': 'Зареєструватися',
   'auth.loginSuccess': 'Вхід виконано успішно!',
   'auth.invalidCredentials': 'Неправильна електронна адреса або пароль.',
+  'auth.continueGoogle': 'Продовжити з Google',
+  'auth.or': 'або',
+  'auth.googleInvalidState':
+    'Термін входу через Google минув або запит не вдалося перевірити. Спробуйте ще раз.',
+  'auth.googleProviderError': 'Вхід через Google скасовано або відхилено.',
+  'auth.googleUnverifiedEmail': 'Перш ніж увійти, підтвердьте електронну адресу в Google.',
+  'auth.googleAccountSuspended': 'Цей обліковий запис VibePlay призупинено.',
+  'auth.googleAccountBanned': 'Цей обліковий запис VibePlay заблоковано.',
+  'auth.googleFailed': 'Не вдалося увійти через Google. Спробуйте ще раз.',
   'auth.createAccountTitle': 'Створити обліковий запис',
   'auth.registerDefault': 'Створіть обліковий запис VibePlay.',
   'auth.registerOpen': 'Створіть обліковий запис VibePlay. Реєстрація зараз відкрита.',
@@ -365,7 +374,8 @@ export const uk: Record<keyof typeof en, string> = {
   'admin.moderationUnavailable': 'Версія для модерації недоступна.',
   'admin.previewUrlError': 'Не вдалося створити посилання для перегляду',
   'admin.rejectSubmission': 'Відхилити збірку',
-  'admin.rejectInstructions': 'Вкажіть причину відхилення збірки {{title}}. Автор побачить це повідомлення.',
+  'admin.rejectInstructions':
+    'Вкажіть причину відхилення збірки {{title}}. Автор побачить це повідомлення.',
   'admin.allModerated': 'Усі завантажені збірки ігор перевірено.',
   'admin.pending': 'Очікує',
   'admin.uploadedBy': 'Завантажив: @{{creator}} • Категорія: {{category}}',
@@ -409,7 +419,8 @@ export const uk: Record<keyof typeof en, string> = {
   // Оновлення файлів гри / нова версія
   'version.title': 'Версії гри',
   'version.refresh': 'Оновити',
-  'version.warning': 'Поточна опублікована версія залишається доступною, доки оновлення не буде схвалено.',
+  'version.warning':
+    'Поточна опублікована версія залишається доступною, доки оновлення не буде схвалено.',
   'version.uploadUpdate': 'Завантажити оновлення',
   'version.updateFiles': 'Оновити файли гри',
   'version.selectZip': 'Вибрати ZIP',

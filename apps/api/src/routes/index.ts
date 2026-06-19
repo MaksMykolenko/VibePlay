@@ -4,6 +4,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerCatalogRoutes } from './catalog.js';
 import { registerCreatorRoutes } from './creator.js';
 import { registerProfileRoutes } from './profiles.js';
+import { registerGoogleOAuthRoutes } from './googleOAuth.js';
 
 /**
  * Domain route registry. Route modules are added phase by phase
@@ -11,6 +12,7 @@ import { registerProfileRoutes } from './profiles.js';
  */
 export async function registerDomainRoutes(app: FastifyInstance): Promise<void> {
   await app.register(registerAuthRoutes, { prefix: '/api/auth' });
+  await app.register(registerGoogleOAuthRoutes, { prefix: '/api/auth' });
   await app.register(registerProfileRoutes, { prefix: '/api' });
   await app.register(registerCatalogRoutes, { prefix: '/api' });
   await app.register(registerCreatorRoutes, { prefix: '/api' });

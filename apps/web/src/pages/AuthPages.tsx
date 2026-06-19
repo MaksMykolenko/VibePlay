@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { errorMessage, isApiError } from '../lib/api/errors';
-import { IS_DEMO } from '../lib/appMode';
+import { API_URL, IS_DEMO } from '../lib/appMode';
 import {
   Eye,
   EyeOff,
@@ -46,16 +46,72 @@ const AuthLanguageControl = () => (
   </div>
 );
 
+const GoogleOAuthButton = () => {
+  const { t } = useI18n();
+  if (IS_DEMO) return null;
+
+  return (
+    <>
+      <a
+        href={`${API_URL.replace(/\/$/, '')}/auth/google/start`}
+        className="btn"
+        style={googleButtonStyle}
+      >
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <path
+            fill="#4285F4"
+            d="M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.482h4.844a4.14 4.14 0 0 1-1.797 2.715v2.258h2.909c1.702-1.567 2.684-3.875 2.684-6.614Z"
+          />
+          <path
+            fill="#34A853"
+            d="M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.835.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M3.963 10.706A5.42 5.42 0 0 1 3.681 9c0-.592.102-1.167.282-1.706V4.962H.956A9 9 0 0 0 0 9c0 1.452.347 2.827.956 4.038l3.007-2.332Z"
+          />
+          <path
+            fill="#EA4335"
+            d="M9 3.58c1.321 0 2.507.454 3.441 1.345l2.581-2.581C13.464.892 11.426 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58Z"
+          />
+        </svg>
+        {t('auth.continueGoogle')}
+      </a>
+      <div style={oauthDividerStyle}>
+        <span style={oauthDividerLineStyle} />
+        <span>{t('auth.or')}</span>
+        <span style={oauthDividerLineStyle} />
+      </div>
+    </>
+  );
+};
+
 export const LoginPage: React.FC = () => {
   const { login, switchDemoRole, demoRolesEnabled } = useAuth();
   const navigate = useNavigate();
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const oauthError = searchParams.get('oauth_error');
+  const oauthErrorMessage = oauthError
+    ? ((
+        {
+          invalid_state: t('auth.googleInvalidState'),
+          provider_error: t('auth.googleProviderError'),
+          unverified_email: t('auth.googleUnverifiedEmail'),
+          account_suspended: t('auth.googleAccountSuspended'),
+          account_banned: t('auth.googleAccountBanned'),
+          oauth_failed: t('auth.googleFailed'),
+        } as Record<string, string>
+      )[oauthError] ?? t('auth.googleFailed'))
+    : null;
+  const visibleError = formError ?? oauthErrorMessage;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +145,8 @@ export const LoginPage: React.FC = () => {
         <AuthLanguageControl />
         <h1 style={titleStyle}>{t('auth.welcomeBack')}</h1>
         <p style={subtitleStyle}>{t('auth.loginSubtitle')}</p>
+
+        <GoogleOAuthButton />
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
           <div className="form-group">
@@ -143,7 +201,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           <div aria-live="polite" role="status">
-            {formError && <p style={errorTextStyle}>{formError}</p>}
+            {visibleError && <p style={errorTextStyle}>{visibleError}</p>}
           </div>
 
           <button
@@ -328,6 +386,8 @@ export const RegisterPage: React.FC = () => {
                 ? t('auth.registerOpen')
                 : t('auth.registerDefault')}
         </p>
+
+        <GoogleOAuthButton />
 
         <form onSubmit={handleSubmit} style={formStyle} noValidate>
           {showInvite && (
@@ -912,6 +972,33 @@ const formStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1rem',
+};
+
+const googleButtonStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: '44px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.75rem',
+  color: 'var(--text-primary)',
+  backgroundColor: 'var(--surface-2)',
+  border: '1px solid var(--border-default)',
+};
+
+const oauthDividerStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  margin: '1rem 0',
+  color: 'var(--text-muted)',
+  fontSize: '0.75rem',
+};
+
+const oauthDividerLineStyle: React.CSSProperties = {
+  flex: 1,
+  height: '1px',
+  backgroundColor: 'var(--border-default)',
 };
 
 const inputWrapperStyle: React.CSSProperties = {

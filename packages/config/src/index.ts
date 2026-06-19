@@ -121,6 +121,12 @@ const betaSchema = z.object({
   SENTRY_DSN: z.string().optional().default(''),
 });
 
+const googleOAuthSchema = z.object({
+  GOOGLE_CLIENT_ID: z.string().min(1, 'GOOGLE_CLIENT_ID is required'),
+  GOOGLE_CLIENT_SECRET: z.string().min(1, 'GOOGLE_CLIENT_SECRET is required'),
+  GOOGLE_REDIRECT_URI: z.url(),
+});
+
 export const apiEnvSchema = baseSchema
   .extend(originsSchema.shape)
   .extend(databaseSchema.shape)
@@ -131,6 +137,7 @@ export const apiEnvSchema = baseSchema
   .extend(emailSchema.shape)
   .extend(uploadSchema.shape)
   .extend(betaSchema.shape)
+  .extend(googleOAuthSchema.shape)
   .extend({
     API_PORT: z.coerce.number().int().default(3000),
     API_HOST: z.string().default('0.0.0.0'),

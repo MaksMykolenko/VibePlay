@@ -6,7 +6,7 @@ import { generateToken, hashIp, hashToken } from './crypto.js';
 export const SESSION_COOKIE = 'vp_session';
 export const CSRF_COOKIE = 'vp_csrf';
 
-function cookieSecure(env: ApiEnv): boolean {
+export function cookiesAreSecure(env: ApiEnv): boolean {
   return env.API_ORIGIN.startsWith('https://') || env.NODE_ENV === 'production';
 }
 
@@ -47,7 +47,7 @@ export function setSessionCookies(
   csrfToken: string,
   expiresAt: Date,
 ): void {
-  const secure = cookieSecure(env);
+  const secure = cookiesAreSecure(env);
   reply.setCookie(SESSION_COOKIE, token, {
     httpOnly: true,
     secure,
@@ -66,7 +66,7 @@ export function setSessionCookies(
 }
 
 export function clearSessionCookies(reply: FastifyReply, env: ApiEnv): void {
-  const secure = cookieSecure(env);
+  const secure = cookiesAreSecure(env);
   reply.clearCookie(SESSION_COOKIE, { path: '/', httpOnly: true, secure, sameSite: 'lax' });
   reply.clearCookie(CSRF_COOKIE, { path: '/', secure, sameSite: 'lax' });
 }

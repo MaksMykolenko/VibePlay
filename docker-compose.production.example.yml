@@ -128,6 +128,9 @@ services:
       WEB_ORIGIN: https://${APP_DOMAIN:?e.g. beta.vibeplay.example}
       API_ORIGIN: https://${APP_DOMAIN}
       GAME_ORIGIN: https://${GAME_DOMAIN:?e.g. games-beta.vibeplayusercontent.example}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env.production}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in .env.production}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?set in .env.production}
       TRUST_PROXY: 'true'
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
       REDIS_URL: redis://redis:6379

@@ -140,6 +140,9 @@ services:
       WEB_ORIGIN: ${WEB_ORIGIN:?set in .env}
       API_ORIGIN: ${WEB_ORIGIN:?set in .env}
       GAME_ORIGIN: ${GAME_ORIGIN:?set in .env}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in .env}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?set in .env}
       API_PORT: '3000'
       API_HOST: '0.0.0.0'
       TRUST_PROXY: 'true'
