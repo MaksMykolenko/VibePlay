@@ -54,6 +54,7 @@ import { AdminActivityLog } from './pages/Admin/ActivityLog';
 import { ThemeProvider } from './hooks/useTheme';
 import { I18nProvider } from './i18n/i18n';
 import { ToastContainer } from './components/Toast';
+import { AnalyticsRouteTracker } from './components/AnalyticsRouteTracker';
 
 // The demo build (GitHub Pages) keeps HashRouter; the real app uses clean URLs.
 const Router: React.FC<{ children: React.ReactNode }> = ({ children }) =>
@@ -66,6 +67,7 @@ function App() {
         <ThemeProvider>
           <AuthProvider>
             <GamesProvider>
+              <AnalyticsRouteTracker />
               <Routes>
                 {/* Auth Pages (Bypass AppShell) */}
                 <Route path="login" element={<LoginPage />} />

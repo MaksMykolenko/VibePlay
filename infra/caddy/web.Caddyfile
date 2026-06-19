@@ -15,7 +15,7 @@
 		# The main app must not be frameable by third parties (frame-ancestors
 		# 'none') and may only frame per-version game origins (wildcard under
 		# the game host base — one origin per published version).
-		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' {$API_CONNECT_SRC:'self'}; frame-src {$GAME_FRAME_SRC:http://*.games.localhost:8080}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' {$API_CONNECT_SRC:'self'} https://www.google-analytics.com https://region1.google-analytics.com; frame-src {$GAME_FRAME_SRC:http://*.games.localhost:8080}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
 
