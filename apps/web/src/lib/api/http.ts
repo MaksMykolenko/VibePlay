@@ -1,5 +1,6 @@
 import type {
   AuditLogEntryDto,
+  AvatarUploadIntentResponseDto,
   CommentDto,
   CurrentUserDto,
   GameDetailDto,
@@ -184,6 +185,54 @@ export function createHttpClient(): ApiClient {
         method: 'PATCH',
         body: patch,
       });
+      return r.user;
+    },
+    async avatarUploadIntent(input) {
+      return request<AvatarUploadIntentResponseDto>('/me/avatar/upload-intent', {
+        method: 'POST',
+        body: input,
+      });
+    },
+    async uploadAvatarDirect(objectKey, token, file) {
+      // Same-origin raw-body PUT, like the ZIP upload: the browser sends the
+      // image bytes to the API, which validates + stores them internally. We
+      // send the CSRF token + session cookie so the mutation passes the guards.
+      const csrf = readCookie('vp_csrf');
+      const path = `/me/avatar/upload?key=${encodeURIComponent(objectKey)}&token=${encodeURIComponent(token)}`;
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}${path}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'content-type': file.type, 'x-csrf-token': csrf },
+          body: file,
+        });
+      } catch {
+        throw new ApiClientError('NETWORK_ERROR', 'Upload endpoint is unreachable', 0);
+      }
+      if (!res.ok) {
+        let message = 'Avatar upload failed';
+        let code = 'INTERNAL_ERROR';
+        try {
+          const body = (await res.json()) as { error?: { code?: string; message?: string } };
+          if (body.error?.message) message = body.error.message;
+          if (body.error?.code) code = body.error.code;
+        } catch {
+          /* non-JSON error body */
+        }
+        throw new ApiClientError(code as ApiClientError['code'], message, res.status);
+      }
+      return (await res.json()) as { objectKey: string };
+    },
+    async completeAvatar(objectKey) {
+      const r = await request<{ user: CurrentUserDto }>('/me/avatar/complete', {
+        method: 'POST',
+        body: { objectKey },
+      });
+      return r.user;
+    },
+    async removeAvatar() {
+      const r = await request<{ user: CurrentUserDto }>('/me/avatar', { method: 'DELETE' });
       return r.user;
     },
     async requestAccountDeletion() {

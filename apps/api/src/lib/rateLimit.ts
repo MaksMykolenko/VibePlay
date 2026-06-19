@@ -30,6 +30,7 @@ export const RATE_LIMIT_POLICIES = {
   reports: { max: 10, timeWindow: '15 minutes' },
   uploadIntent: { max: 12, timeWindow: '1 hour' },
   uploadComplete: { max: 30, timeWindow: '1 hour' },
+  avatarUpload: { max: 20, timeWindow: '1 hour' },
   gameLaunch: { max: 60, timeWindow: '5 minutes' },
   adminAction: { max: 120, timeWindow: '1 minute' },
   accountDeletion: { max: 3, timeWindow: '24 hours' },

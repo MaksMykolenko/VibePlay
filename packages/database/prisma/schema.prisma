@@ -35,6 +35,10 @@ model User {
   displayName       String
   passwordHash      String
   avatarUrl         String?
+  /// Object-storage key for an uploaded avatar (private avatars bucket). When
+  /// set, avatarUrl points at GET /api/users/:id/avatar which streams this key.
+  /// Null when the user has no uploaded avatar (external avatarUrl or none).
+  avatarObjectKey   String?
   bio               String     @default("")
   role              UserRole   @default(PLAYER)
   status            UserStatus @default(ACTIVE)

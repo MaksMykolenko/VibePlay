@@ -1,5 +1,6 @@
 import type {
   AuditLogEntryDto,
+  AvatarUploadIntentResponseDto,
   NotificationPrefsDto,
   CommentDto,
   CurrentUserDto,
@@ -157,6 +158,15 @@ export interface ApiClient {
     bio?: string;
     avatarUrl?: string | null;
   }): Promise<CurrentUserDto>;
+  /** Avatar binary upload (3-step, same-origin; MinIO is never exposed). */
+  avatarUploadIntent(input: {
+    contentType: 'image/png' | 'image/jpeg' | 'image/webp';
+    fileName: string;
+    size: number;
+  }): Promise<AvatarUploadIntentResponseDto>;
+  uploadAvatarDirect(objectKey: string, token: string, file: File): Promise<{ objectKey: string }>;
+  completeAvatar(objectKey: string): Promise<CurrentUserDto>;
+  removeAvatar(): Promise<CurrentUserDto>;
   requestAccountDeletion(): Promise<string>;
   downloadDataExport(): Promise<unknown>;
   updateNotificationPrefs(prefs: NotificationPrefsDto): Promise<CurrentUserDto>;

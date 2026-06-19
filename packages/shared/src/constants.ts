@@ -178,4 +178,24 @@ export const MAX_SCREENSHOTS = 6;
 export const storageKeys = {
   quarantineZip: (uploadId: string) => `quarantine/${uploadId}.zip`,
   publishedPrefix: (gameId: string, versionId: string) => `games/${gameId}/${versionId}/`,
+  /** Prefix for a user's avatar objects in the private avatars bucket. */
+  avatarPrefix: (userId: string) => `users/${userId}/avatar/`,
+  /** Full key for one avatar object. `fileName` must already be sanitized. */
+  avatarObject: (userId: string, fileName: string) => `users/${userId}/avatar/${fileName}`,
 };
+
+/**
+ * Avatar uploads: allowed image content types → canonical file extension.
+ * SVG is intentionally excluded — it is an XML document that can carry scripts,
+ * so it must never be accepted as an avatar (spec: no SVG/scripts).
+ */
+export const AVATAR_CONTENT_TYPES = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+} as const;
+
+export type AvatarContentType = keyof typeof AVATAR_CONTENT_TYPES;
+
+/** Accepted avatar file extensions (lowercase, no dot). */
+export const AVATAR_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp'] as const;

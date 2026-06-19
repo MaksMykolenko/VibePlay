@@ -1,14 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { SessionDto } from '@vibeplay/shared';
 import { useAuth } from '../hooks/useAuth';
-import { User, Shield, Key, Bell, Eye, EyeOff, Palette, Sun, Moon, Monitor } from 'lucide-react';
+import {
+  User,
+  Shield,
+  Key,
+  Bell,
+  Eye,
+  EyeOff,
+  Palette,
+  Sun,
+  Moon,
+  Monitor,
+  UploadCloud,
+  Trash2,
+} from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useTheme } from '../hooks/useTheme';
 import { api } from '../lib/api';
+import { IS_DEMO } from '../lib/appMode';
 import { errorMessage } from '../lib/api/errors';
 import { useI18n } from '../i18n/useI18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+
+/** Accepted avatar image types and size limit, mirrored from the API. */
+const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 
 export const SettingsPage: React.FC = () => {
   const { currentUser, account, refresh, updateProfile, logoutAll } = useAuth();
@@ -25,6 +43,8 @@ export const SettingsPage: React.FC = () => {
   const [displayName, setDisplayName] = useState<string>();
   const [bio, setBio] = useState<string>();
   const [avatar, setAvatar] = useState<string>();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -69,10 +89,12 @@ export const SettingsPage: React.FC = () => {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    // `avatar` is undefined unless the URL field was edited; passing it through
+    // unchanged would clobber an uploaded avatar, so we only send it when set.
     const error = await updateProfile(
       displayName ?? currentUser.displayName,
       bio ?? currentUser.bio,
-      avatar ?? currentUser.avatar,
+      avatar,
     );
     if (error) {
       toast.danger(error);
@@ -81,6 +103,51 @@ export const SettingsPage: React.FC = () => {
       setBio(undefined);
       setAvatar(undefined);
       toast.success('Profile settings updated successfully!');
+    }
+  };
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+    if (!AVATAR_TYPES.includes(file.type as (typeof AVATAR_TYPES)[number])) {
+      toast.danger(t('avatar.unsupportedType'));
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast.danger(t('avatar.tooLarge'));
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const intent = await api.avatarUploadIntent({
+        contentType: file.type as 'image/png' | 'image/jpeg' | 'image/webp',
+        fileName: file.name,
+        size: file.size,
+      });
+      await api.uploadAvatarDirect(intent.objectKey, intent.token, file);
+      await api.completeAvatar(intent.objectKey);
+      await refresh(); // updates header/sidebar/profile/comments immediately
+      setAvatar(undefined); // drop any stale URL-field edit
+      toast.success(t('avatar.success'));
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    setAvatarUploading(true);
+    try {
+      await api.removeAvatar();
+      await refresh();
+      setAvatar(undefined);
+      toast.success(t('avatar.removed'));
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setAvatarUploading(false);
     }
   };
 
@@ -281,18 +348,75 @@ export const SettingsPage: React.FC = () => {
               <p style={tabDescStyle}>Customize how your name and avatar appear across VibePlay.</p>
 
               <div style={avatarPreviewRowStyle}>
-                <img src={avatar ?? currentUser.avatar} alt="Preview" style={avatarPreviewStyle} />
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">Avatar URL</label>
-                  <input
-                    type="text"
-                    value={avatar ?? currentUser.avatar}
-                    onChange={(e) => setAvatar(e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                    className="form-input"
+                {currentUser.avatar ? (
+                  <img
+                    src={avatar ?? currentUser.avatar}
+                    alt="Preview"
+                    style={avatarPreviewStyle}
                   />
-                  <span style={helperStyle}>Provide an absolute path to a square image.</span>
+                ) : (
+                  <div style={avatarFallbackStyle} aria-hidden>
+                    {(currentUser.displayName || currentUser.username || '?')
+                      .slice(0, 1)
+                      .toUpperCase()}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {!IS_DEMO && (
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <label
+                        className="btn btn-secondary btn-sm"
+                        style={{
+                          cursor: avatarUploading ? 'wait' : 'pointer',
+                          gap: '6px',
+                          opacity: avatarUploading ? 0.7 : 1,
+                        }}
+                      >
+                        <UploadCloud size={15} />
+                        <span>
+                          {avatarUploading
+                            ? t('avatar.uploading')
+                            : currentUser.avatar
+                              ? t('avatar.changeButton')
+                              : t('avatar.uploadButton')}
+                        </span>
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          onChange={handleAvatarFile}
+                          disabled={avatarUploading}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+                      {currentUser.avatar && (
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          style={dangerGhostBtnStyle}
+                          disabled={avatarUploading}
+                          onClick={() => void handleAvatarRemove()}
+                        >
+                          <Trash2 size={14} style={{ marginRight: 4 }} />
+                          {t('avatar.remove')}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <span style={helperStyle}>{t('avatar.fileHint')}</span>
                 </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">{t('avatar.orUrl')}</label>
+                <input
+                  type="text"
+                  value={avatar ?? currentUser.avatar}
+                  onChange={(e) => setAvatar(e.target.value)}
+                  placeholder="https://example.com/avatar.jpg"
+                  className="form-input"
+                />
+                <span style={helperStyle}>{t('avatar.urlHint')}</span>
               </div>
 
               <div className="form-group">
@@ -829,6 +953,21 @@ const avatarPreviewStyle: React.CSSProperties = {
   borderRadius: '50%',
   objectFit: 'cover',
   border: '1px solid var(--border-color)',
+};
+
+const avatarFallbackStyle: React.CSSProperties = {
+  width: '64px',
+  height: '64px',
+  borderRadius: '50%',
+  border: '1px solid var(--border-color)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1.6rem',
+  fontWeight: 700,
+  color: 'var(--text-secondary)',
+  background: 'var(--surface-2)',
+  flexShrink: 0,
 };
 
 const helperStyle: React.CSSProperties = {

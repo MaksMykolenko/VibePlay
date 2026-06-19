@@ -189,6 +189,25 @@ export const uploadIntentSchema = z
 
 export const uploadCompleteSchema = z.object({}).strict();
 
+// Avatar binary upload. The browser uploads image bytes to the API (same-origin,
+// like the ZIP flow) — MinIO is never exposed publicly. SVG is not an accepted
+// content type because it can carry scripts.
+export const avatarUploadIntentSchema = z
+  .object({
+    contentType: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+    fileName: z.string().trim().min(1).max(255),
+    size: z.number().int().min(1),
+  })
+  .strict();
+
+export const avatarCompleteSchema = z
+  .object({
+    // Server-generated key returned by the upload-intent; re-validated against
+    // the caller's own users/{id}/avatar/ prefix to prevent IDOR/path traversal.
+    objectKey: z.string().trim().min(1).max(512),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------------

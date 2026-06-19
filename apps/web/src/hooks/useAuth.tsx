@@ -29,7 +29,11 @@ export interface AuthContextType {
     password: string;
     inviteCode?: string;
   }) => Promise<string | null>;
-  updateProfile: (displayName: string, bio: string, avatar: string) => Promise<string | null>;
+  updateProfile: (
+    displayName: string,
+    bio: string,
+    avatar?: string | undefined,
+  ) => Promise<string | null>;
   refresh: () => Promise<CurrentUserDto | null>;
   /**
    * Real mode: roles are server-controlled; this returns an explanatory notice.
@@ -154,12 +158,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [queryClient]);
 
   const updateProfile = useCallback(
-    async (displayName: string, bio: string, avatar: string): Promise<string | null> => {
+    async (displayName: string, bio: string, avatar?: string): Promise<string | null> => {
       try {
         const user = await api.updateProfile({
           displayName: displayName || undefined,
           bio,
-          avatarUrl: avatar || null,
+          // Only touch avatarUrl when the URL field was explicitly edited.
+          // Leaving it untouched preserves an uploaded avatar (whose avatarUrl
+          // points at the API serving endpoint backed by avatarObjectKey).
+          ...(avatar !== undefined ? { avatarUrl: avatar || null } : {}),
         });
         setAccount(user);
         return null;

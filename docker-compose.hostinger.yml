@@ -34,6 +34,8 @@ x-storage-env: &storage-env
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set in .env}
   S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
   S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+  # Private bucket for uploaded user avatars (streamed by the API, never public).
+  S3_AVATARS_BUCKET: ${S3_AVATARS_BUCKET:-vibeplay-avatars}
   S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
 
 networks:
@@ -101,7 +103,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot: create the quarantine + published buckets, then exit.
+  # One-shot: create the quarantine + published + avatars buckets, then exit.
   minio-init:
     image: minio/mc:latest
     networks: [vibeplay]
@@ -113,11 +115,13 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set in .env}
       S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
       S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+      S3_AVATARS_BUCKET: ${S3_AVATARS_BUCKET:-vibeplay-avatars}
     entrypoint: >
       /bin/sh -c "
       mc alias set local http://minio:9000 $${S3_ACCESS_KEY_ID} $${S3_SECRET_ACCESS_KEY} &&
       mc mb --ignore-existing local/$${S3_QUARANTINE_BUCKET} &&
       mc mb --ignore-existing local/$${S3_PUBLISHED_BUCKET} &&
+      mc mb --ignore-existing local/$${S3_AVATARS_BUCKET} &&
       mc ilm rule add local/$${S3_QUARANTINE_BUCKET} --expire-days 7 || true;
       echo 'buckets ready'
       "

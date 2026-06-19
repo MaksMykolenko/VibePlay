@@ -52,6 +52,9 @@ const storageSchema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_QUARANTINE_BUCKET: z.string().default('vibeplay-quarantine'),
     S3_PUBLISHED_BUCKET: z.string().default('vibeplay-published'),
+    // Private bucket for uploaded user avatars. Never exposed publicly; the API
+    // streams objects from it via GET /api/users/:id/avatar.
+    S3_AVATARS_BUCKET: z.string().default('vibeplay-avatars'),
     S3_FORCE_PATH_STYLE: booleanish.default(true),
     S3_PUBLIC_ENDPOINT: z.string().optional(),
     FS_STORAGE_ROOT: z.string().default('.data/storage'),
@@ -104,6 +107,13 @@ const uploadSchema = z.object({
   UPLOAD_MAX_UNCOMPRESSED_MB: z.coerce.number().int().min(1).default(250),
   UPLOAD_MAX_FILES: z.coerce.number().int().min(1).default(5000),
   UPLOAD_MAX_SINGLE_FILE_MB: z.coerce.number().int().min(1).default(100),
+  // Max uploaded avatar image size. Hard-capped at 10 MB regardless of env.
+  UPLOAD_MAX_AVATAR_MB: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(5)
+    .transform((value) => Math.min(value, 10)),
 });
 
 const betaSchema = z.object({

@@ -188,6 +188,20 @@ export interface UploadStatusDto {
   validationReport: ValidationReportDto | null;
 }
 
+/** Avatar binary upload (same-origin; the API streams bytes into private storage). */
+export interface AvatarUploadIntentResponseDto {
+  /** HMAC token authorizing the matching PUT to uploadUrl. */
+  token: string;
+  /** Same-origin endpoint the browser PUTs the raw image bytes to. */
+  uploadUrl: string;
+  /** Server-generated object key (echoed back to the complete step). */
+  objectKey: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  maxBytes: number;
+  expiresAt: string;
+}
+
 export interface InviteDto {
   id: string;
   /** Plain code — returned exactly once at creation time. */

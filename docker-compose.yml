@@ -23,6 +23,7 @@ x-storage-env: &storage-env
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-vibeplay-minio-secret}
   S3_QUARANTINE_BUCKET: vibeplay-quarantine
   S3_PUBLISHED_BUCKET: vibeplay-published
+  S3_AVATARS_BUCKET: vibeplay-avatars
   S3_FORCE_PATH_STYLE: 'true'
 
 services:
@@ -82,6 +83,7 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-vibeplay} ${MINIO_ROOT_PASSWORD:-vibeplay-minio-secret} &&
       mc mb --ignore-existing local/vibeplay-quarantine &&
       mc mb --ignore-existing local/vibeplay-published &&
+      mc mb --ignore-existing local/vibeplay-avatars &&
       mc ilm rule add local/vibeplay-quarantine --expire-days 7 || true;
       echo 'buckets ready'
       "

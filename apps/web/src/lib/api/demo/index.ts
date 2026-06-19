@@ -326,6 +326,18 @@ export function createDemoClient(): ApiClient {
       save(LS.users, users);
       return toCurrentUser(users.find((u) => u.id === me.id)!);
     },
+    async avatarUploadIntent() {
+      notInDemo('Avatar upload');
+    },
+    async uploadAvatarDirect() {
+      notInDemo('Avatar upload');
+    },
+    async completeAvatar() {
+      notInDemo('Avatar upload');
+    },
+    async removeAvatar() {
+      notInDemo('Avatar upload');
+    },
     async requestAccountDeletion() {
       return 'Demo build: account data lives only in your browser. Clear site data to remove it.';
     },

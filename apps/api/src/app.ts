@@ -81,6 +81,15 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   app.addContentTypeParser('application/zip', { parseAs: 'buffer' }, (_req, body, done) => {
     done(null, body);
   });
+  // Raw image bodies for same-origin avatar uploads (validated by magic bytes in
+  // the route handler). MinIO is never exposed publicly — the API stores these.
+  app.addContentTypeParser(
+    ['image/png', 'image/jpeg', 'image/webp'],
+    { parseAs: 'buffer' },
+    (_req, body, done) => {
+      done(null, body);
+    },
+  );
 
   app.addHook('onClose', async () => {
     await queue.close();

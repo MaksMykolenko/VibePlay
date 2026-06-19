@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../components/toastEvents';
 import { Save, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { IS_DEMO } from '../../lib/appMode';
+import { GameVersionManager } from '../../components/GameVersionManager';
 
 export const EditGame: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -279,6 +280,10 @@ export const EditGame: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {/* Game files update / new version flow (real mode). The published version
+          stays live until a new version is validated, scanned, and approved. */}
+      {!IS_DEMO && id && <GameVersionManager gameId={id} />}
     </div>
   );
 };
