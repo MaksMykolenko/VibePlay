@@ -516,10 +516,244 @@ a {
   outline-offset: -2px;
 }
 
+/* Auth pages */
+.auth-page {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: max(20px, env(safe-area-inset-top)) clamp(16px, 4vw, 32px)
+    max(24px, env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  background: var(--bg-page);
+}
+
+.auth-card {
+  width: 100%;
+  min-width: 0;
+  margin-inline: auto;
+  padding: clamp(24px, 4vw, 34px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+}
+
+.auth-card--login {
+  max-width: 420px;
+  margin-block: auto;
+}
+
+.auth-card--register {
+  max-width: 720px;
+}
+
 .auth-language-control {
+  position: relative;
+  z-index: 5;
   display: flex;
   justify-content: flex-end;
-  margin: -8px -8px 14px 0;
+  min-height: 44px;
+  margin: 0 0 10px;
+}
+
+.auth-language-control .language-switcher-pill-btn {
+  min-width: 76px;
+  height: 44px;
+}
+
+.auth-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: clamp(2rem, 4vw, 2.35rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.auth-subtitle {
+  max-width: 540px;
+  margin: 8px auto 18px;
+  color: var(--text-muted);
+  font-size: 1rem;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.auth-google-button {
+  width: 100%;
+  min-height: 52px;
+  gap: 0.75rem;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+
+.auth-google-button:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.auth-google-button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.auth-divider__line {
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-form {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+
+.auth-form .form-group {
+  min-width: 0;
+  margin: 0;
+}
+
+.auth-form .form-input {
+  min-height: 52px;
+}
+
+.auth-form--login {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.auth-form__full {
+  grid-column: 1 / -1;
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 2px;
+}
+
+.auth-footer {
+  margin-top: 18px;
+  padding-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.auth-terms .checkbox-group {
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 4px 0;
+}
+
+.auth-terms .checkbox-input {
+  flex: none;
+  margin-top: 2px;
+}
+
+@media (min-width: 680px) {
+  .auth-card--register {
+    margin-block: auto;
+  }
+
+  .auth-form--register {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 20px;
+    row-gap: 16px;
+  }
+}
+
+@media (max-width: 679px) {
+  .auth-page {
+    padding: max(16px, env(safe-area-inset-top)) 16px max(28px, env(safe-area-inset-bottom));
+  }
+
+  .auth-card {
+    padding: 18px 16px 20px;
+    border-radius: 14px;
+  }
+
+  .auth-language-control {
+    margin-bottom: 6px;
+  }
+
+  .auth-title {
+    font-size: clamp(2rem, 8.5vw, 2.35rem);
+  }
+
+  .auth-subtitle {
+    margin: 6px auto 14px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
+  .auth-divider {
+    gap: 10px;
+    margin: 11px 0;
+  }
+
+  .auth-form {
+    gap: 12px;
+  }
+
+  .auth-form .form-label {
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+  }
+
+  .auth-footer {
+    margin-top: 14px;
+    padding-bottom: 4px;
+  }
+
+  .auth-card--register .auth-language-control {
+    margin-bottom: 2px;
+  }
+
+  .auth-card--register .auth-subtitle {
+    margin-bottom: 12px;
+  }
+
+  .auth-card--register .auth-form {
+    gap: 11px;
+  }
+
+  .auth-card--register .auth-submit {
+    margin-top: 1px;
+  }
+
+  .auth-terms .checkbox-group {
+    line-height: 1.4;
+  }
+}
+
+@media (max-width: 380px) {
+  .auth-card {
+    padding-inline: 14px;
+  }
+
+  .auth-title {
+    font-size: 2rem;
+  }
 }
 
 .settings-language-panel {

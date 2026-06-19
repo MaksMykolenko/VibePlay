@@ -42,7 +42,7 @@ const PasswordToggle: React.FC<{ shown: boolean; onToggle: () => void }> = ({
 
 const AuthLanguageControl = () => (
   <div className="auth-language-control">
-    <LanguageSwitcher />
+    <LanguageSwitcher compact />
   </div>
 );
 
@@ -54,8 +54,7 @@ const GoogleOAuthButton = () => {
     <>
       <a
         href={`${API_URL.replace(/\/$/, '')}/auth/google/start`}
-        className="btn"
-        style={googleButtonStyle}
+        className="btn auth-google-button"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
           <path
@@ -77,10 +76,10 @@ const GoogleOAuthButton = () => {
         </svg>
         {t('auth.continueGoogle')}
       </a>
-      <div style={oauthDividerStyle}>
-        <span style={oauthDividerLineStyle} />
+      <div className="auth-divider">
+        <span className="auth-divider__line" />
         <span>{t('auth.or')}</span>
-        <span style={oauthDividerLineStyle} />
+        <span className="auth-divider__line" />
       </div>
     </>
   );
@@ -140,15 +139,15 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={cardStyle} className="animate-slide-up">
+    <main className="auth-page auth-page--login">
+      <section className="auth-card auth-card--login animate-slide-up">
         <AuthLanguageControl />
-        <h1 style={titleStyle}>{t('auth.welcomeBack')}</h1>
-        <p style={subtitleStyle}>{t('auth.loginSubtitle')}</p>
+        <h1 className="auth-title">{t('auth.welcomeBack')}</h1>
+        <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
 
         <GoogleOAuthButton />
 
-        <form onSubmit={handleSubmit} style={formStyle} noValidate>
+        <form onSubmit={handleSubmit} className="auth-form auth-form--login" noValidate>
           <div className="form-group">
             <label className="form-label" htmlFor="login-email">
               {t('auth.email')}
@@ -204,17 +203,12 @@ export const LoginPage: React.FC = () => {
             {visibleError && <p style={errorTextStyle}>{visibleError}</p>}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
-          >
+          <button type="submit" disabled={loading} className="btn btn-primary auth-submit">
             {t(loading ? 'auth.loggingIn' : 'auth.login')}
           </button>
         </form>
 
-        <div style={footerTextStyle}>
+        <div className="auth-footer">
           {t('auth.noAccount')}{' '}
           <Link to="/register" style={{ color: 'var(--secondary)' }}>
             {t('auth.signUp')}
@@ -264,8 +258,8 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 
@@ -373,11 +367,11 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={{ ...cardStyle, maxWidth: '440px' }} className="animate-slide-up">
+    <main className="auth-page auth-page--register">
+      <section className="auth-card auth-card--register animate-slide-up">
         <AuthLanguageControl />
-        <h1 style={titleStyle}>{t('auth.createAccountTitle')}</h1>
-        <p style={subtitleStyle}>
+        <h1 className="auth-title">{t('auth.createAccountTitle')}</h1>
+        <p className="auth-subtitle">
           {IS_DEMO
             ? 'Join the VibePlay demo (data stays in your browser).'
             : inviteOnly === true
@@ -389,9 +383,9 @@ export const RegisterPage: React.FC = () => {
 
         <GoogleOAuthButton />
 
-        <form onSubmit={handleSubmit} style={formStyle} noValidate>
+        <form onSubmit={handleSubmit} className="auth-form auth-form--register" noValidate>
           {showInvite && (
-            <div className="form-group">
+            <div className="form-group auth-form__full">
               <label className="form-label" htmlFor="reg-invite">
                 {t(inviteRequired ? 'auth.inviteCode' : 'auth.inviteOptional')}
               </label>
@@ -462,7 +456,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-form__full">
             <label className="form-label" htmlFor="reg-email">
               {t('auth.email')}
             </label>
@@ -482,7 +476,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+          <div className="form-group">
             <label className="form-label" htmlFor="reg-password">
               {t('auth.password')}
             </label>
@@ -562,7 +556,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group auth-form__full auth-terms">
             <label className="checkbox-group" htmlFor="reg-terms">
               <input
                 id="reg-terms"
@@ -591,28 +585,27 @@ export const RegisterPage: React.FC = () => {
             </label>
           </div>
 
-          <div aria-live="polite" role="status">
+          <div className="auth-form__full" aria-live="polite" role="status">
             {formError && <p style={errorTextStyle}>{formError}</p>}
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '0.5rem', minHeight: '44px' }}
+            className="btn btn-primary auth-submit auth-form__full"
           >
             {t(loading ? 'auth.creating' : 'auth.create')}
           </button>
         </form>
 
-        <div style={footerTextStyle}>
+        <div className="auth-footer">
           {t('auth.hasAccount')}{' '}
           <Link to="/login" style={{ color: 'var(--secondary)' }}>
             {t('auth.login')}
           </Link>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 
@@ -972,33 +965,6 @@ const formStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1rem',
-};
-
-const googleButtonStyle: React.CSSProperties = {
-  width: '100%',
-  minHeight: '44px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: '0.75rem',
-  color: 'var(--text-primary)',
-  backgroundColor: 'var(--surface-2)',
-  border: '1px solid var(--border-default)',
-};
-
-const oauthDividerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.75rem',
-  margin: '1rem 0',
-  color: 'var(--text-muted)',
-  fontSize: '0.75rem',
-};
-
-const oauthDividerLineStyle: React.CSSProperties = {
-  flex: 1,
-  height: '1px',
-  backgroundColor: 'var(--border-default)',
 };
 
 const inputWrapperStyle: React.CSSProperties = {
