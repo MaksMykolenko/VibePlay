@@ -37,6 +37,7 @@
 	encode gzip
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https:; connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com; frame-src https://*.{$GAME_HOST_BASE_DOMAIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 		-Server
 	}
 	handle /api/* {
