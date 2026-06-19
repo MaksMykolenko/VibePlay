@@ -97,3 +97,7 @@ export type FeaturedCategory = (typeof FEATURED_CATEGORIES)[number];
 
 export const GAME_SORTS = ['newest', 'popular', 'trending', 'most_liked', 'title'] as const;
 export type GameSort = (typeof GAME_SORTS)[number];
+
+/** Browser platforms/input devices a creator may advertise for a game. */
+export const SUPPORTED_DEVICES = ['desktop', 'mobile', 'tablet', 'gamepad'] as const;
+export type SupportedDevice = (typeof SUPPORTED_DEVICES)[number];

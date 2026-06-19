@@ -20,7 +20,9 @@ import type {
   ReportDto,
   SessionDto,
   ValidationReportDto,
+  SupportedDevice,
 } from '@vibeplay/shared';
+import { SUPPORTED_DEVICES } from '@vibeplay/shared';
 
 export function toPublicUser(u: User): PublicUserDto {
   return {
@@ -68,6 +70,11 @@ export function toSessionDto(s: Session, currentSessionId: string): SessionDto {
 
 export type GameWithCreator = Game & { creator: User };
 
+function supportedDevices(devices: string[]): SupportedDevice[] {
+  const normalized = SUPPORTED_DEVICES.filter((device) => devices.includes(device));
+  return normalized.length > 0 ? normalized : ['desktop'];
+}
+
 export function toGameListItem(g: GameWithCreator): GameListItemDto {
   return {
     id: g.id,
@@ -78,6 +85,7 @@ export function toGameListItem(g: GameWithCreator): GameListItemDto {
     ageRating: g.ageRating,
     status: g.status,
     coverUrl: g.coverUrl,
+    devices: supportedDevices(g.devices),
     creator: toPublicUser(g.creator),
     likesCount: g.likesCount,
     playsCount: g.playsCount,
@@ -110,7 +118,6 @@ export function toGameDetail(
     ...toGameListItem(g),
     description: g.description,
     tags: g.tags,
-    devices: g.devices,
     controls: g.controls,
     toolsUsed: g.toolsUsed,
     screenshots: g.screenshots

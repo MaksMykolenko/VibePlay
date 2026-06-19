@@ -120,6 +120,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
   });
 
   app.patch<{ Params: { gameId: string } }>('/creator/games/:gameId', async (req) => {
+    requireVerifiedEmail(req);
     requireCreator(req);
     const body = parse(updateGameSchema, req.body);
     const existing = await prisma.game.findUnique({ where: { id: req.params.gameId } });
@@ -145,7 +146,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
           ...(body.multiplayer !== undefined ? { multiplayer: body.multiplayer } : {}),
           ...(body.aiDisclosure !== undefined ? { aiDisclosure: body.aiDisclosure } : {}),
           ...(body.toolsUsed !== undefined ? { toolsUsed: body.toolsUsed } : {}),
-          ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl } : {}),
+          ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl, coverObjectKey: null } : {}),
           ...(body.screenshots
             ? {
                 screenshots: {
@@ -162,6 +163,9 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
         },
       });
     });
+    if (body.coverUrl !== undefined && existing.coverObjectKey) {
+      await storage.deleteObject(env.S3_AVATARS_BUCKET, existing.coverObjectKey).catch(() => {});
+    }
     return { game: toGameDetail(game, { liked: false, favorited: false, isOwner: true }) };
   });
 

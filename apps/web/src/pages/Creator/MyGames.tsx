@@ -130,7 +130,13 @@ export const MyGames: React.FC = () => {
                 <tr key={game.id} style={tableBodyRowStyle}>
                   {/* Build Cover */}
                   <td style={tdStyle}>
-                    <img src={game.coverUrl} alt="" style={coverStyle} />
+                    {game.coverUrl ? (
+                      <img src={game.coverUrl} alt="" style={coverStyle} />
+                    ) : (
+                      <div style={{ ...coverStyle, ...coverFallbackStyle }} aria-hidden="true">
+                        <LayoutGrid size={20} />
+                      </div>
+                    )}
                   </td>
 
                   {/* Title & Category */}
@@ -138,6 +144,9 @@ export const MyGames: React.FC = () => {
                     <div style={{ fontWeight: 600, color: '#fff' }}>{game.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       {game.category} • v{game.version}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {game.devices.map((device) => t(`device.${device}`)).join(' • ')}
                     </div>
                   </td>
 
@@ -327,6 +336,14 @@ const coverStyle: React.CSSProperties = {
   borderRadius: '4px',
   backgroundColor: '#151928',
   border: '1px solid var(--border-color)',
+};
+
+const coverFallbackStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: 'var(--text-muted)',
+  background: 'linear-gradient(135deg, var(--surface-3), var(--surface-1))',
 };
 
 const actionsContainerStyle: React.CSSProperties = {

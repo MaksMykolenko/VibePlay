@@ -7,6 +7,7 @@ import type {
   GameDetailDto,
   GameListItemDto,
   GameVersionDto,
+  GameCoverUploadIntentResponseDto,
   InviteDto,
   LaunchDescriptorDto,
   NotificationDto,
@@ -214,6 +215,22 @@ export interface ApiClient {
   createGame(input: CreateGameInput): Promise<GameDetailDto>;
   getMyGame(gameId: string): Promise<CreatorGameSummary>;
   updateMyGame(gameId: string, patch: Partial<CreateGameInput>): Promise<GameDetailDto>;
+  gameCoverUploadIntent(
+    gameId: string,
+    input: {
+      contentType: 'image/png' | 'image/jpeg' | 'image/webp';
+      fileName: string;
+      size: number;
+    },
+  ): Promise<GameCoverUploadIntentResponseDto>;
+  uploadGameCoverDirect(
+    gameId: string,
+    objectKey: string,
+    token: string,
+    file: File,
+  ): Promise<{ objectKey: string }>;
+  completeGameCover(gameId: string, objectKey: string): Promise<GameDetailDto>;
+  removeGameCover(gameId: string): Promise<void>;
   createVersion(gameId: string, input: CreateVersionInput): Promise<GameVersionDto>;
   getVersion(versionId: string): Promise<GameVersionDto>;
   hideMyGame(gameId: string): Promise<void>;

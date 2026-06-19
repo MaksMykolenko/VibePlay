@@ -8,6 +8,7 @@ import {
   REPORT_REASONS,
   REPORT_STATUSES,
   REPORT_TARGET_TYPES,
+  SUPPORTED_DEVICES,
 } from './enums.js';
 import {
   BIO_MAX_LENGTH,
@@ -151,8 +152,10 @@ export const createGameSchema = z
     ageRating: z.enum(AGE_RATINGS).default('EVERYONE'),
     tags: z.array(z.string().trim().min(1).max(24)).max(8).default([]),
     devices: z
-      .array(z.enum(['desktop', 'mobile', 'tablet', 'keyboard', 'mouse', 'touch', 'gamepad']))
-      .max(7)
+      .array(z.enum(SUPPORTED_DEVICES))
+      .min(1, 'Select at least one supported device')
+      .max(16)
+      .transform((devices) => [...new Set(devices)])
       .default(['desktop']),
     controls: z.array(z.string().trim().min(1).max(120)).max(10).default([]),
     multiplayer: z.boolean().default(false),
@@ -207,6 +210,9 @@ export const avatarCompleteSchema = z
     objectKey: z.string().trim().min(1).max(512),
   })
   .strict();
+
+export const gameCoverUploadIntentSchema = avatarUploadIntentSchema;
+export const gameCoverCompleteSchema = avatarCompleteSchema;
 
 // ---------------------------------------------------------------------------
 // Comments

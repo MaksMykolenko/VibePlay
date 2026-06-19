@@ -195,13 +195,16 @@ model Game {
   ageRating          AgeRating         @default(EVERYONE)
   status             GameStatus        @default(DRAFT)
   tags               String[]          @default([])
-  devices            String[]          @default([])
+  devices            String[]          @default(["desktop"])
   controls           String[]          @default([])
   toolsUsed          String[]          @default([])
   multiplayer        Boolean           @default(false)
   aiDisclosure       AiDisclosure      @default(NONE)
   featuredCategory   FeaturedCategory?
   coverUrl           String?
+  /// Private object-storage key for a creator-uploaded raster cover. The public
+  /// coverUrl points to the API streaming endpoint; object storage stays private.
+  coverObjectKey     String?
   publishedVersionId String?           @unique
   publishedVersion   GameVersion?      @relation("PublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
   publishedAt        DateTime?

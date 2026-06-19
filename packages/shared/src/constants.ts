@@ -182,6 +182,9 @@ export const storageKeys = {
   avatarPrefix: (userId: string) => `users/${userId}/avatar/`,
   /** Full key for one avatar object. `fileName` must already be sanitized. */
   avatarObject: (userId: string, fileName: string) => `users/${userId}/avatar/${fileName}`,
+  /** Game cover media is isolated from immutable published build prefixes. */
+  gameCoverPrefix: (gameId: string) => `games/${gameId}/media/cover/`,
+  gameCoverObject: (gameId: string, fileName: string) => `games/${gameId}/media/cover/${fileName}`,
 };
 
 /**
@@ -196,6 +199,9 @@ export const AVATAR_CONTENT_TYPES = {
 } as const;
 
 export type AvatarContentType = keyof typeof AVATAR_CONTENT_TYPES;
+
+export const GAME_COVER_CONTENT_TYPES = AVATAR_CONTENT_TYPES;
+export type GameCoverContentType = keyof typeof GAME_COVER_CONTENT_TYPES;
 
 /** Accepted avatar file extensions (lowercase, no dot). */
 export const AVATAR_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp'] as const;

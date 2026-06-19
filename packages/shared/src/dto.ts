@@ -9,6 +9,7 @@ import type {
   ReportReason,
   ReportStatus,
   ReportTargetType,
+  SupportedDevice,
   UserRole,
   UserStatus,
 } from './enums.js';
@@ -56,6 +57,7 @@ export interface GameListItemDto {
   ageRating: AgeRating;
   status: GameStatus;
   coverUrl: string | null;
+  devices: SupportedDevice[];
   creator: PublicUserDto;
   likesCount: number;
   playsCount: number;
@@ -69,7 +71,6 @@ export interface GameListItemDto {
 export interface GameDetailDto extends GameListItemDto {
   description: string;
   tags: string[];
-  devices: string[];
   controls: string[];
   toolsUsed: string[];
   screenshots: { id: string; url: string; sortOrder: number }[];
@@ -201,6 +202,8 @@ export interface AvatarUploadIntentResponseDto {
   maxBytes: number;
   expiresAt: string;
 }
+
+export type GameCoverUploadIntentResponseDto = AvatarUploadIntentResponseDto;
 
 export interface InviteDto {
   id: string;

@@ -15,6 +15,7 @@ import {
   Monitor,
   Smartphone,
   Tablet,
+  Gamepad2,
   Bot,
   Sparkles,
 } from 'lucide-react';
@@ -364,34 +365,24 @@ export const GameDetailPage: React.FC = () => {
                     <div style={devicesRowStyle}>
                       {game.devices.includes('desktop') && (
                         <span style={deviceBadgeStyle}>
-                          <Monitor size={14} /> Desktop
+                          <Monitor size={14} /> {t('device.desktop')}
                         </span>
                       )}
                       {game.devices.includes('mobile') && (
                         <span style={deviceBadgeStyle}>
-                          <Smartphone size={14} /> Mobile
+                          <Smartphone size={14} /> {t('device.mobile')}
                         </span>
                       )}
                       {game.devices.includes('tablet') && (
                         <span style={deviceBadgeStyle}>
-                          <Tablet size={14} /> Tablet
+                          <Tablet size={14} /> {t('device.tablet')}
                         </span>
                       )}
-                    </div>
-                    <div
-                      style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '10px' }}
-                    >
-                      {game.devices
-                        .filter((d) => d !== 'desktop' && d !== 'mobile' && d !== 'tablet')
-                        .map((dev) => (
-                          <span
-                            key={dev}
-                            style={deviceBadgeStyle}
-                            className="badge badge-secondary"
-                          >
-                            {dev}
-                          </span>
-                        ))}
+                      {game.devices.includes('gamepad') && (
+                        <span style={deviceBadgeStyle}>
+                          <Gamepad2 size={14} /> {t('device.gamepad')}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

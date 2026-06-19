@@ -11,7 +11,7 @@ interface GameCardProps {
 
 export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' }) => {
   const { t } = useI18n();
-  const [imgError, setImgError] = useState(false);
+  const [failedCoverUrl, setFailedCoverUrl] = useState<string | null>(null);
 
   const formatPlays = (plays: number) => {
     if (plays >= 1000000) return `${(plays / 1000000).toFixed(1)}M`;
@@ -66,7 +66,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
 
       {/* Cover Image Container (16:9 aspect ratio) — decorative, pointer-events: none */}
       <div style={coverWrapperStyle} className="game-card__cover-wrapper">
-        {imgError ? (
+        {!game.coverUrl || failedCoverUrl === game.coverUrl ? (
           <div style={fallbackContainerStyle} className="game-card__fallback">
             <Gamepad size={32} color="rgba(255, 255, 255, 0.25)" />
             <span style={fallbackTitleStyle} className="game-card__fallback-title">
@@ -80,7 +80,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
             style={coverImgStyle}
             className="game-card__cover"
             loading="lazy"
-            onError={() => setImgError(true)}
+            onError={() => setFailedCoverUrl(game.coverUrl)}
           />
         )}
 
@@ -119,7 +119,10 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
               {likeRatio}% • {t('card.plays', { count: formatPlays(game.plays) })}
             </span>
             {/* Continue button — elevated above stretched link */}
-            <Link to={`/play/${game.slug}`} className="game-card__continue-btn game-card__play-link">
+            <Link
+              to={`/play/${game.slug}`}
+              className="game-card__continue-btn game-card__play-link"
+            >
               <span>{t('card.continue')}</span>
               <Play size={10} fill="currentColor" style={{ marginLeft: '2px' }} />
             </Link>

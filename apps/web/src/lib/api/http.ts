@@ -6,6 +6,7 @@ import type {
   GameDetailDto,
   GameListItemDto,
   GameVersionDto,
+  GameCoverUploadIntentResponseDto,
   InviteDto,
   LaunchDescriptorDto,
   NotificationDto,
@@ -362,6 +363,50 @@ export function createHttpClient(): ApiClient {
         body: patch,
       });
       return r.game;
+    },
+    async gameCoverUploadIntent(gameId, input) {
+      return request<GameCoverUploadIntentResponseDto>(
+        `/creator/games/${encodeURIComponent(gameId)}/cover/upload-intent`,
+        { method: 'POST', body: input },
+      );
+    },
+    async uploadGameCoverDirect(gameId, objectKey, token, file) {
+      const csrf = readCookie('vp_csrf');
+      const path = `/creator/games/${encodeURIComponent(gameId)}/cover/upload?key=${encodeURIComponent(objectKey)}&token=${encodeURIComponent(token)}`;
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}${path}`, {
+          method: 'PUT',
+          credentials: 'include',
+          headers: { 'content-type': file.type, 'x-csrf-token': csrf },
+          body: file,
+        });
+      } catch {
+        throw new ApiClientError('NETWORK_ERROR', 'Game cover upload endpoint is unreachable', 0);
+      }
+      if (!res.ok) {
+        let message = 'Game cover upload failed';
+        let code = 'INTERNAL_ERROR';
+        try {
+          const body = (await res.json()) as { error?: { code?: string; message?: string } };
+          if (body.error?.message) message = body.error.message;
+          if (body.error?.code) code = body.error.code;
+        } catch {
+          /* non-JSON error body */
+        }
+        throw new ApiClientError(code as ApiClientError['code'], message, res.status);
+      }
+      return (await res.json()) as { objectKey: string };
+    },
+    async completeGameCover(gameId, objectKey) {
+      const response = await request<{ game: GameDetailDto }>(
+        `/creator/games/${encodeURIComponent(gameId)}/cover/complete`,
+        { method: 'POST', body: { objectKey } },
+      );
+      return response.game;
+    },
+    async removeGameCover(gameId) {
+      await request(`/creator/games/${encodeURIComponent(gameId)}/cover`, { method: 'DELETE' });
     },
     async createVersion(gameId, input: CreateVersionInput) {
       const r = await request<{ version: GameVersionDto }>(`/creator/games/${gameId}/versions`, {

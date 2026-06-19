@@ -40,7 +40,7 @@ function toGame(dto: GameListItemDto | GameDetailDto): Game {
     dislikes: 0,
     coverUrl: dto.coverUrl ?? '',
     screenshots: detail.screenshots?.map((screenshot) => screenshot.url) ?? [],
-    devices: detail.devices ?? ['desktop'],
+    devices: dto.devices ?? ['desktop'],
     controls: detail.controls ?? [],
     multiplayer: dto.multiplayer,
     aiDisclosure:

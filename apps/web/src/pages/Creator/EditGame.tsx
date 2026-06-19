@@ -1,17 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { SUPPORTED_DEVICES, type SupportedDevice } from '@vibeplay/shared';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../components/toastEvents';
-import { Save, ArrowLeft, AlertTriangle } from 'lucide-react';
+import {
+  Save,
+  ArrowLeft,
+  AlertTriangle,
+  UploadCloud,
+  Trash2,
+  Monitor,
+  Smartphone,
+  Tablet,
+  Gamepad2,
+} from 'lucide-react';
 import { IS_DEMO } from '../../lib/appMode';
 import { GameVersionManager } from '../../components/GameVersionManager';
+import { api } from '../../lib/api';
+import { errorMessage } from '../../lib/api/errors';
+import { useI18n } from '../../i18n/useI18n';
+
+const COVER_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
+const COVER_MAX_BYTES = 5 * 1024 * 1024;
+
+const DEVICE_ICONS = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tablet: Tablet,
+  gamepad: Gamepad2,
+} as const;
 
 export const EditGame: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { games, isLoading, updateGame } = useGames();
+  const { games, isLoading, updateGame, refreshGames } = useGames();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   // Find game
   const game = games.find((g) => g.id === id);
@@ -24,9 +49,15 @@ export const EditGame: React.FC = () => {
   const [tagsInput, setTagsInput] = useState(() => game?.tags.join(', ') ?? '');
   const [coverUrl, setCoverUrl] = useState(() => game?.coverUrl ?? '');
   const [screenshotUrl, setScreenshotUrl] = useState(() => game?.screenshots[0] ?? '');
-  const [deviceDesktop] = useState(() => game?.devices.includes('desktop') ?? true);
-  const [deviceMobile] = useState(() => game?.devices.includes('mobile') ?? false);
-  const [deviceTablet] = useState(() => game?.devices.includes('tablet') ?? false);
+  const [devices, setDevices] = useState<SupportedDevice[]>(() => {
+    const existing = (game?.devices ?? []).filter((device): device is SupportedDevice =>
+      SUPPORTED_DEVICES.includes(device as SupportedDevice),
+    );
+    return existing.length > 0 ? existing : ['desktop'];
+  });
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(0);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [multiplayer] = useState(() => game?.multiplayer ?? false);
   const [aiDisclosure] = useState<'no' | 'assisted' | 'generated'>(
     () => game?.aiDisclosure ?? 'no',
@@ -46,7 +77,11 @@ export const EditGame: React.FC = () => {
   if (isLoading || !game) return null;
 
   // Verify ownership
-  if (currentUser?.id !== game.creatorId && currentUser?.role !== 'admin' && currentUser?.role !== 'owner') {
+  if (
+    currentUser?.id !== game.creatorId &&
+    currentUser?.role !== 'admin' &&
+    currentUser?.role !== 'owner'
+  ) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
         <h2>Unauthorized</h2>
@@ -74,10 +109,10 @@ export const EditGame: React.FC = () => {
           .filter((t) => t.length > 0)
       : game.tags;
 
-    const devices = [];
-    if (deviceDesktop) devices.push('desktop', 'keyboard', 'mouse');
-    if (deviceMobile) devices.push('mobile', 'touch');
-    if (deviceTablet) devices.push('tablet', 'touch');
+    if (devices.length === 0) {
+      toast.danger(t('cover.devicesRequired'));
+      return;
+    }
 
     // Add changelog if notes are provided
     const changelog = [...game.changelog];
@@ -103,7 +138,7 @@ export const EditGame: React.FC = () => {
       shortDescription: shortDesc,
       fullDescription: fullDesc,
       tags,
-      coverUrl,
+      ...(IS_DEMO ? { coverUrl } : {}),
       screenshots: [screenshotUrl, ...game.screenshots.slice(1)],
       devices,
       multiplayer,
@@ -116,6 +151,64 @@ export const EditGame: React.FC = () => {
 
     toast.success(statusMsg);
     navigate('/creator/my-games');
+  };
+
+  const toggleDevice = (device: SupportedDevice) => {
+    setDevices((current) =>
+      current.includes(device) ? current.filter((item) => item !== device) : [...current, device],
+    );
+  };
+
+  const handleCoverFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !id) return;
+    if (!COVER_TYPES.includes(file.type as (typeof COVER_TYPES)[number])) {
+      toast.danger(t('cover.unsupportedType'));
+      return;
+    }
+    if (file.size > COVER_MAX_BYTES) {
+      toast.danger(t('cover.tooLarge'));
+      return;
+    }
+
+    setCoverUploading(true);
+    setCoverProgress(10);
+    try {
+      const intent = await api.gameCoverUploadIntent(id, {
+        contentType: file.type as (typeof COVER_TYPES)[number],
+        fileName: file.name,
+        size: file.size,
+      });
+      setCoverProgress(35);
+      await api.uploadGameCoverDirect(id, intent.objectKey, intent.token, file);
+      setCoverProgress(75);
+      const updated = await api.completeGameCover(id, intent.objectKey);
+      setCoverProgress(100);
+      setCoverUrl(updated.coverUrl ?? '');
+      await refreshGames();
+      toast.success(t('cover.success'));
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setCoverUploading(false);
+      setCoverProgress(0);
+    }
+  };
+
+  const handleCoverRemove = async () => {
+    if (!id) return;
+    setCoverUploading(true);
+    try {
+      await api.removeGameCover(id);
+      setCoverUrl('');
+      await refreshGames();
+      toast.success(t('cover.removed'));
+    } catch (error) {
+      toast.danger(errorMessage(error));
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   return (
@@ -213,15 +306,97 @@ export const EditGame: React.FC = () => {
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Cover Image URL</label>
-          <input
-            type="text"
-            value={coverUrl}
-            onChange={(e) => setCoverUrl(e.target.value)}
-            className="form-input"
-          />
-        </div>
+        {IS_DEMO ? (
+          <div className="form-group">
+            <label className="form-label" htmlFor="cover-url">
+              {t('cover.urlLabel')}
+            </label>
+            <input
+              id="cover-url"
+              type="url"
+              value={coverUrl}
+              onChange={(e) => setCoverUrl(e.target.value)}
+              className="form-input"
+            />
+          </div>
+        ) : (
+          <div className="form-group">
+            <span className="form-label">{t('cover.title')}</span>
+            <div style={coverPreviewStyle}>
+              {coverUrl ? (
+                <img src={coverUrl} alt={t('cover.previewAlt')} style={coverImageStyle} />
+              ) : (
+                <div style={coverFallbackStyle}>
+                  <Gamepad2 size={36} aria-hidden="true" />
+                  <span>{t('cover.noCover')}</span>
+                </div>
+              )}
+            </div>
+            <div style={coverActionsStyle}>
+              <label
+                className="btn btn-secondary"
+                style={{ cursor: coverUploading ? 'wait' : 'pointer', gap: '6px' }}
+              >
+                <UploadCloud size={16} aria-hidden="true" />
+                {coverUploading ? t('cover.uploading') : t('cover.chooseFile')}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+                  onChange={(event) => void handleCoverFile(event)}
+                  disabled={coverUploading}
+                  aria-label={t('cover.chooseFile')}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              {coverUrl && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={coverUploading}
+                  onClick={() => void handleCoverRemove()}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  {t('cover.remove')}
+                </button>
+              )}
+            </div>
+            {coverProgress > 0 && (
+              <div
+                role="progressbar"
+                aria-label={t('cover.progress')}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={coverProgress}
+                style={progressTrackStyle}
+              >
+                <div style={{ ...progressBarStyle, width: `${coverProgress}%` }} />
+              </div>
+            )}
+            <span style={helperStyle}>{t('cover.helper')}</span>
+          </div>
+        )}
+
+        <fieldset style={deviceFieldsetStyle}>
+          <legend className="form-label">{t('cover.devicesTitle')}</legend>
+          <div style={deviceGridStyle}>
+            {SUPPORTED_DEVICES.map((device) => {
+              const Icon = DEVICE_ICONS[device];
+              return (
+                <label key={device} style={deviceOptionStyle}>
+                  <input
+                    type="checkbox"
+                    checked={devices.includes(device)}
+                    onChange={() => toggleDevice(device)}
+                  />
+                  <Icon size={17} aria-hidden="true" />
+                  <span>{t(`device.${device}`)}</span>
+                </label>
+              );
+            })}
+          </div>
+          <span style={helperStyle}>{t('cover.devicesHelper')}</span>
+        </fieldset>
 
         <div className="form-group">
           <label className="form-label">Screenshot URL</label>
@@ -267,7 +442,12 @@ export const EditGame: React.FC = () => {
 
         {/* Action Controls */}
         <div style={footerRowStyle}>
-          <button type="submit" className="btn btn-primary" style={{ gap: '6px' }}>
+          <button
+            type="submit"
+            disabled={coverUploading}
+            className="btn btn-primary"
+            style={{ gap: '6px' }}
+          >
             <Save size={16} />
             <span>Save Changes</span>
           </button>
@@ -341,6 +521,79 @@ const helperStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   color: 'var(--text-secondary)',
   marginTop: '4px',
+};
+
+const coverPreviewStyle: React.CSSProperties = {
+  position: 'relative',
+  width: '100%',
+  aspectRatio: '16 / 9',
+  overflow: 'hidden',
+  borderRadius: '10px',
+  border: '1px solid var(--border-color)',
+  backgroundColor: 'var(--surface-2)',
+};
+
+const coverImageStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+};
+
+const coverFallbackStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.5rem',
+  color: 'var(--text-muted)',
+  background: 'linear-gradient(135deg, var(--surface-3), var(--surface-1))',
+};
+
+const coverActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '0.5rem',
+  marginTop: '0.75rem',
+};
+
+const progressTrackStyle: React.CSSProperties = {
+  height: '6px',
+  marginTop: '0.75rem',
+  borderRadius: '999px',
+  overflow: 'hidden',
+  backgroundColor: 'var(--surface-3)',
+};
+
+const progressBarStyle: React.CSSProperties = {
+  height: '100%',
+  borderRadius: 'inherit',
+  backgroundColor: 'var(--primary)',
+  transition: 'width 180ms ease',
+};
+
+const deviceFieldsetStyle: React.CSSProperties = {
+  border: 0,
+  padding: 0,
+  margin: 0,
+};
+
+const deviceGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+  gap: '0.75rem',
+};
+
+const deviceOptionStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.5rem',
+  minHeight: '44px',
+  padding: '0.65rem 0.75rem',
+  border: '1px solid var(--border-color)',
+  borderRadius: '8px',
+  cursor: 'pointer',
 };
 
 const footerRowStyle: React.CSSProperties = {

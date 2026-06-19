@@ -16,6 +16,7 @@ import type {
   PaginatedDto,
   PublicUserDto,
 } from '@vibeplay/shared';
+import { SUPPORTED_DEVICES } from '@vibeplay/shared';
 import { mockGames } from '../../../data/mockGames';
 import { mockUsers } from '../../../data/mockUsers';
 import { mockComments } from '../../../data/mockComments';
@@ -100,6 +101,7 @@ function toListItem(g: Game, users: User[]): GameListItemDto {
     ageRating: 'EVERYONE',
     status: statusUp(g.status),
     coverUrl: g.coverUrl,
+    devices: SUPPORTED_DEVICES.filter((device) => g.devices.includes(device)),
     creator: creator
       ? toPublicUser(creator)
       : {
@@ -135,7 +137,6 @@ function toDetail(
     ...toListItem(g, users),
     description: g.fullDescription,
     tags: g.tags,
-    devices: g.devices,
     controls: g.controls,
     toolsUsed: g.aiTools,
     screenshots: g.screenshots.map((url, i) => ({ id: `${g.id}_s${i}`, url, sortOrder: i })),
@@ -684,6 +685,18 @@ export function createDemoClient(): ApiClient {
       };
       save(LS.games, games);
       return toDetail(games[idx]!, getUsers(), me.id, getLib(me.id));
+    },
+    async gameCoverUploadIntent() {
+      notInDemo('Game cover upload');
+    },
+    async uploadGameCoverDirect() {
+      notInDemo('Game cover upload');
+    },
+    async completeGameCover() {
+      notInDemo('Game cover upload');
+    },
+    async removeGameCover() {
+      notInDemo('Game cover upload');
     },
     async createVersion() {
       notInDemo('Game build upload');

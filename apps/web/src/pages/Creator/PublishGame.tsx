@@ -189,9 +189,9 @@ export const PublishGame: React.FC = () => {
       : ['HTML5', 'Canvas', 'WebGL'];
 
     const devices: string[] = [];
-    if (deviceDesktop) devices.push('desktop', 'keyboard', 'mouse');
-    if (deviceMobile) devices.push('mobile', 'touch');
-    if (deviceTablet) devices.push('tablet', 'touch');
+    if (deviceDesktop) devices.push('desktop');
+    if (deviceMobile) devices.push('mobile');
+    if (deviceTablet) devices.push('tablet');
 
     const controls = [controlKeys, controlAction].filter((c) => c.length > 0);
 
