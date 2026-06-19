@@ -234,6 +234,7 @@ export function createDemoClient(): ApiClient {
         username: input.username.toLowerCase(),
         displayName: input.displayName,
         email: input.email.toLowerCase(),
+        emailVerified: true,
         role: 'player',
         bio: 'New VibePlay demo user.',
         avatar: `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(input.username)}`,

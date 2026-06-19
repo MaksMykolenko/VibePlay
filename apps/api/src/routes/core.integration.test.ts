@@ -83,13 +83,16 @@ describe('core MVP routes', () => {
     ]);
   });
 
-  async function createGame(agent = creatorAgent): Promise<{ id: string; slug: string }> {
+  async function createGame(
+    agent = creatorAgent,
+    title = 'Integration Arcade',
+  ): Promise<{ id: string; slug: string }> {
     const res = await app.inject({
       method: 'POST',
       url: '/api/creator/games',
       ...authed(agent),
       payload: {
-        title: 'Integration Arcade',
+        title,
         shortDescription: 'A complete integration test game.',
         description: 'This game exists to test creator and moderation routes end to end.',
         category: 'Arcade',
@@ -100,6 +103,31 @@ describe('core MVP routes', () => {
     expect(res.statusCode, res.body).toBe(200);
     return res.json().game;
   }
+
+  it('requires verified email for creators but exempts admin and owner roles', async () => {
+    await Promise.all([
+      prisma.user.update({ where: { id: creator.id }, data: { emailVerifiedAt: null } }),
+      prisma.user.update({ where: { id: admin.id }, data: { emailVerifiedAt: null } }),
+      prisma.user.update({ where: { id: owner.id }, data: { emailVerifiedAt: null } }),
+    ]);
+
+    const creatorCreate = await app.inject({
+      method: 'POST',
+      url: '/api/creator/games',
+      ...authed(creatorAgent),
+      payload: {
+        title: 'Unverified Creator Game',
+        shortDescription: 'This request must be blocked.',
+        description: 'Unverified creators cannot use creator routes.',
+        category: 'Arcade',
+      },
+    });
+    expect(creatorCreate.statusCode).toBe(403);
+    expect(creatorCreate.json().error.code).toBe('EMAIL_NOT_VERIFIED');
+
+    await createGame(adminAgent, 'Admin Verification Exemption');
+    await createGame(ownerAgent, 'Owner Verification Exemption');
+  });
 
   it('enforces creator role and resource ownership', async () => {
     const playerCreate = await app.inject({

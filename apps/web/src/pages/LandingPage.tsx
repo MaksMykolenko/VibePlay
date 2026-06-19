@@ -31,6 +31,10 @@ export const LandingPage: React.FC = () => {
       navigate('/login');
       return;
     }
+    if (!currentUser.emailVerified) {
+      toast.warning(t('verification.beforeCreator'));
+      return;
+    }
     const notice = becomeCreator();
     if (notice) {
       toast.info(notice);

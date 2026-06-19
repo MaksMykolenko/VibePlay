@@ -26,6 +26,7 @@ export const AdminUsers: React.FC = () => {
         username: user.username,
         displayName: user.displayName,
         email: user.email,
+        emailVerified: user.emailVerified,
         role: user.role.toLowerCase() as UserRole,
         bio: user.bio,
         avatar: user.avatarUrl ?? '',

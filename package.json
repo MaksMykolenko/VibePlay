@@ -35,6 +35,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "test:integration": "npm run test:integration -w @vibeplay/api",
+    "email:test": "npm run email:test -w @vibeplay/api --",
     "test:e2e": "playwright test",
     "fixtures:build": "node fixtures/build-fixtures.mjs",
     "grant-admin": "npm run grant-admin -w @vibeplay/database",

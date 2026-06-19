@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
-import { errorMessage } from '../lib/api/errors';
+import { errorMessage, isApiError } from '../lib/api/errors';
 import { IS_DEMO } from '../lib/appMode';
 import {
   Eye,
@@ -20,6 +20,7 @@ import {
 import { toast } from '../components/toastEvents';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useI18n } from '../i18n/useI18n';
+import { useVerificationResend } from '../hooks/useVerificationResend';
 
 const PasswordToggle: React.FC<{ shown: boolean; onToggle: () => void }> = ({
   shown,
@@ -771,39 +772,61 @@ export const ResetPasswordPage: React.FC = () => {
 export const VerifyEmailPage: React.FC = () => {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
-  const { refresh } = useAuth();
+  const navigate = useNavigate();
+  const { currentUser, refresh } = useAuth();
+  const { cooldown, isSending, resend } = useVerificationResend();
   const token = searchParams.get('token') ?? '';
   const [state, setState] = useState<'pending' | 'success' | 'error'>(token ? 'pending' : 'error');
-  const [message, setMessage] = useState(
-    token ? t('auth.verifying') : t('auth.verificationMissing'),
-  );
+  const [unexpectedError, setUnexpectedError] = useState<string | null>(null);
+  const [redirectPath, setRedirectPath] = useState('/');
 
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
+    let redirectTimer: number | undefined;
     api
       .verifyEmail(token)
       .then(async () => {
         if (cancelled) return;
+        const user = await refresh();
+        if (cancelled) return;
+        const destination =
+          user?.role === 'CREATOR' || user?.role === 'ADMIN' || user?.role === 'OWNER'
+            ? '/creator'
+            : user
+              ? `/profile/${user.username}`
+              : '/';
+        setRedirectPath(destination);
         setState('success');
-        setMessage(t('auth.verified'));
-        await refresh();
+        redirectTimer = window.setTimeout(() => navigate(destination, { replace: true }), 1_500);
       })
       .catch((err) => {
         if (cancelled) return;
         setState('error');
-        setMessage(errorMessage(err));
+        setUnexpectedError(
+          isApiError(err, 'TOKEN_INVALID') || isApiError(err, 'TOKEN_EXPIRED')
+            ? null
+            : errorMessage(err),
+        );
       });
     return () => {
       cancelled = true;
+      if (redirectTimer !== undefined) window.clearTimeout(redirectTimer);
     };
-  }, [token, refresh, t]);
+  }, [navigate, refresh, token]);
+
+  const message =
+    state === 'pending'
+      ? t('verification.verifying')
+      : state === 'success'
+        ? t('verification.success')
+        : (unexpectedError ?? t('verification.invalid'));
 
   return (
     <div style={containerStyle}>
       <div style={{ ...cardStyle, textAlign: 'center' }} className="animate-slide-up">
         <AuthLanguageControl />
-        <h1 style={titleStyle}>{t('auth.verificationTitle')}</h1>
+        <h1 style={titleStyle}>{t('verification.pageTitle')}</h1>
         <div
           style={{
             ...successBoxStyle,
@@ -822,8 +845,27 @@ export const VerifyEmailPage: React.FC = () => {
         >
           {message}
         </p>
-        <Link to="/" className="btn btn-primary" style={{ width: '100%' }}>
-          {t('auth.goToVibePlay')}
+        {state === 'error' && currentUser && (
+          <button
+            type="button"
+            onClick={() => void resend()}
+            disabled={isSending || cooldown > 0}
+            className="btn btn-primary"
+            style={{ width: '100%', marginBottom: '0.75rem' }}
+          >
+            {isSending
+              ? t('verification.sending')
+              : cooldown > 0
+                ? t('verification.resendCooldown', { seconds: cooldown })
+                : t('verification.resend')}
+          </button>
+        )}
+        <Link
+          to={state === 'success' ? redirectPath : '/'}
+          className="btn btn-secondary"
+          style={{ width: '100%' }}
+        >
+          {state === 'success' ? t('verification.continue') : t('verification.backHome')}
         </Link>
       </div>
     </div>

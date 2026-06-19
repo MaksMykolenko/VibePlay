@@ -36,8 +36,10 @@ import {
   Sun,
   Moon,
   Monitor,
+  Mail,
 } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { useVerificationResend } from '../hooks/useVerificationResend';
 import { useI18n } from '../i18n/useI18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
@@ -122,6 +124,11 @@ export const AppShell: React.FC = () => {
     useAuth();
   const { theme, setTheme } = useTheme();
   const { t } = useI18n();
+  const {
+    cooldown: verificationCooldown,
+    isSending: isResending,
+    resend,
+  } = useVerificationResend();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications(
     currentUser?.id,
   );
@@ -327,6 +334,9 @@ export const AppShell: React.FC = () => {
       navigate('/login');
     } else if (currentUser.role === 'player') {
       toast.info(t('app.creatorRequired'));
+    } else if (currentUser.role === 'creator' && !currentUser.emailVerified) {
+      toast.warning(t('verification.beforeCreator'));
+      navigate('/creator');
     } else {
       navigate('/creator/publish');
     }
@@ -336,6 +346,10 @@ export const AppShell: React.FC = () => {
     if (!currentUser) {
       toast.info(t('app.loginFirst'));
       navigate('/login');
+      return;
+    }
+    if (currentUser.role === 'player' && !currentUser.emailVerified) {
+      toast.warning(t('verification.beforeCreator'));
       return;
     }
     const notice = becomeCreator();
@@ -362,9 +376,14 @@ export const AppShell: React.FC = () => {
   const isAdminPath = location.pathname.startsWith('/admin');
 
   const hasCreatorAccess =
-    currentUser && (currentUser.role === 'creator' || currentUser.role === 'admin' || currentUser.role === 'owner');
+    currentUser &&
+    (currentUser.role === 'creator' ||
+      currentUser.role === 'admin' ||
+      currentUser.role === 'owner');
   const hasAdminAccess =
     currentUser && (currentUser.role === 'admin' || currentUser.role === 'owner');
+  const isCreatorEmailBlocked =
+    isCreatorPath && currentUser?.role === 'creator' && !currentUser.emailVerified;
 
   interface NavItem {
     id: string;
@@ -1735,6 +1754,47 @@ export const AppShell: React.FC = () => {
           </div>
         )}
 
+        {isCreatorEmailBlocked && (
+          <div style={accessDeniedContainerStyle} className="bg-glass">
+            <Mail size={48} color="var(--secondary)" aria-hidden="true" />
+            <h2>{t('verification.blockerTitle')}</h2>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                margin: '0.5rem 0 1.5rem',
+                textAlign: 'center',
+                maxWidth: '36rem',
+              }}
+            >
+              {t('verification.blockerBody')}
+            </p>
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.75rem',
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => void resend()}
+                disabled={isResending || verificationCooldown > 0}
+                className="btn btn-primary"
+              >
+                {isResending
+                  ? t('verification.sending')
+                  : verificationCooldown > 0
+                    ? t('verification.resendCooldown', { seconds: verificationCooldown })
+                    : t('verification.resend')}
+              </button>
+              <button type="button" onClick={() => navigate('/')} className="btn btn-secondary">
+                {t('verification.backHome')}
+              </button>
+            </div>
+          </div>
+        )}
+
         {isAdminPath && !hasAdminAccess && (
           <div style={accessDeniedContainerStyle} className="bg-glass">
             <ShieldAlertStyle />
@@ -1755,7 +1815,8 @@ export const AppShell: React.FC = () => {
         )}
 
         {/* Render pages if path check passes */}
-        {(!isCreatorPath || hasCreatorAccess) && (!isAdminPath || hasAdminAccess) && <Outlet />}
+        {(!isCreatorPath || (hasCreatorAccess && !isCreatorEmailBlocked)) &&
+          (!isAdminPath || hasAdminAccess) && <Outlet />}
       </main>
 
       {/* Mobile Bottom Navigation Bar */}

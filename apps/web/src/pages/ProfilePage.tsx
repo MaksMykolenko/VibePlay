@@ -36,6 +36,7 @@ export const ProfilePage: React.FC = () => {
           username: profile.username,
           displayName: profile.displayName,
           email: currentUser?.id === profile.id ? currentUser.email : '',
+          emailVerified: currentUser?.id === profile.id ? currentUser.emailVerified : true,
           role: profile.role.toLowerCase() as User['role'],
           bio: profile.bio,
           avatar: profile.avatarUrl ?? '',
@@ -99,6 +100,10 @@ export const ProfilePage: React.FC = () => {
     .reduce((sum, g) => sum + g.likes, 0);
 
   const handleBecomeCreator = () => {
+    if (currentUser && !currentUser.emailVerified) {
+      toast.warning(t('verification.beforeCreator'));
+      return;
+    }
     const notice = becomeCreator();
     if (notice) {
       toast.info(notice);

@@ -23,7 +23,9 @@ export function requireActiveUser(req: FastifyRequest): User {
 
 export function requireVerifiedEmail(req: FastifyRequest): User {
   const user = requireActiveUser(req);
-  if (!user.emailVerifiedAt) throw errors.emailNotVerified();
+  if (user.role !== 'ADMIN' && user.role !== 'OWNER' && !user.emailVerifiedAt) {
+    throw errors.emailNotVerified();
+  }
   return user;
 }
 

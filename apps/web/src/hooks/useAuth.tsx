@@ -30,7 +30,7 @@ export interface AuthContextType {
     inviteCode?: string;
   }) => Promise<string | null>;
   updateProfile: (displayName: string, bio: string, avatar: string) => Promise<string | null>;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<CurrentUserDto | null>;
   /**
    * Real mode: roles are server-controlled; this returns an explanatory notice.
    * Demo build: switches to the demo creator account.
@@ -50,6 +50,7 @@ function dtoToLegacyUser(dto: CurrentUserDto): User {
     username: dto.username,
     displayName: dto.displayName,
     email: dto.email,
+    emailVerified: dto.emailVerified,
     role: dto.role.toLowerCase() as UserRole,
     bio: dto.bio,
     avatar: dto.avatarUrl ?? '',
@@ -67,8 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const user = await api.me();
       setAccount(user);
+      return user;
     } catch {
       setAccount(null);
+      return null;
     }
   }, []);
 

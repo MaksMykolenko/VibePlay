@@ -5,6 +5,7 @@ export interface User {
   username: string;
   displayName: string;
   email: string;
+  emailVerified: boolean;
   role: UserRole;
   bio: string;
   avatar: string;
