@@ -12,6 +12,7 @@ import type {
   CommentDto,
   CurrentUserDto,
   GameDetailDto,
+  GameControlDto,
   GameListItemDto,
   GameVersionDto,
   NotificationDto,
@@ -70,6 +71,23 @@ export function toSessionDto(s: Session, currentSessionId: string): SessionDto {
 
 export type GameWithCreator = Game & { creator: User };
 
+function toGameControls(value: unknown): GameControlDto[] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter(
+      (control): control is { action: string; keys: string } =>
+        typeof control === 'object' &&
+        control !== null &&
+        !Array.isArray(control) &&
+        typeof (control as Record<string, unknown>).action === 'string' &&
+        typeof (control as Record<string, unknown>).keys === 'string',
+    )
+    .map(({ action, keys }) => ({ action: action.trim(), keys: keys.trim() }))
+    .filter(({ action, keys }) => action.length > 0 || keys.length > 0)
+    .slice(0, 30);
+}
+
 function supportedDevices(devices: string[]): SupportedDevice[] {
   const normalized = SUPPORTED_DEVICES.filter((device) => devices.includes(device));
   return normalized.length > 0 ? normalized : ['desktop'];
@@ -118,7 +136,7 @@ export function toGameDetail(
     ...toGameListItem(g),
     description: g.description,
     tags: g.tags,
-    controls: g.controls,
+    controls: toGameControls(g.controls),
     toolsUsed: g.toolsUsed,
     screenshots: g.screenshots
       .sort((a, b) => a.sortOrder - b.sortOrder)

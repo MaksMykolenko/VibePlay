@@ -68,10 +68,15 @@ export interface GameListItemDto {
   updatedAt: string;
 }
 
+export interface GameControlDto {
+  action: string;
+  keys: string;
+}
+
 export interface GameDetailDto extends GameListItemDto {
   description: string;
   tags: string[];
-  controls: string[];
+  controls: GameControlDto[];
   toolsUsed: string[];
   screenshots: { id: string; url: string; sortOrder: number }[];
   publishedVersion: {

@@ -241,6 +241,74 @@ describe('game covers and supported devices', () => {
     }
   });
 
+  it('lets a creator save normalized controls and returns them from creator and public details', async () => {
+    const game = await createGame();
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/creator/games/${game.id}`,
+      ...authed(creatorAgent),
+      payload: {
+        controls: [
+          { action: '  Move  ', keys: '  WASD / Arrow keys  ' },
+          { action: '   ', keys: '   ' },
+          { action: 'Pause / Back', keys: 'Esc' },
+        ],
+      },
+    });
+    expect(response.statusCode, response.body).toBe(200);
+    expect(response.json().game.controls).toEqual([
+      { action: 'Move', keys: 'WASD / Arrow keys' },
+      { action: 'Pause / Back', keys: 'Esc' },
+    ]);
+
+    const creatorDetail = await app.inject({
+      method: 'GET',
+      url: `/api/creator/games/${game.id}`,
+      ...authed(creatorAgent),
+    });
+    expect(creatorDetail.statusCode, creatorDetail.body).toBe(200);
+    expect(creatorDetail.json().game.controls).toEqual(response.json().game.controls);
+
+    const publicDetail = await app.inject({ method: 'GET', url: `/api/games/${game.slug}` });
+    expect(publicDetail.statusCode, publicDetail.body).toBe(200);
+    expect(publicDetail.json().game.controls).toEqual(response.json().game.controls);
+  });
+
+  it("forbids non-owner creators and players from updating another game's controls", async () => {
+    const game = await createGame();
+    for (const agent of [otherAgent, playerAgent]) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/creator/games/${game.id}`,
+        ...authed(agent),
+        payload: { controls: [{ action: 'Move', keys: 'WASD' }] },
+      });
+      expect(response.statusCode).toBe(403);
+    }
+    expect((await prisma.game.findUniqueOrThrow({ where: { id: game.id } })).controls).toEqual([]);
+  });
+
+  it('rejects invalid controls payloads', async () => {
+    const game = await createGame();
+    const invalidControls = [
+      'WASD',
+      [{ action: 'Move', keys: 'WASD', html: '<script>alert(1)</script>' }],
+      [{ action: 'x'.repeat(81), keys: 'WASD' }],
+      [{ action: 'Move', keys: 'x'.repeat(121) }],
+      Array.from({ length: 31 }, () => ({ action: 'Move', keys: 'WASD' })),
+    ];
+
+    for (const controls of invalidControls) {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/creator/games/${game.id}`,
+        ...authed(creatorAgent),
+        payload: { controls },
+      });
+      expect(response.statusCode, response.body).toBe(422);
+    }
+  });
+
   it('blocks an unverified creator from changing cover or device metadata', async () => {
     const game = await createGame();
     await prisma.user.update({ where: { id: creator.id }, data: { emailVerifiedAt: null } });
@@ -258,7 +326,7 @@ describe('game covers and supported devices', () => {
     expect(devices.json().error.code).toBe('EMAIL_NOT_VERIFIED');
   });
 
-  it('does not change the published version when cover or device metadata changes', async () => {
+  it('does not change the published version when cover, device, or controls metadata changes', async () => {
     const game = await createGame();
     const version = await prisma.gameVersion.create({
       data: {
@@ -278,6 +346,13 @@ describe('game covers and supported devices', () => {
       payload: { devices: ['desktop', 'tablet'] },
     });
     expect(deviceUpdate.statusCode, deviceUpdate.body).toBe(200);
+    const controlsUpdate = await app.inject({
+      method: 'PATCH',
+      url: `/api/creator/games/${game.id}`,
+      ...authed(creatorAgent),
+      payload: { controls: [{ action: 'Move', keys: 'WASD' }] },
+    });
+    expect(controlsUpdate.statusCode, controlsUpdate.body).toBe(200);
     expect(
       (await prisma.game.findUniqueOrThrow({ where: { id: game.id } })).publishedVersionId,
     ).toBe(version.id);

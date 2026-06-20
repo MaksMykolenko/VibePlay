@@ -5,6 +5,7 @@ import { useGames } from '../hooks/useGames';
 
 import { GameCard } from '../components/GameCard';
 import { CommentsSection } from '../components/CommentsSection';
+import { GameControlsCard } from '../components/GameControlsCard';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 import {
@@ -347,17 +348,9 @@ export const GameDetailPage: React.FC = () => {
                 </div>
 
                 <div style={metaGridStyle}>
-                  {/* Controls Box */}
-                  <div style={metaCardStyle} className="bg-glass">
-                    <h4 style={metaCardTitleStyle}>{t('game.controls')}</h4>
-                    <ul style={listStyle}>
-                      {game.controls.map((ctrl, i) => (
-                        <li key={i} style={listItemStyle}>
-                          {ctrl}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {game.controls.length > 0 && (
+                    <GameControlsCard controls={game.controls} title={t('game.controls')} />
+                  )}
 
                   {/* Compatibility Box */}
                   <div style={metaCardStyle} className="bg-glass">
@@ -722,23 +715,6 @@ const metaCardTitleStyle: React.CSSProperties = {
   color: 'var(--text-primary)',
   letterSpacing: '0.05em',
 };
-
-const listStyle: React.CSSProperties = {
-  listStyle: 'none',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '6px',
-};
-
-const listItemStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: 'var(--text-secondary)',
-  position: 'relative',
-  paddingLeft: '12px',
-};
-
-// In App.css list bullets
-// .listItemStyle::before { content: '•'; position: absolute; left: 0; color: var(--secondary); }
 
 const devicesRowStyle: React.CSSProperties = {
   display: 'flex',

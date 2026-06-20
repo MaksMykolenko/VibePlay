@@ -143,6 +143,20 @@ export const searchQuerySchema = paginationSchema.extend({
 // Creator
 // ---------------------------------------------------------------------------
 
+export const gameControlSchema = z
+  .object({
+    action: z.string().trim().max(80),
+    keys: z.string().trim().max(120),
+  })
+  .strict();
+
+export const gameControlsSchema = z
+  .array(gameControlSchema)
+  .max(30)
+  .transform((controls) =>
+    controls.filter(({ action, keys }) => action.length > 0 || keys.length > 0),
+  );
+
 export const createGameSchema = z
   .object({
     title: z.string().trim().min(3).max(GAME_TITLE_MAX_LENGTH),
@@ -157,7 +171,7 @@ export const createGameSchema = z
       .max(16)
       .transform((devices) => [...new Set(devices)])
       .default(['desktop']),
-    controls: z.array(z.string().trim().min(1).max(120)).max(10).default([]),
+    controls: gameControlsSchema.default([]),
     multiplayer: z.boolean().default(false),
     aiDisclosure: z.enum(AI_DISCLOSURES).default('NONE'),
     toolsUsed: z.array(z.string().trim().min(1).max(40)).max(10).default([]),

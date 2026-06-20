@@ -196,7 +196,7 @@ model Game {
   status             GameStatus        @default(DRAFT)
   tags               String[]          @default([])
   devices            String[]          @default(["desktop"])
-  controls           String[]          @default([])
+  controls           Json              @default("[]")
   toolsUsed          String[]          @default([])
   multiplayer        Boolean           @default(false)
   aiDisclosure       AiDisclosure      @default(NONE)

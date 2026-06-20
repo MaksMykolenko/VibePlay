@@ -95,7 +95,7 @@ async function main() {
       status: 'DRAFT',
       tags: ['canvas', 'fixture', 'demo'],
       devices: ['desktop', 'mouse', 'touch'],
-      controls: ['Mouse / touch — click the orbs'],
+      controls: [{ action: 'Collect orbs', keys: 'Mouse / touch' }],
       multiplayer: false,
       aiDisclosure: 'NONE',
     },

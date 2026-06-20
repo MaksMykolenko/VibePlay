@@ -5,6 +5,7 @@ import type {
   CommentDto,
   CurrentUserDto,
   GameDetailDto,
+  GameControlDto,
   GameListItemDto,
   GameVersionDto,
   GameCoverUploadIntentResponseDto,
@@ -68,7 +69,7 @@ export interface CreateGameInput {
   ageRating?: string;
   tags?: string[];
   devices?: string[];
-  controls?: string[];
+  controls?: GameControlDto[];
   multiplayer?: boolean;
   aiDisclosure?: string;
   toolsUsed?: string[];

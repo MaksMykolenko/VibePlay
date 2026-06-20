@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { SUPPORTED_DEVICES, type SupportedDevice } from '@vibeplay/shared';
+import { SUPPORTED_DEVICES, type GameControlDto, type SupportedDevice } from '@vibeplay/shared';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,12 +14,14 @@ import {
   Smartphone,
   Tablet,
   Gamepad2,
+  Plus,
 } from 'lucide-react';
 import { IS_DEMO } from '../../lib/appMode';
 import { GameVersionManager } from '../../components/GameVersionManager';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/api/errors';
 import { useI18n } from '../../i18n/useI18n';
+import { COMMON_BROWSER_GAME_CONTROLS, FAT_DIMA_SIMULATOR_CONTROLS } from '../../lib/gameControls';
 
 const COVER_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 const COVER_MAX_BYTES = 5 * 1024 * 1024;
@@ -55,6 +57,8 @@ export const EditGame: React.FC = () => {
     );
     return existing.length > 0 ? existing : ['desktop'];
   });
+  const [controls, setControls] = useState<GameControlDto[]>(() => game?.controls ?? []);
+  const controlsGameIdRef = useRef<string | null>(game?.id ?? null);
   const [coverUploading, setCoverUploading] = useState(false);
   const [coverProgress, setCoverProgress] = useState(0);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -65,6 +69,13 @@ export const EditGame: React.FC = () => {
   const [aiTools] = useState<string[]>(() => game?.aiTools ?? []);
   const [version, setVersion] = useState(() => game?.version ?? '1.0.0');
   const [changelogNotes, setChangelogNotes] = useState('');
+
+  useEffect(() => {
+    if (game && controlsGameIdRef.current !== game.id) {
+      setControls(game.controls);
+      controlsGameIdRef.current = game.id;
+    }
+  }, [game]);
 
   useEffect(() => {
     if (!isLoading && !game) {
@@ -141,6 +152,7 @@ export const EditGame: React.FC = () => {
       ...(IS_DEMO ? { coverUrl } : {}),
       screenshots: [screenshotUrl, ...game.screenshots.slice(1)],
       devices,
+      controls,
       multiplayer,
       aiDisclosure,
       aiTools,
@@ -157,6 +169,18 @@ export const EditGame: React.FC = () => {
     setDevices((current) =>
       current.includes(device) ? current.filter((item) => item !== device) : [...current, device],
     );
+  };
+
+  const updateControl = (index: number, field: keyof GameControlDto, value: string) => {
+    setControls((current) =>
+      current.map((control, controlIndex) =>
+        controlIndex === index ? { ...control, [field]: value } : control,
+      ),
+    );
+  };
+
+  const applyControlsPreset = (preset: GameControlDto[]) => {
+    setControls(preset.map((control) => ({ ...control })));
   };
 
   const handleCoverFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -396,6 +420,86 @@ export const EditGame: React.FC = () => {
             })}
           </div>
           <span style={helperStyle}>{t('cover.devicesHelper')}</span>
+        </fieldset>
+
+        <fieldset className="controls-editor">
+          <legend className="form-label">{t('controls.title')}</legend>
+          <p className="controls-editor__helper">{t('controls.publicHelper')}</p>
+          <div className="controls-editor__presets">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => applyControlsPreset(COMMON_BROWSER_GAME_CONTROLS)}
+            >
+              {t('controls.fillDefaults')}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => applyControlsPreset(FAT_DIMA_SIMULATOR_CONTROLS)}
+            >
+              {t('controls.fatDimaPreset')}
+            </button>
+          </div>
+
+          {controls.length > 0 && (
+            <div className="controls-editor__head" aria-hidden="true">
+              <span>{t('controls.action')}</span>
+              <span>{t('controls.keys')}</span>
+              <span />
+            </div>
+          )}
+          <div className="controls-editor__rows">
+            {controls.map((control, index) => (
+              <div className="controls-editor__row" key={index}>
+                <label>
+                  <span>{t('controls.action')}</span>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    value={control.action}
+                    onChange={(event) => updateControl(index, 'action', event.target.value)}
+                    placeholder="Move"
+                    className="form-input"
+                  />
+                </label>
+                <label>
+                  <span>{t('controls.keys')}</span>
+                  <input
+                    type="text"
+                    maxLength={120}
+                    value={control.keys}
+                    onChange={(event) => updateControl(index, 'keys', event.target.value)}
+                    placeholder="WASD"
+                    className="form-input"
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm controls-editor__remove"
+                  onClick={() => setControls((current) => current.filter((_, i) => i !== index))}
+                  aria-label={`${t('controls.remove')} ${index + 1}`}
+                  title={t('controls.remove')}
+                >
+                  <Trash2 size={15} aria-hidden="true" />
+                  <span>{t('controls.remove')}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="controls-editor__footer">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={controls.length >= 30}
+              onClick={() => setControls((current) => [...current, { action: '', keys: '' }])}
+            >
+              <Plus size={15} aria-hidden="true" />
+              {t('controls.add')}
+            </button>
+            <span>{t('controls.example')}</span>
+          </div>
         </fieldset>
 
         <div className="form-group">

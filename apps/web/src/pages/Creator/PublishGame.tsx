@@ -193,7 +193,10 @@ export const PublishGame: React.FC = () => {
     if (deviceMobile) devices.push('mobile');
     if (deviceTablet) devices.push('tablet');
 
-    const controls = [controlKeys, controlAction].filter((c) => c.length > 0);
+    const controls = [
+      { action: 'Movement', keys: controlKeys.trim() },
+      { action: 'Action', keys: controlAction.trim() },
+    ].filter(({ keys }) => keys.length > 0);
 
     try {
       // 1. Create the game draft once. On a retry after a failed upload we reuse
@@ -666,6 +669,7 @@ export const PublishGame: React.FC = () => {
                   <label className="form-label">Keyboard/Steering Controls</label>
                   <input
                     type="text"
+                    maxLength={120}
                     value={controlKeys}
                     onChange={(e) => setControlKeys(e.target.value)}
                     placeholder="e.g. W/A/S/D to move"
@@ -676,6 +680,7 @@ export const PublishGame: React.FC = () => {
                   <label className="form-label">Action / Clicks Controls</label>
                   <input
                     type="text"
+                    maxLength={120}
                     value={controlAction}
                     onChange={(e) => setControlAction(e.target.value)}
                     placeholder="e.g. Left click to fire"

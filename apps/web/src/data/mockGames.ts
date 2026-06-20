@@ -1,5 +1,8 @@
 import type { Game } from '../types';
 
+const legacyControls = (...keys: string[]): Game['controls'] =>
+  keys.map((value) => ({ action: '', keys: value }));
+
 export const mockGames: Game[] = [
   {
     id: 'game_neon_drift',
@@ -24,7 +27,11 @@ export const mockGames: Game[] = [
       'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
     ],
     devices: ['desktop', 'keyboard', 'gamepad'],
-    controls: ['W/A/S/D or Arrow keys to steer', 'Space for Handbrake', 'C to change camera view'],
+    controls: legacyControls(
+      'W/A/S/D or Arrow keys to steer',
+      'Space for Handbrake',
+      'C to change camera view',
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Claude', 'Cursor'],
@@ -71,11 +78,11 @@ export const mockGames: Game[] = [
       'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800',
     ],
     devices: ['desktop', 'tablet', 'mouse', 'touch'],
-    controls: [
+    controls: legacyControls(
       'Left Click to select workers and place structures',
       'Drag mouse to pan view',
       'Scroll wheel to zoom',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -121,12 +128,12 @@ export const mockGames: Game[] = [
       'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800',
     ],
     devices: ['desktop', 'keyboard', 'mouse'],
-    controls: [
+    controls: legacyControls(
       'W/A/S/D or Arrow keys to walk',
       'Shift to sprint',
       'Mouse to look around',
       'F to toggle flashlight',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'generated',
     aiTools: ['Claude', 'Gemini', 'Midjourney', 'Suno'],
@@ -167,7 +174,11 @@ export const mockGames: Game[] = [
       'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=800',
     ],
     devices: ['desktop', 'keyboard'],
-    controls: ['Arrow keys to steer and jump', 'A/D to lean left/right', 'Space for EMP blast'],
+    controls: legacyControls(
+      'Arrow keys to steer and jump',
+      'A/D to lean left/right',
+      'Space for EMP blast',
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['GPT-4', 'Cursor'],
@@ -203,7 +214,10 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600',
     screenshots: ['https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'touch', 'mouse'],
-    controls: ['Swipe/Drag items to match blocks', 'Tap bottom potions to cast special spells'],
+    controls: legacyControls(
+      'Swipe/Drag items to match blocks',
+      'Tap bottom potions to cast special spells',
+    ),
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -236,12 +250,12 @@ export const mockGames: Game[] = [
       'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800',
     ],
     devices: ['desktop', 'tablet', 'keyboard', 'mouse', 'touch'],
-    controls: [
+    controls: legacyControls(
       'W/A/S/D or Arrow keys to move',
       'Space to jump',
       'Left click to fire building block',
       'Right click to attract block',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Claude', 'Gemini'],
@@ -279,11 +293,11 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600',
     screenshots: ['https://images.unsplash.com/photo-1497366216548-37526070297c?w=800'],
     devices: ['desktop', 'mobile', 'keyboard', 'touch'],
-    controls: [
+    controls: legacyControls(
       'Tap screen or use arrow keys to sneak around',
       'Tap objects to hide/interact',
       'Space bar to throw coffee mug distraction',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -319,11 +333,11 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600',
     screenshots: ['https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'mouse', 'touch'],
-    controls: [
+    controls: legacyControls(
       'Space or Tap screen to reverse global gravity direction',
       'Drag mouse to create gravity fields',
       'R to restart level',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['GPT-4', 'Cursor'],
@@ -358,11 +372,11 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=600',
     screenshots: ['https://images.unsplash.com/photo-1616788494707-ec28f08d05a1?w=800'],
     devices: ['desktop', 'mobile', 'keyboard', 'touch'],
-    controls: [
+    controls: legacyControls(
       'Left/Right arrow or tap sides of screen to change lanes',
       'Up arrow to accelerate boost',
       'Down arrow to brake',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Claude'],
@@ -399,11 +413,11 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=600',
     screenshots: ['https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800'],
     devices: ['desktop', 'mobile', 'tablet', 'touch', 'mouse'],
-    controls: [
+    controls: legacyControls(
       'Click/Tap plots to harvest or plant seeds',
       'Drag items to farm containers',
       'Click shop to purchase upgrades',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'no',
     aiTools: [],
@@ -435,12 +449,12 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600',
     screenshots: ['https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800'],
     devices: ['desktop', 'keyboard', 'mouse'],
-    controls: [
+    controls: legacyControls(
       'W/A/S/D to slide robot',
       'Mouse cursor to aim laser gun',
       'Left click to shoot',
       'Right click to deploy bubble shield',
-    ],
+    ),
     multiplayer: true,
     aiDisclosure: 'assisted',
     aiTools: ['Claude', 'Gemini'],
@@ -475,11 +489,11 @@ export const mockGames: Game[] = [
     coverUrl: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=600',
     screenshots: ['https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800'],
     devices: ['desktop', 'mouse'],
-    controls: [
+    controls: legacyControls(
       'Drag frequency dials with mouse',
       'Toggle filter switches',
       'Click DECODE when waveforms align',
-    ],
+    ),
     multiplayer: false,
     aiDisclosure: 'assisted',
     aiTools: ['Cursor', 'GPT-4'],

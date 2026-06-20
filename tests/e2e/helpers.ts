@@ -143,7 +143,7 @@ export async function uploadVersion(
       category: 'Arcade',
       tags: ['e2e'],
       devices: ['desktop'],
-      controls: ['mouse'],
+      controls: [{ action: 'Play', keys: 'Mouse' }],
       multiplayer: false,
       aiDisclosure: 'NONE',
       toolsUsed: [],

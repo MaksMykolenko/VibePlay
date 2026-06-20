@@ -1,3 +1,5 @@
+import type { GameControlDto } from '@vibeplay/shared';
+
 export type UserRole = 'player' | 'creator' | 'admin' | 'owner';
 
 export interface User {
@@ -40,7 +42,7 @@ export interface Game {
   coverUrl: string;
   screenshots: string[];
   devices: string[];
-  controls: string[];
+  controls: GameControlDto[];
   multiplayer: boolean;
   aiDisclosure: 'no' | 'assisted' | 'generated';
   aiTools: string[];
