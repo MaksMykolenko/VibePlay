@@ -8,6 +8,7 @@ import {
   uploadIntentSchema,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
+import { getCreatorAccess } from '../lib/entitlements.js';
 import { requireCreator, requireOwnershipOrAdmin, requireVerifiedEmail } from '../lib/guards.js';
 import { rlPolicy } from '../lib/rateLimit.js';
 import { toGameDetail, toGameVersionDto } from '../lib/serializers.js';
@@ -31,7 +32,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     const games = await prisma.game.findMany({
       where: { creatorId: user.id },
       include: {
-        creator: true,
+        creator: { include: { subscription: true } },
         screenshots: true,
         publishedVersion: true,
         versions: { orderBy: { createdAt: 'desc' } },
@@ -77,7 +78,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
           },
         },
         include: {
-          creator: true,
+          creator: { include: { subscription: true } },
           screenshots: true,
           publishedVersion: true,
           versions: true,
@@ -101,7 +102,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     const game = await prisma.game.findUnique({
       where: { id: req.params.gameId },
       include: {
-        creator: true,
+        creator: { include: { subscription: true } },
         screenshots: true,
         publishedVersion: true,
         versions: { orderBy: { createdAt: 'desc' } },
@@ -156,7 +157,7 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
             : {}),
         },
         include: {
-          creator: true,
+          creator: { include: { subscription: true } },
           screenshots: true,
           publishedVersion: true,
           versions: true,
@@ -171,11 +172,35 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
 
   app.post<{ Params: { gameId: string } }>('/creator/games/:gameId/versions', async (req) => {
     requireVerifiedEmail(req);
-    requireCreator(req);
+    const user = requireCreator(req);
     const body = parse(createVersionSchema, req.body);
     const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
     if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
     requireOwnershipOrAdmin(req, game.creatorId);
+    const access = await getCreatorAccess(prisma, env, user.id);
+    if (!access.bypassBillingLimits) {
+      const [versionCount, publishedCount] = await Promise.all([
+        prisma.gameVersion.count({ where: { gameId: game.id } }),
+        game.publishedVersionId
+          ? Promise.resolve(0)
+          : prisma.game.count({ where: { creatorId: user.id, status: 'PUBLISHED' } }),
+      ]);
+      if (versionCount >= access.billing.entitlements.maxGameVersionsPerGame) {
+        throw errors.planLimit(
+          `Your plan allows ${access.billing.entitlements.maxGameVersionsPerGame} versions per game.`,
+          { limit: 'gameVersions', billing: access.billing },
+        );
+      }
+      if (
+        !game.publishedVersionId &&
+        publishedCount >= access.billing.entitlements.maxPublishedGames
+      ) {
+        throw errors.planLimit(
+          `Your plan allows ${access.billing.entitlements.maxPublishedGames} published game. Upgrade to Creator Plus to publish more.`,
+          { limit: 'publishedGames', billing: access.billing },
+        );
+      }
+    }
     const active = await prisma.gameVersion.findFirst({
       where: {
         gameId: game.id,
@@ -222,8 +247,22 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       const user = requireVerifiedEmail(req);
       requireCreator(req);
       const body = parse(uploadIntentSchema, req.body);
-      if (body.fileSize > env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024) {
+      const access = await getCreatorAccess(prisma, env, user.id);
+      const infrastructureMax = env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024;
+      if (body.fileSize > infrastructureMax) {
         throw errors.tooLarge('ZIP exceeds the configured upload limit');
+      }
+      if (
+        !access.bypassBillingLimits &&
+        body.fileSize > access.billing.entitlements.maxUploadBytes
+      ) {
+        throw errors.planLimit(
+          'Free creator ZIP uploads are limited to 50 MB. Upgrade to Creator Plus for uploads up to 100 MB.',
+          {
+            limit: 'uploadSize',
+            billing: access.billing,
+          },
+        );
       }
       const version = await prisma.gameVersion.findUnique({
         where: { id: body.versionId },
@@ -232,7 +271,9 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       if (!version || version.gameId !== req.params.gameId) {
         throw errors.notFound('VERSION_NOT_FOUND', 'Version not found');
       }
-      if (version.game.creatorId !== user.id && user.role !== 'ADMIN') throw errors.forbidden();
+      if (version.game.creatorId !== user.id && user.role !== 'ADMIN' && user.role !== 'OWNER') {
+        throw errors.forbidden();
+      }
       if (version.status !== 'UPLOADING' || version.upload) {
         throw errors.conflict('Upload intent already created or version is not uploadable');
       }
@@ -259,7 +300,9 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
         method: 'PUT' as const,
         headers: { 'content-type': 'application/zip' },
         expiresAt: upload.expiresAt.toISOString(),
-        maxBytes: env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024,
+        maxBytes: access.bypassBillingLimits
+          ? infrastructureMax
+          : access.billing.entitlements.maxUploadBytes,
       };
     },
   );
@@ -280,9 +323,14 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       });
       if (!upload) throw errors.notFound('UPLOAD_NOT_FOUND', 'Upload not found');
       // Ownership: only the owning creator (or an admin) may upload to it.
-      if (upload.gameVersion.game.creatorId !== user.id && user.role !== 'ADMIN') {
+      if (
+        upload.gameVersion.game.creatorId !== user.id &&
+        user.role !== 'ADMIN' &&
+        user.role !== 'OWNER'
+      ) {
         throw errors.forbidden();
       }
+      const access = await getCreatorAccess(prisma, env, user.id);
       if (upload.expiresAt < new Date()) throw errors.conflict('Upload intent expired');
       if (upload.completedAt || upload.gameVersion.status !== 'UPLOADING') {
         throw errors.conflict('Upload was already completed');
@@ -291,6 +339,15 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       // Enforce the max size (bodyLimit also rejects oversized bodies with 413).
       if (req.body.length > env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024) {
         throw errors.tooLarge('ZIP exceeds the configured upload limit');
+      }
+      if (
+        !access.bypassBillingLimits &&
+        req.body.length > access.billing.entitlements.maxUploadBytes
+      ) {
+        throw errors.planLimit('This ZIP exceeds your current plan upload limit.', {
+          limit: 'uploadSize',
+          billing: access.billing,
+        });
       }
       if (BigInt(req.body.length) !== upload.declaredSize) {
         throw errors.validation([{ path: 'body', message: 'Uploaded size does not match intent' }]);
@@ -428,7 +485,11 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       include: { gameVersion: { include: { game: true } } },
     });
     if (!upload) throw errors.notFound('UPLOAD_NOT_FOUND', 'Upload not found');
-    if (upload.gameVersion.game.creatorId !== user.id && user.role !== 'ADMIN') {
+    if (
+      upload.gameVersion.game.creatorId !== user.id &&
+      user.role !== 'ADMIN' &&
+      user.role !== 'OWNER'
+    ) {
       throw errors.forbidden();
     }
     return {
@@ -436,6 +497,81 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       versionId: upload.gameVersion.id,
       versionStatus: upload.gameVersion.status,
       validationReport: upload.gameVersion.validationReport,
+    };
+  });
+
+  app.get('/creator/analytics', async (req) => {
+    const user = requireCreator(req);
+    const access = await getCreatorAccess(prisma, env, user.id);
+    const games = await prisma.game.findMany({
+      where: { creatorId: user.id },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        playsCount: true,
+        likesCount: true,
+      },
+    });
+    const totals = {
+      games: games.length,
+      publishedGames: games.filter((game) => game.status === 'PUBLISHED').length,
+      plays: games.reduce((sum, game) => sum + game.playsCount, 0),
+      likes: games.reduce((sum, game) => sum + game.likesCount, 0),
+    };
+    if (!access.billing.entitlements.advancedAnalytics && !access.bypassBillingLimits) {
+      return { advanced: false, totals, details: null };
+    }
+
+    const since = new Date();
+    since.setUTCDate(since.getUTCDate() - 29);
+    since.setUTCHours(0, 0, 0, 0);
+    const sessions = await prisma.playSession.findMany({
+      where: { game: { creatorId: user.id }, startedAt: { gte: since } },
+      select: { gameId: true, userId: true, startedAt: true, durationSeconds: true },
+    });
+    const daily = new Map<string, number>();
+    for (let offset = 0; offset < 30; offset += 1) {
+      const day = new Date(since);
+      day.setUTCDate(day.getUTCDate() + offset);
+      daily.set(day.toISOString().slice(0, 10), 0);
+    }
+    const gameStats = new Map<string, { plays: number; duration: number; completed: number }>();
+    let duration = 0;
+    let completed = 0;
+    for (const session of sessions) {
+      const day = session.startedAt.toISOString().slice(0, 10);
+      daily.set(day, (daily.get(day) ?? 0) + 1);
+      const stat = gameStats.get(session.gameId) ?? { plays: 0, duration: 0, completed: 0 };
+      stat.plays += 1;
+      if (session.durationSeconds !== null) {
+        duration += session.durationSeconds;
+        completed += 1;
+        stat.duration += session.durationSeconds;
+        stat.completed += 1;
+      }
+      gameStats.set(session.gameId, stat);
+    }
+    return {
+      advanced: true,
+      totals,
+      details: {
+        averageSessionSeconds: completed > 0 ? Math.round(duration / completed) : 0,
+        uniquePlayers: new Set(
+          sessions.flatMap((session) => (session.userId ? [session.userId] : [])),
+        ).size,
+        dailyPlays: [...daily].map(([date, plays]) => ({ date, plays })),
+        games: games.map((game) => {
+          const stat = gameStats.get(game.id) ?? { plays: 0, duration: 0, completed: 0 };
+          return {
+            gameId: game.id,
+            title: game.title,
+            plays: stat.plays,
+            averageSessionSeconds:
+              stat.completed > 0 ? Math.round(stat.duration / stat.completed) : 0,
+          };
+        }),
+      },
     };
   });
 }

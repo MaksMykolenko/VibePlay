@@ -1,9 +1,11 @@
 import type {
   AuditLogEntryDto,
   AvatarUploadIntentResponseDto,
+  BillingMeDto,
   NotificationPrefsDto,
   CommentDto,
   CurrentUserDto,
+  CreatorAnalyticsDto,
   GameDetailDto,
   GameControlDto,
   GameListItemDto,
@@ -110,6 +112,7 @@ export interface AdminUsersParams {
 export interface ModerationQueueEntry {
   version: GameVersionDto;
   game: GameDetailDto;
+  priority: boolean;
 }
 
 export interface FeedbackItem {
@@ -202,6 +205,11 @@ export interface ApiClient {
     page?: string;
   }): Promise<void>;
 
+  // billing
+  billingMe(): Promise<BillingMeDto>;
+  createBillingCheckout(): Promise<{ url: string }>;
+  createBillingPortal(): Promise<{ url: string }>;
+
   // notifications
   listNotifications(): Promise<NotificationDto[]>;
   markNotificationRead(id: string): Promise<void>;
@@ -239,6 +247,7 @@ export interface ApiClient {
   uploadZipDirect(uploadId: string, file: Blob): Promise<UploadStatusDto>;
   completeUpload(uploadId: string): Promise<UploadStatusDto>;
   getUploadStatus(uploadId: string): Promise<UploadStatusDto>;
+  creatorAnalytics(): Promise<CreatorAnalyticsDto>;
 
   // admin
   adminModerationQueue(): Promise<ModerationQueueEntry[]>;

@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import type { BillingMeDto } from '@vibeplay/shared';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
@@ -7,7 +8,6 @@ import { api, ApiClientError } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
 import { versionStatusLabel } from '../../lib/versionStatus';
 import { useI18n } from '../../i18n/useI18n';
-import { DEFAULT_UPLOAD_LIMITS } from '@vibeplay/shared';
 import {
   FileCode,
   UploadCloud,
@@ -36,13 +36,14 @@ function uploadErrorMessage(error: unknown): string {
 
 export const PublishGame: React.FC = () => {
   const { currentUser } = useAuth();
-  const { createGame, submitForReview } = useGames();
+  const { games, createGame, submitForReview } = useGames();
   const navigate = useNavigate();
   const { t } = useI18n();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [billing, setBilling] = useState<BillingMeDto | null>(null);
   // Persisted across retries so a failed upload does NOT spawn duplicate
   // game/version/upload-intent records — we reuse the existing draft instead.
   const draftRef = useRef<{ gameId?: string; versionId?: string; uploadId?: string }>({});
@@ -82,6 +83,14 @@ export const PublishGame: React.FC = () => {
   const [aiDisclosure, setAiDisclosure] = useState<'no' | 'assisted' | 'generated'>('no');
   const [aiTools, setAiTools] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (IS_DEMO) return;
+    void api
+      .billingMe()
+      .then(setBilling)
+      .catch(() => {});
+  }, []);
+
   // Simulation upload build
   const handleZipFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -92,8 +101,13 @@ export const PublishGame: React.FC = () => {
       return;
     }
 
-    if (file.size > DEFAULT_UPLOAD_LIMITS.maxCompressedBytes) {
-      toast.danger(t('publish.archiveTooLarge'));
+    const maxUploadBytes = billing?.entitlements.maxUploadBytes ?? 100 * 1024 * 1024;
+    if (file.size > maxUploadBytes) {
+      toast.danger(
+        billing?.plan === 'FREE'
+          ? t('billing.uploadLimitPrompt')
+          : t('publish.archiveTooLarge'),
+      );
       e.target.value = '';
       return;
     }
@@ -340,6 +354,22 @@ export const PublishGame: React.FC = () => {
 
   return (
     <div style={wrapperStyle}>
+      {billing?.plan === 'FREE' &&
+        currentUser &&
+        games.filter((game) => game.creatorId === currentUser.id && game.status === 'published')
+          .length >= billing.entitlements.maxPublishedGames && (
+          <div style={planLimitNoticeStyle}>
+            <AlertTriangle size={19} color="var(--warning)" />
+            <span>{t('billing.publishedLimitPrompt')}</span>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate('/settings/billing')}
+            >
+              {t('billing.upgrade')}
+            </button>
+          </div>
+        )}
       {/* Wizard Step Tracker Header */}
       <div style={stepsTrackerStyle} className="bg-glass">
         {[1, 2, 3, 4, 5, 6].map((num) => (
@@ -1182,6 +1212,19 @@ const noticeBoxStyle: React.CSSProperties = {
   border: '1px solid var(--primary-border)',
   backgroundColor: 'var(--warning-soft)',
   marginTop: '1.5rem',
+};
+
+const planLimitNoticeStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  gap: '0.75rem',
+  padding: '0.9rem 1rem',
+  color: 'var(--text-secondary)',
+  background: 'var(--warning-soft)',
+  border: '1px solid var(--primary-border)',
+  borderRadius: '10px',
+  fontSize: '0.82rem',
 };
 
 const wizardFooterStyle: React.CSSProperties = {

@@ -13,6 +13,7 @@ export interface User {
   avatar: string;
   joinDate: string;
   followersCount: number;
+  creatorPlus: boolean;
   isSuspended?: boolean;
 }
 
@@ -32,6 +33,7 @@ export interface Game {
   creatorName: string;
   creatorUsername?: string;
   creatorAvatar: string;
+  creatorPlus?: boolean;
   shortDescription: string;
   fullDescription: string;
   category: string;
@@ -56,6 +58,7 @@ export interface Game {
   fileSize?: string; // e.g., '14.2 MB'
   fileName?: string; // e.g., 'neon-drift-v1.zip'
   moderationVersionId?: string;
+  priorityModeration?: boolean;
   validationReport?: import('@vibeplay/shared').ValidationReportDto;
 }
 

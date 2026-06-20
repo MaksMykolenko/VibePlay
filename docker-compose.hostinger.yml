@@ -181,6 +181,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in .env}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?set in .env}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set in .env}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?set in .env}
+      STRIPE_CREATOR_PLUS_PRICE_ID: ${STRIPE_CREATOR_PLUS_PRICE_ID:?set in .env}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://vibeplay.games}
       API_PORT: '3000'
       API_HOST: '0.0.0.0'
       TRUST_PROXY: 'true'
@@ -197,7 +201,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-VibePlay <no-reply@vibeplay.games>}
       INVITE_ONLY: ${INVITE_ONLY:-true}
-      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
       SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:
       test:
@@ -230,6 +234,7 @@ services:
       SCAN_DRIVER: clamav
       CLAMAV_HOST: clamav
       CLAMAV_PORT: '3310'
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
       WORKER_HEALTH_PORT: '3002'
     healthcheck:
       test:

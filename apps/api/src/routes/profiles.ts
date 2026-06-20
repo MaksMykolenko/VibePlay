@@ -48,6 +48,7 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
         ],
       },
       orderBy: { createdAt: 'desc' },
+      include: { subscription: true },
       skip: (query.page - 1) * query.perPage,
       take: query.perPage,
     });
@@ -59,7 +60,10 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
     const parsed = usernameSchema.safeParse(req.params.username);
     if (!parsed.success) throw errors.notFound('USER_NOT_FOUND', 'Profile not found');
 
-    const user = await prisma.user.findUnique({ where: { username: parsed.data } });
+    const user = await prisma.user.findUnique({
+      where: { username: parsed.data },
+      include: { subscription: true },
+    });
     const viewer = req.currentUser;
     const visible =
       user && (user.status === 'ACTIVE' || viewer?.id === user.id || viewer?.role === 'ADMIN');
@@ -67,7 +71,7 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
 
     const games = await prisma.game.findMany({
       where: { creatorId: user.id, status: 'PUBLISHED' },
-      include: { creator: true },
+      include: { creator: { include: { subscription: true } } },
       orderBy: { publishedAt: 'desc' },
       take: 12,
     });
@@ -187,38 +191,42 @@ export async function registerProfileRoutes(app: FastifyInstance): Promise<void>
 
   // 3) Complete: verify the object exists and belongs to the caller, then point
   //    the user's avatar at it (and best-effort delete the previous object).
-  app.post('/me/avatar/complete', { config: { rateLimit: rlPolicy('avatarUpload') } }, async (req) => {
-    const user = requireActiveUser(req);
-    const body = parse(avatarCompleteSchema, req.body);
-    if (!isOwnAvatarKey(user.id, body.objectKey)) {
-      throw errors.forbidden('That object key is not yours');
-    }
-    const object = await storage.headObject(env.S3_AVATARS_BUCKET, body.objectKey);
-    if (!object) throw errors.notFound('AVATAR_NOT_FOUND', 'Uploaded avatar was not found');
-    if (object.size > maxAvatarBytes) {
-      throw errors.tooLarge('Uploaded avatar exceeds the size limit');
-    }
-    const previousKey = user.avatarObjectKey;
-    const updated = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        avatarObjectKey: body.objectKey,
-        avatarUrl: avatarServingUrl(env.API_ORIGIN, user.id, body.objectKey),
-      },
-    });
-    if (previousKey && previousKey !== body.objectKey) {
-      await storage.deleteObject(env.S3_AVATARS_BUCKET, previousKey).catch(() => {});
-    }
-    await audit(prisma, {
-      actorId: user.id,
-      action: 'avatar.updated',
-      targetType: 'USER',
-      targetId: user.id,
-      req,
-      secret: env.SESSION_SECRET,
-    });
-    return { user: toCurrentUser(updated) };
-  });
+  app.post(
+    '/me/avatar/complete',
+    { config: { rateLimit: rlPolicy('avatarUpload') } },
+    async (req) => {
+      const user = requireActiveUser(req);
+      const body = parse(avatarCompleteSchema, req.body);
+      if (!isOwnAvatarKey(user.id, body.objectKey)) {
+        throw errors.forbidden('That object key is not yours');
+      }
+      const object = await storage.headObject(env.S3_AVATARS_BUCKET, body.objectKey);
+      if (!object) throw errors.notFound('AVATAR_NOT_FOUND', 'Uploaded avatar was not found');
+      if (object.size > maxAvatarBytes) {
+        throw errors.tooLarge('Uploaded avatar exceeds the size limit');
+      }
+      const previousKey = user.avatarObjectKey;
+      const updated = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          avatarObjectKey: body.objectKey,
+          avatarUrl: avatarServingUrl(env.API_ORIGIN, user.id, body.objectKey),
+        },
+      });
+      if (previousKey && previousKey !== body.objectKey) {
+        await storage.deleteObject(env.S3_AVATARS_BUCKET, previousKey).catch(() => {});
+      }
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'avatar.updated',
+        targetType: 'USER',
+        targetId: user.id,
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      return { user: toCurrentUser(updated) };
+    },
+  );
 
   // Remove the uploaded avatar (resets to the initials / external-URL fallback).
   app.delete('/me/avatar', async (req) => {

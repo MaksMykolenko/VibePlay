@@ -29,6 +29,7 @@ export const ERROR_CODES = [
   'OWNERSHIP_REQUIRED',
   'SELF_MODERATION_FORBIDDEN',
   'PAYLOAD_TOO_LARGE',
+  'PLAN_LIMIT_REACHED',
   'RATE_LIMITED',
   'NOT_AVAILABLE_IN_BETA',
   'NOT_AVAILABLE_IN_DEMO',
@@ -79,6 +80,8 @@ export const errors = {
   invalidTransition: (from: string, to: string) =>
     new ApiError(409, 'INVALID_STATE_TRANSITION', `Cannot transition from ${from} to ${to}`),
   tooLarge: (message = 'Payload too large') => new ApiError(413, 'PAYLOAD_TOO_LARGE', message),
+  planLimit: (message: string, details?: unknown) =>
+    new ApiError(409, 'PLAN_LIMIT_REACHED', message, details),
   rateLimited: () => new ApiError(429, 'RATE_LIMITED', 'Too many requests, slow down'),
   internal: () => new ApiError(500, 'INTERNAL_ERROR', 'Internal server error'),
 };

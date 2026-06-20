@@ -60,6 +60,7 @@ function dtoToLegacyUser(dto: CurrentUserDto): User {
     avatar: dto.avatarUrl ?? '',
     joinDate: dto.createdAt.slice(0, 10),
     followersCount: 0,
+    creatorPlus: dto.creatorPlus,
   };
 }
 
@@ -193,11 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   const becomeCreator = useCallback((): string | null => {
-    if (
-      account?.role === 'CREATOR' ||
-      account?.role === 'ADMIN' ||
-      account?.role === 'OWNER'
-    ) {
+    if (account?.role === 'CREATOR' || account?.role === 'ADMIN' || account?.role === 'OWNER') {
       return null;
     }
     if (IS_DEMO) {

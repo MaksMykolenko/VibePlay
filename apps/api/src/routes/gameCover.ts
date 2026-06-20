@@ -137,7 +137,7 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
           coverUrl: coverServingUrl(env.API_ORIGIN, game.id, body.objectKey),
         },
         include: {
-          creator: true,
+          creator: { include: { subscription: true } },
           screenshots: true,
           publishedVersion: true,
           versions: true,

@@ -23,7 +23,9 @@ export const AdminModeration: React.FC = () => {
   // parent game's status, so a DRAFT game with a READY_FOR_REVIEW build still shows
   // up here. We key off the moderation version id (not the game status) to honour
   // that — requiring Game.status === 'pending' would hide DRAFT-game builds.
-  const pendingGames = games.filter((g) => Boolean(g.moderationVersionId));
+  const pendingGames = games
+    .filter((g) => Boolean(g.moderationVersionId))
+    .sort((a, b) => Number(Boolean(b.priorityModeration)) - Number(Boolean(a.priorityModeration)));
 
   const selectedGame =
     pendingGames.find((game) => game.id === searchParams.get('game')) ?? pendingGames[0] ?? null;
@@ -35,9 +37,7 @@ export const AdminModeration: React.FC = () => {
   const handleApprove = () => {
     if (!selectedGame || !currentUser) return;
 
-    if (
-      window.confirm(t('admin.approveConfirm', { title: selectedGame.title }))
-    ) {
+    if (window.confirm(t('admin.approveConfirm', { title: selectedGame.title }))) {
       approveGame(selectedGame.id, currentUser.id, currentUser.displayName);
       toast.success(t('admin.approvedToast', { title: selectedGame.title }));
       setSearchParams({});
@@ -158,6 +158,9 @@ export const AdminModeration: React.FC = () => {
                   <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
                     {t('admin.pending')}
                   </span>
+                  {g.priorityModeration && (
+                    <span className="creator-plus-badge">{t('billing.priority')}</span>
+                  )}
                 </div>
               ))
             )}
@@ -175,7 +178,10 @@ export const AdminModeration: React.FC = () => {
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}
                   >
-                    {t('admin.uploadedBy', { creator: selectedGame.creatorName, category: selectedGame.category })}
+                    {t('admin.uploadedBy', {
+                      creator: selectedGame.creatorName,
+                      category: selectedGame.category,
+                    })}
                   </div>
                 </div>
 
@@ -221,9 +227,7 @@ export const AdminModeration: React.FC = () => {
                     </>
                   ) : (
                     <div style={logLineStyle}>
-                      {IS_DEMO
-                        ? t('admin.noValidationReportDemo')
-                        : t('admin.noValidationReport')}
+                      {IS_DEMO ? t('admin.noValidationReportDemo') : t('admin.noValidationReport')}
                     </div>
                   )}
                 </div>
@@ -236,8 +240,12 @@ export const AdminModeration: React.FC = () => {
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>{t('admin.zipName', { name: selectedGame.fileName || t('admin.noneListed') })}</div>
-                    <div>{t('admin.zipSize', { size: selectedGame.fileSize || t('admin.noneListed') })}</div>
+                    <div>
+                      {t('admin.zipName', { name: selectedGame.fileName || t('admin.noneListed') })}
+                    </div>
+                    <div>
+                      {t('admin.zipSize', { size: selectedGame.fileSize || t('admin.noneListed') })}
+                    </div>
                     <div>{t('admin.buildVersion', { version: selectedGame.version })}</div>
                   </div>
                 </div>
@@ -247,9 +255,18 @@ export const AdminModeration: React.FC = () => {
                   <div
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
-                    <div>{t('admin.aiDisclosureType', { type: selectedGame.aiDisclosure.toUpperCase() })}</div>
                     <div>
-                      {t('admin.aiToolsList', { tools: selectedGame.aiTools.length > 0 ? selectedGame.aiTools.join(', ') : t('admin.noneListed') })}
+                      {t('admin.aiDisclosureType', {
+                        type: selectedGame.aiDisclosure.toUpperCase(),
+                      })}
+                    </div>
+                    <div>
+                      {t('admin.aiToolsList', {
+                        tools:
+                          selectedGame.aiTools.length > 0
+                            ? selectedGame.aiTools.join(', ')
+                            : t('admin.noneListed'),
+                      })}
                     </div>
                   </div>
                 </div>
@@ -260,7 +277,11 @@ export const AdminModeration: React.FC = () => {
                     style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}
                   >
                     <div>{t('admin.inputs', { inputs: selectedGame.devices.join(', ') })}</div>
-                    <div>{t('admin.multiplayerText', { multiplayer: selectedGame.multiplayer ? t('admin.yes') : t('admin.no') })}</div>
+                    <div>
+                      {t('admin.multiplayerText', {
+                        multiplayer: selectedGame.multiplayer ? t('admin.yes') : t('admin.no'),
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

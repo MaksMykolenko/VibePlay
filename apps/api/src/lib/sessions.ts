@@ -82,7 +82,7 @@ export async function resolveSession(
 
   const session = await prisma.session.findUnique({
     where: { tokenHash: hashToken(raw, env.SESSION_SECRET) },
-    include: { user: true },
+    include: { user: { include: { subscription: true } } },
   });
   if (!session) return null;
   if (session.revokedAt) return null;

@@ -6,6 +6,7 @@ import { useGames } from '../hooks/useGames';
 import { GameCard } from '../components/GameCard';
 import { CommentsSection } from '../components/CommentsSection';
 import { GameControlsCard } from '../components/GameControlsCard';
+import { CreatorPlusBadge } from '../components/CreatorPlusBadge';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 import {
@@ -231,6 +232,7 @@ export const GameDetailPage: React.FC = () => {
                     @{game.creatorUsername ?? game.creatorName}
                   </Link>
                 </span>
+                {game.creatorPlus && <CreatorPlusBadge />}
               </div>
             </div>
 

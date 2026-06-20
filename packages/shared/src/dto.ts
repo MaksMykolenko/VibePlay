@@ -22,7 +22,53 @@ export interface PublicUserDto {
   avatarUrl: string | null;
   bio: string;
   role: UserRole;
+  creatorPlus: boolean;
   createdAt: string;
+}
+
+export type BillingPlan = 'FREE' | 'CREATOR_PLUS';
+export type BillingStatus =
+  | 'active'
+  | 'trialing'
+  | 'past_due'
+  | 'canceled'
+  | 'incomplete'
+  | 'incomplete_expired'
+  | 'unpaid'
+  | 'paused';
+
+export interface CreatorEntitlementsDto {
+  maxPublishedGames: number;
+  maxGameVersionsPerGame: number;
+  maxUploadBytes: number;
+  advancedAnalytics: boolean;
+  creatorBadge: boolean;
+  priorityModerationLabel: boolean;
+  enhancedStorefront: boolean;
+}
+
+export interface BillingMeDto {
+  plan: BillingPlan;
+  status: BillingStatus | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  entitlements: CreatorEntitlementsDto;
+}
+
+export interface CreatorAnalyticsDto {
+  advanced: boolean;
+  totals: {
+    games: number;
+    publishedGames: number;
+    plays: number;
+    likes: number;
+  };
+  details: {
+    averageSessionSeconds: number;
+    uniquePlayers: number;
+    dailyPlays: { date: string; plays: number }[];
+    games: { gameId: string; title: string; plays: number; averageSessionSeconds: number }[];
+  } | null;
 }
 
 /** The authenticated user's own view. */

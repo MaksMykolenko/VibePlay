@@ -1,8 +1,10 @@
 import type {
   AuditLogEntryDto,
   AvatarUploadIntentResponseDto,
+  BillingMeDto,
   CommentDto,
   CurrentUserDto,
+  CreatorAnalyticsDto,
   GameDetailDto,
   GameListItemDto,
   GameVersionDto,
@@ -261,6 +263,17 @@ export function createHttpClient(): ApiClient {
       await request('/feedback', { method: 'POST', body: input });
     },
 
+    // ----- billing -----
+    async billingMe() {
+      return request<BillingMeDto>('/billing/me');
+    },
+    async createBillingCheckout() {
+      return request<{ url: string }>('/billing/checkout', { method: 'POST', body: {} });
+    },
+    async createBillingPortal() {
+      return request<{ url: string }>('/billing/portal', { method: 'POST', body: {} });
+    },
+
     // ----- catalog -----
     async listGames(params: GamesListParams) {
       return request<PaginatedDto<GameListItemDto>>(`/games${qs({ ...params })}`);
@@ -460,6 +473,9 @@ export function createHttpClient(): ApiClient {
     },
     async getUploadStatus(uploadId) {
       return request<UploadStatusDto>(`/uploads/${uploadId}/status`);
+    },
+    async creatorAnalytics() {
+      return request<CreatorAnalyticsDto>('/creator/analytics');
     },
 
     // ----- admin -----

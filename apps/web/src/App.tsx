@@ -90,6 +90,7 @@ function App() {
                   <Route path="game/:slug" element={<GameDetailPage />} />
                   <Route path="profile/:username" element={<ProfilePage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="settings/billing" element={<SettingsPage />} />
                   <Route path="library" element={<LibraryPage />} />
                   <Route path="library/favorites" element={<LibraryPage />} />
                   <Route path="library/liked" element={<LibraryPage />} />

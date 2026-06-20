@@ -133,7 +133,10 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
   app.post('/login', { config: { rateLimit: rlPolicy('login') } }, async (req, reply) => {
     const body = parse(loginSchema, req.body);
 
-    const user = await prisma.user.findUnique({ where: { email: body.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: body.email },
+      include: { subscription: true },
+    });
     const hash = user?.passwordHash ?? DUMMY_HASH;
     const passwordOk = await verifyPassword(hash, body.password, env.PASSWORD_PEPPER);
 

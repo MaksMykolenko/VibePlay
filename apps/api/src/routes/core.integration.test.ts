@@ -28,8 +28,8 @@ describe('core MVP routes', () => {
   let ownerAgent: AuthedAgent;
   const queuedJobs: { uploadId: string; gameVersionId: string }[] = [];
 
-  it('caps a stale configured ZIP upload limit at 50 MB', () => {
-    expect(testEnv({ UPLOAD_MAX_COMPRESSED_MB: '100' }).UPLOAD_MAX_COMPRESSED_MB).toBe(50);
+  it('caps a stale configured ZIP upload limit at 100 MB', () => {
+    expect(testEnv({ UPLOAD_MAX_COMPRESSED_MB: '1000' }).UPLOAD_MAX_COMPRESSED_MB).toBe(100);
   });
 
   beforeAll(async () => {
@@ -311,7 +311,7 @@ describe('core MVP routes', () => {
   });
 
   it('rejects an upload-intent whose declared ZIP size exceeds the configured limit', async () => {
-    expect(app.env.UPLOAD_MAX_COMPRESSED_MB).toBe(50);
+    expect(app.env.UPLOAD_MAX_COMPRESSED_MB).toBe(100);
     const game = await createGame();
     const versionId = await createVersion(game.id);
     const oversized = app.env.UPLOAD_MAX_COMPRESSED_MB * 1024 * 1024 + 1;

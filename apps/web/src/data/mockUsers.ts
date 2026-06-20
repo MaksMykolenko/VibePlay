@@ -12,6 +12,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
     joinDate: '2026-01-15',
     followersCount: 12,
+    creatorPlus: false,
   },
   {
     id: 'user_creator',
@@ -24,6 +25,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150',
     joinDate: '2026-02-10',
     followersCount: 142,
+    creatorPlus: true,
   },
   {
     id: 'user_admin',
@@ -36,6 +38,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
     joinDate: '2025-11-01',
     followersCount: 502,
+    creatorPlus: false,
   },
   {
     id: 'user_neon_ninja',
@@ -48,6 +51,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=150',
     joinDate: '2026-03-01',
     followersCount: 89,
+    creatorPlus: false,
   },
   {
     id: 'user_pixel_craft',
@@ -60,6 +64,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=150',
     joinDate: '2026-02-28',
     followersCount: 231,
+    creatorPlus: false,
   },
   {
     id: 'user_retro_gamer',
@@ -72,6 +77,7 @@ export const mockUsers: User[] = [
     avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
     joinDate: '2026-04-12',
     followersCount: 4,
+    creatorPlus: false,
   },
 ];
 

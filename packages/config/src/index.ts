@@ -96,14 +96,14 @@ const emailSchema = z.object({
 });
 
 const uploadSchema = z.object({
-  // Product hard cap: stale deployment env values above 50 MB are safely
-  // clamped so API intent/direct-upload and worker validation stay aligned.
+  // Infrastructure hard cap. Per-user plan limits are enforced by the API;
+  // the worker accepts the largest supported plan and re-validates everything.
   UPLOAD_MAX_COMPRESSED_MB: z.coerce
     .number()
     .int()
     .min(1)
-    .default(50)
-    .transform((value) => Math.min(value, 50)),
+    .default(100)
+    .transform((value) => Math.min(value, 100)),
   UPLOAD_MAX_UNCOMPRESSED_MB: z.coerce.number().int().min(1).default(250),
   UPLOAD_MAX_FILES: z.coerce.number().int().min(1).default(5000),
   UPLOAD_MAX_SINGLE_FILE_MB: z.coerce.number().int().min(1).default(100),
@@ -127,6 +127,13 @@ const googleOAuthSchema = z.object({
   GOOGLE_REDIRECT_URI: z.url(),
 });
 
+const stripeSchema = z.object({
+  STRIPE_SECRET_KEY: z.string().min(1, 'STRIPE_SECRET_KEY is required'),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1, 'STRIPE_WEBHOOK_SECRET is required'),
+  STRIPE_CREATOR_PLUS_PRICE_ID: z.string().min(1, 'STRIPE_CREATOR_PLUS_PRICE_ID is required'),
+  PUBLIC_APP_URL: z.url(),
+});
+
 export const apiEnvSchema = baseSchema
   .extend(originsSchema.shape)
   .extend(databaseSchema.shape)
@@ -138,6 +145,7 @@ export const apiEnvSchema = baseSchema
   .extend(uploadSchema.shape)
   .extend(betaSchema.shape)
   .extend(googleOAuthSchema.shape)
+  .extend(stripeSchema.shape)
   .extend({
     API_PORT: z.coerce.number().int().default(3000),
     API_HOST: z.string().default('0.0.0.0'),

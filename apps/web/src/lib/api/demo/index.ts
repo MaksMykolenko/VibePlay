@@ -64,6 +64,7 @@ function toPublicUser(u: User): PublicUserDto {
     avatarUrl: u.avatar,
     bio: u.bio,
     role: u.role.toUpperCase() as PublicUserDto['role'],
+    creatorPlus: u.creatorPlus,
     createdAt: new Date(u.joinDate).toISOString(),
   };
 }
@@ -111,6 +112,7 @@ function toListItem(g: Game, users: User[]): GameListItemDto {
           avatarUrl: g.creatorAvatar,
           bio: '',
           role: 'CREATOR',
+          creatorPlus: false,
           createdAt: new Date().toISOString(),
         },
     likesCount: g.likes,
@@ -241,6 +243,7 @@ export function createDemoClient(): ApiClient {
         avatar: `https://api.dicebear.com/9.x/shapes/svg?seed=${encodeURIComponent(input.username)}`,
         joinDate: new Date().toISOString().slice(0, 10),
         followersCount: 0,
+        creatorPlus: false,
       };
       save(LS.users, [...users, user]);
       save(LS.session, user.id);
@@ -344,6 +347,29 @@ export function createDemoClient(): ApiClient {
     },
     async submitFeedback() {
       notInDemo('Beta feedback submission');
+    },
+    async billingMe() {
+      return {
+        plan: 'FREE',
+        status: null,
+        currentPeriodEnd: null,
+        cancelAtPeriodEnd: false,
+        entitlements: {
+          maxPublishedGames: 1,
+          maxGameVersionsPerGame: 10,
+          maxUploadBytes: 50 * 1024 * 1024,
+          advancedAnalytics: false,
+          creatorBadge: false,
+          priorityModerationLabel: false,
+          enhancedStorefront: false,
+        },
+      };
+    },
+    async createBillingCheckout() {
+      notInDemo('Stripe Checkout');
+    },
+    async createBillingPortal() {
+      notInDemo('Stripe Billing Portal');
     },
     async downloadDataExport() {
       notInDemo('Server-side data export');
@@ -493,6 +519,7 @@ export function createDemoClient(): ApiClient {
               avatarUrl: c.userAvatar,
               bio: '',
               role: 'PLAYER',
+              creatorPlus: false,
               createdAt: c.timestamp,
             },
             createdAt: c.timestamp,
@@ -724,6 +751,20 @@ export function createDemoClient(): ApiClient {
     },
     async getUploadStatus() {
       notInDemo('Game build upload');
+    },
+    async creatorAnalytics() {
+      const me = requireUser();
+      const games = getGames().filter((game) => game.creatorId === me.id);
+      return {
+        advanced: false,
+        totals: {
+          games: games.length,
+          publishedGames: games.filter((game) => game.status === 'published').length,
+          plays: games.reduce((sum, game) => sum + game.plays, 0),
+          likes: games.reduce((sum, game) => sum + game.likes, 0),
+        },
+        details: null,
+      };
     },
 
     // ----- admin -----

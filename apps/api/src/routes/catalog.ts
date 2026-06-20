@@ -54,7 +54,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     const [items, total] = await Promise.all([
       prisma.game.findMany({
         where,
-        include: { creator: true },
+        include: { creator: { include: { subscription: true } } },
         orderBy,
         skip: (query.page - 1) * query.perPage,
         take: query.perPage,
@@ -68,7 +68,7 @@ export async function registerCatalogRoutes(app: FastifyInstance): Promise<void>
     const game = await prisma.game.findFirst({
       where: { slug: req.params.slug, status: 'PUBLISHED' },
       include: {
-        creator: true,
+        creator: { include: { subscription: true } },
         screenshots: true,
         publishedVersion: true,
         versions: true,

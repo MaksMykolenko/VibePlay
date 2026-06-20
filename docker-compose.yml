@@ -153,6 +153,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-local-google-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-local-google-client-secret}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:8088/api/auth/google/callback}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_local}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_local}
+      STRIPE_CREATOR_PLUS_PRICE_ID: ${STRIPE_CREATOR_PLUS_PRICE_ID:-price_local_creator_plus}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:8088}
       API_PORT: '3000'
       TRUST_PROXY: 'true'
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD:-vibeplay}@postgres:5432/vibeplay

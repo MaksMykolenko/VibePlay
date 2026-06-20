@@ -6,6 +6,7 @@ import type {
   Notification,
   Report,
   Session,
+  Subscription,
   User,
 } from '@vibeplay/database';
 import type {
@@ -24,8 +25,11 @@ import type {
   SupportedDevice,
 } from '@vibeplay/shared';
 import { SUPPORTED_DEVICES } from '@vibeplay/shared';
+import { hasActiveCreatorPlus } from './entitlements.js';
 
-export function toPublicUser(u: User): PublicUserDto {
+type UserWithSubscription = User & { subscription?: Subscription | null };
+
+export function toPublicUser(u: UserWithSubscription): PublicUserDto {
   return {
     id: u.id,
     username: u.username,
@@ -33,6 +37,7 @@ export function toPublicUser(u: User): PublicUserDto {
     avatarUrl: u.avatarUrl,
     bio: u.bio,
     role: u.role,
+    creatorPlus: hasActiveCreatorPlus(u.subscription),
     createdAt: u.createdAt.toISOString(),
   };
 }
@@ -69,7 +74,7 @@ export function toSessionDto(s: Session, currentSessionId: string): SessionDto {
   };
 }
 
-export type GameWithCreator = Game & { creator: User };
+export type GameWithCreator = Game & { creator: UserWithSubscription };
 
 function toGameControls(value: unknown): GameControlDto[] {
   if (!Array.isArray(value)) return [];

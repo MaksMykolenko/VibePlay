@@ -693,7 +693,7 @@ export const AppShell: React.FC = () => {
       id: 'settings',
       label: t('nav.settings'),
       path: '/settings',
-      matchPaths: ['/settings'],
+      matchPaths: ['/settings', '/settings/billing'],
     } as NavItem);
 
     return (
@@ -808,10 +808,7 @@ export const AppShell: React.FC = () => {
 
         {/* Beta feedback (spec §38) */}
         {currentUser && (
-          <FeedbackModal
-            asSidebarItem
-            collapsed={isSidebarCollapsed && !isMobileOrDrawer}
-          />
+          <FeedbackModal asSidebarItem collapsed={isSidebarCollapsed && !isMobileOrDrawer} />
         )}
 
         {/* Notifications */}
@@ -903,8 +900,17 @@ export const AppShell: React.FC = () => {
         {/* Language Switcher in Sidebar (Visible when expanded or in mobile drawer) */}
         {(!isSidebarCollapsed || isMobileOrDrawer) && (
           <>
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 12px' }} />
-            <div style={{ padding: '6px 14px', margin: '4px 8px 8px' }} className="sidebar-language-control">
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid var(--border-subtle)',
+                margin: '8px 12px',
+              }}
+            />
+            <div
+              style={{ padding: '6px 14px', margin: '4px 8px 8px' }}
+              className="sidebar-language-control"
+            >
               <LanguageSwitcher />
             </div>
           </>
@@ -913,265 +919,278 @@ export const AppShell: React.FC = () => {
         {/* Profile Block */}
         {currentUser && (
           <>
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '4px 12px 8px' }} />
+            <hr
+              style={{
+                border: 'none',
+                borderTop: '1px solid var(--border-subtle)',
+                margin: '4px 12px 8px',
+              }}
+            />
             <div
               ref={sidebarProfileRef}
               style={{ position: 'relative', padding: '6px 8px', margin: '2px 8px' }}
             >
-            {/* Dropdown Menu (Flyout) */}
-            {showSidebarProfileDropdown && (
-              <div
-                className="sidebar-profile-dropdown"
-                style={{
-                  position: 'absolute',
-                  bottom: '100%',
-                  left: '0px',
-                  width: '200px',
-                  backgroundColor: 'var(--bg-card)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: '12px',
-                  padding: '6px',
-                  boxShadow: 'var(--shadow-lg)',
-                  zIndex: 'var(--z-dropdown)',
-                  marginBottom: '8px',
-                }}
-              >
-                <div style={{ padding: '6px 10px' }}>
-                  <div
-                    style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}
-                  >
-                    {currentUser.displayName}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                    @{currentUser.username}
-                  </div>
-                  <span
-                    className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
-                    style={{ marginTop: '6px', fontSize: '0.65rem' }}
-                  >
-                    {currentUser.role}
-                  </span>
-                </div>
-                <hr style={hrStyle} />
-                <Link
-                  to={`/profile/${currentUser.username}`}
-                  onClick={() => setShowSidebarProfileDropdown(false)}
-                  style={profileDropdownItemStyle}
+              {/* Dropdown Menu (Flyout) */}
+              {showSidebarProfileDropdown && (
+                <div
+                  className="sidebar-profile-dropdown"
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '0px',
+                    width: '200px',
+                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '6px',
+                    boxShadow: 'var(--shadow-lg)',
+                    zIndex: 'var(--z-dropdown)',
+                    marginBottom: '8px',
+                  }}
                 >
-                  <UserIcon size={14} />
-                  <span>{t('profile.myProfile')}</span>
-                </Link>
-                <Link
-                  to="/settings"
-                  onClick={() => setShowSidebarProfileDropdown(false)}
-                  style={profileDropdownItemStyle}
-                >
-                  <Settings size={14} />
-                  <span>{t('nav.settings')}</span>
-                </Link>
-                {hasCreatorAccess && (
+                  <div style={{ padding: '6px 10px' }}>
+                    <div
+                      style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                    >
+                      {currentUser.displayName}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      @{currentUser.username}
+                    </div>
+                    <span
+                      className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
+                      style={{ marginTop: '6px', fontSize: '0.65rem' }}
+                    >
+                      {currentUser.role}
+                    </span>
+                  </div>
+                  <hr style={hrStyle} />
                   <Link
-                    to="/creator"
+                    to={`/profile/${currentUser.username}`}
                     onClick={() => setShowSidebarProfileDropdown(false)}
                     style={profileDropdownItemStyle}
                   >
-                    <LayoutDashboard size={14} />
-                    <span>{t('profile.creatorStudio')}</span>
+                    <UserIcon size={14} />
+                    <span>{t('profile.myProfile')}</span>
                   </Link>
-                )}
-                {hasAdminAccess && (
                   <Link
-                    to="/admin"
+                    to="/settings"
                     onClick={() => setShowSidebarProfileDropdown(false)}
                     style={profileDropdownItemStyle}
                   >
-                    <Shield size={14} />
-                    <span>{t('profile.adminControl')}</span>
+                    <Settings size={14} />
+                    <span>{t('nav.settings')}</span>
                   </Link>
-                )}
-                <hr style={hrStyle} />
-                <div style={{ padding: '4px 8px 6px' }}>
-                  <div
+                  {hasCreatorAccess && (
+                    <Link
+                      to="/creator"
+                      onClick={() => setShowSidebarProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
+                      <LayoutDashboard size={14} />
+                      <span>{t('profile.creatorStudio')}</span>
+                    </Link>
+                  )}
+                  {hasAdminAccess && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setShowSidebarProfileDropdown(false)}
+                      style={profileDropdownItemStyle}
+                    >
+                      <Shield size={14} />
+                      <span>{t('profile.adminControl')}</span>
+                    </Link>
+                  )}
+                  <hr style={hrStyle} />
+                  <div style={{ padding: '4px 8px 6px' }}>
+                    <div
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: 'var(--text-muted)',
+                        marginBottom: '6px',
+                      }}
+                    >
+                      {t('profile.appearance')}
+                    </div>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: '3px',
+                        background: 'var(--surface-2)',
+                        padding: '2px',
+                        borderRadius: '6px',
+                      }}
+                    >
+                      <button
+                        onClick={() => setTheme('light')}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          padding: '5px 2px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          fontWeight: 500,
+                          background: theme === 'light' ? 'var(--surface-1)' : 'transparent',
+                          color: theme === 'light' ? 'var(--primary)' : 'var(--text-secondary)',
+                          boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none',
+                        }}
+                      >
+                        <Sun size={11} />
+                        <span>{t('profile.light')}</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme('dark')}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          padding: '5px 2px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          fontWeight: 500,
+                          background: theme === 'dark' ? 'var(--surface-1)' : 'transparent',
+                          color: theme === 'dark' ? 'var(--primary)' : 'var(--text-secondary)',
+                          boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none',
+                        }}
+                      >
+                        <Moon size={11} />
+                        <span>{t('profile.dark')}</span>
+                      </button>
+                      <button
+                        onClick={() => setTheme('system')}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          padding: '5px 2px',
+                          borderRadius: '4px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.7rem',
+                          fontWeight: 500,
+                          background: theme === 'system' ? 'var(--surface-1)' : 'transparent',
+                          color: theme === 'system' ? 'var(--primary)' : 'var(--text-secondary)',
+                          boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none',
+                        }}
+                      >
+                        <Monitor size={11} />
+                        <span>{t('profile.system')}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <hr style={hrStyle} />
+                  <div style={{ padding: '4px 8px 6px' }}>
+                    <LanguageSwitcher />
+                  </div>
+                  <hr style={hrStyle} />
+                  <button
+                    onClick={() => {
+                      logout();
+                      toast.success(t('app.loggedOut'));
+                      navigate('/');
+                      setShowSidebarProfileDropdown(false);
+                    }}
                     style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 600,
-                      color: 'var(--text-muted)',
-                      marginBottom: '6px',
+                      ...profileDropdownItemStyle,
+                      width: '100%',
+                      border: 'none',
+                      background: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      color: 'var(--danger)',
                     }}
                   >
-                    {t('profile.appearance')}
-                  </div>
+                    <LogOut size={14} />
+                    <span>{t('profile.logout')}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Profile Trigger Button */}
+              <button
+                onClick={() => setShowSidebarProfileDropdown(!showSidebarProfileDropdown)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  padding: '6px 8px',
+                  borderRadius: '8px',
+                  background: showSidebarProfileDropdown
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'transparent',
+                  border: 'none',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  gap: '10px',
+                }}
+                data-tooltip={
+                  isSidebarCollapsed && !isMobileOrDrawer ? 'Profile Options' : undefined
+                }
+                aria-label="User Profile Options"
+                aria-expanded={showSidebarProfileDropdown}
+              >
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.displayName}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '1.5px solid var(--border-color)',
+                    flexShrink: 0,
+                  }}
+                />
+                {(!isSidebarCollapsed || isMobileOrDrawer) && (
                   <div
                     style={{
                       display: 'flex',
-                      gap: '3px',
-                      background: 'var(--surface-2)',
-                      padding: '2px',
-                      borderRadius: '6px',
-                    }}
-                  >
-                    <button
-                      onClick={() => setTheme('light')}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        padding: '5px 2px',
-                        borderRadius: '4px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.7rem',
-                        fontWeight: 500,
-                        background: theme === 'light' ? 'var(--surface-1)' : 'transparent',
-                        color: theme === 'light' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'light' ? 'var(--shadow-sm)' : 'none',
-                      }}
-                    >
-                      <Sun size={11} />
-                      <span>{t('profile.light')}</span>
-                    </button>
-                    <button
-                      onClick={() => setTheme('dark')}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        padding: '5px 2px',
-                        borderRadius: '4px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.7rem',
-                        fontWeight: 500,
-                        background: theme === 'dark' ? 'var(--surface-1)' : 'transparent',
-                        color: theme === 'dark' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'dark' ? 'var(--shadow-sm)' : 'none',
-                      }}
-                    >
-                      <Moon size={11} />
-                      <span>{t('profile.dark')}</span>
-                    </button>
-                    <button
-                      onClick={() => setTheme('system')}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        padding: '5px 2px',
-                        borderRadius: '4px',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '0.7rem',
-                        fontWeight: 500,
-                        background: theme === 'system' ? 'var(--surface-1)' : 'transparent',
-                        color: theme === 'system' ? 'var(--primary)' : 'var(--text-secondary)',
-                        boxShadow: theme === 'system' ? 'var(--shadow-sm)' : 'none',
-                      }}
-                    >
-                      <Monitor size={11} />
-                      <span>{t('profile.system')}</span>
-                    </button>
-                  </div>
-                </div>
-                <hr style={hrStyle} />
-                <div style={{ padding: '4px 8px 6px' }}>
-                  <LanguageSwitcher />
-                </div>
-                <hr style={hrStyle} />
-                <button
-                  onClick={() => {
-                    logout();
-                    toast.success(t('app.loggedOut'));
-                    navigate('/');
-                    setShowSidebarProfileDropdown(false);
-                  }}
-                  style={{
-                    ...profileDropdownItemStyle,
-                    width: '100%',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    color: 'var(--danger)',
-                  }}
-                >
-                  <LogOut size={14} />
-                  <span>{t('profile.logout')}</span>
-                </button>
-              </div>
-            )}
-
-            {/* Profile Trigger Button */}
-            <button
-              onClick={() => setShowSidebarProfileDropdown(!showSidebarProfileDropdown)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                width: '100%',
-                padding: '6px 8px',
-                borderRadius: '8px',
-                background: showSidebarProfileDropdown
-                  ? 'rgba(255, 255, 255, 0.05)'
-                  : 'transparent',
-                border: 'none',
-                color: 'inherit',
-                cursor: 'pointer',
-                textAlign: 'left',
-                gap: '10px',
-              }}
-              data-tooltip={isSidebarCollapsed && !isMobileOrDrawer ? 'Profile Options' : undefined}
-              aria-label="User Profile Options"
-              aria-expanded={showSidebarProfileDropdown}
-            >
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.displayName}
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '1.5px solid var(--border-color)',
-                  flexShrink: 0,
-                }}
-              />
-              {(!isSidebarCollapsed || isMobileOrDrawer) && (
-                <div
-                  style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}
-                >
-                  <span
-                    style={{
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: 'var(--text-primary)',
-                      whiteSpace: 'nowrap',
+                      flexDirection: 'column',
                       overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      flex: 1,
                     }}
                   >
-                    {currentUser.displayName}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '11px',
-                      color: 'var(--text-secondary)',
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {currentUser.role}
-                  </span>
-                </div>
-              )}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+                    <span
+                      style={{
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        color: 'var(--text-primary)',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {currentUser.displayName}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        color: 'var(--text-secondary)',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {currentUser.role}
+                    </span>
+                  </div>
+                )}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     );
   };
 

@@ -32,6 +32,7 @@ export const AdminUsers: React.FC = () => {
         avatar: user.avatarUrl ?? '',
         joinDate: user.createdAt,
         followersCount: 0,
+        creatorPlus: user.creatorPlus,
         isSuspended: user.status === 'SUSPENDED' || user.status === 'BANNED',
       })),
     );

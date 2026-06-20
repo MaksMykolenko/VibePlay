@@ -37,6 +37,7 @@ export const RATE_LIMIT_POLICIES = {
   accountDeletion: { max: 3, timeWindow: '24 hours' },
   dataExport: { max: 3, timeWindow: '24 hours' },
   feedback: { max: 10, timeWindow: '1 hour' },
+  billingSession: { max: 10, timeWindow: '1 hour' },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;

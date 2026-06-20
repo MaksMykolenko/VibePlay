@@ -131,6 +131,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env.production}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in .env.production}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?set in .env.production}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set in .env.production}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?set in .env.production}
+      STRIPE_CREATOR_PLUS_PRICE_ID: ${STRIPE_CREATOR_PLUS_PRICE_ID:?set in .env.production}
+      PUBLIC_APP_URL: https://${APP_DOMAIN}
       TRUST_PROXY: 'true'
       DATABASE_URL: postgresql://vibeplay:${POSTGRES_PASSWORD}@postgres:5432/vibeplay
       REDIS_URL: redis://redis:6379
@@ -146,7 +150,7 @@ services:
       SMTP_FROM: ${SMTP_FROM:?}
       INVITE_ONLY: 'true'
       SENTRY_DSN: ${SENTRY_DSN:-}
-      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-50}
+      UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
     healthcheck:
       test:
         [

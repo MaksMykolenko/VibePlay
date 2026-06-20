@@ -143,6 +143,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?set in .env}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?set in .env}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?set in .env}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set in .env}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?set in .env}
+      STRIPE_CREATOR_PLUS_PRICE_ID: ${STRIPE_CREATOR_PLUS_PRICE_ID:?set in .env}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:?set in .env}
       API_PORT: '3000'
       API_HOST: '0.0.0.0'
       TRUST_PROXY: 'true'

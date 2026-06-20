@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { SessionDto } from '@vibeplay/shared';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -15,6 +15,7 @@ import {
   Monitor,
   UploadCloud,
   Trash2,
+  CreditCard,
 } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useTheme } from '../hooks/useTheme';
@@ -23,6 +24,7 @@ import { IS_DEMO } from '../lib/appMode';
 import { errorMessage } from '../lib/api/errors';
 import { useI18n } from '../i18n/useI18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { BillingPanel } from '../components/BillingPanel';
 
 /** Accepted avatar image types and size limit, mirrored from the API. */
 const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as const;
@@ -32,12 +34,19 @@ export const SettingsPage: React.FC = () => {
   const { currentUser, account, refresh, updateProfile, logoutAll } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useI18n();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'account' | 'password' | 'notifications' | 'privacy' | 'appearance'
-  >('profile');
+    'profile' | 'account' | 'password' | 'notifications' | 'privacy' | 'appearance' | 'billing'
+  >(location.pathname.endsWith('/billing') ? 'billing' : 'profile');
+
+  const selectTab = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    if (tab === 'billing') navigate('/settings/billing');
+    else if (location.pathname.endsWith('/billing')) navigate('/settings');
+  };
 
   // Form states
   const [displayName, setDisplayName] = useState<string>();
@@ -266,7 +275,7 @@ export const SettingsPage: React.FC = () => {
         {/* Settings Sidebar Links */}
         <aside style={navSidebarStyle} className="settings-sidebar">
           <button
-            onClick={() => setActiveTab('profile')}
+            onClick={() => selectTab('profile')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'profile' ? 'var(--bg-hover)' : 'transparent',
@@ -278,7 +287,7 @@ export const SettingsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('account')}
+            onClick={() => selectTab('account')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'account' ? 'var(--bg-hover)' : 'transparent',
@@ -290,7 +299,7 @@ export const SettingsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('password')}
+            onClick={() => selectTab('password')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'password' ? 'var(--bg-hover)' : 'transparent',
@@ -302,7 +311,7 @@ export const SettingsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('notifications')}
+            onClick={() => selectTab('notifications')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'notifications' ? 'var(--bg-hover)' : 'transparent',
@@ -315,7 +324,7 @@ export const SettingsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('privacy')}
+            onClick={() => selectTab('privacy')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'privacy' ? 'var(--bg-hover)' : 'transparent',
@@ -327,7 +336,7 @@ export const SettingsPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('appearance')}
+            onClick={() => selectTab('appearance')}
             style={{
               ...sidebarLinkStyle,
               backgroundColor: activeTab === 'appearance' ? 'var(--bg-hover)' : 'transparent',
@@ -337,6 +346,22 @@ export const SettingsPage: React.FC = () => {
             <Palette size={16} />
             <span>{t('settings.appearance')}</span>
           </button>
+
+          {(currentUser.role === 'creator' ||
+            currentUser.role === 'admin' ||
+            currentUser.role === 'owner') && (
+            <button
+              onClick={() => selectTab('billing')}
+              style={{
+                ...sidebarLinkStyle,
+                backgroundColor: activeTab === 'billing' ? 'var(--bg-hover)' : 'transparent',
+                color: activeTab === 'billing' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              <CreditCard size={16} />
+              <span>{t('settings.billing')}</span>
+            </button>
+          )}
         </aside>
 
         {/* Content Box */}
@@ -858,6 +883,16 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'billing' && (
+            <BillingPanel
+              canUpgrade={
+                currentUser.role === 'creator' ||
+                currentUser.role === 'admin' ||
+                currentUser.role === 'owner'
+              }
+            />
           )}
         </div>
       </div>

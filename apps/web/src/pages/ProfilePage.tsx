@@ -8,6 +8,7 @@ import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 import { api } from '../lib/api';
 import type { User } from '../types';
+import { CreatorPlusBadge } from '../components/CreatorPlusBadge';
 
 export const ProfilePage: React.FC = () => {
   const { t } = useI18n();
@@ -21,7 +22,11 @@ export const ProfilePage: React.FC = () => {
   );
   const [profileMissing, setProfileMissing] = useState(false);
   const [activeTab, setActiveTab] = useState<'games' | 'favorites' | 'recently' | 'about'>(
-    profileUser?.role === 'creator' || profileUser?.role === 'admin' || profileUser?.role === 'owner' ? 'games' : 'favorites',
+    profileUser?.role === 'creator' ||
+      profileUser?.role === 'admin' ||
+      profileUser?.role === 'owner'
+      ? 'games'
+      : 'favorites',
   );
 
   useEffect(() => {
@@ -42,8 +47,13 @@ export const ProfilePage: React.FC = () => {
           avatar: profile.avatarUrl ?? '',
           joinDate: profile.createdAt,
           followersCount: 0,
+          creatorPlus: profile.creatorPlus,
         });
-        setActiveTab(profile.role === 'CREATOR' || profile.role === 'ADMIN' || profile.role === 'OWNER' ? 'games' : 'favorites');
+        setActiveTab(
+          profile.role === 'CREATOR' || profile.role === 'ADMIN' || profile.role === 'OWNER'
+            ? 'games'
+            : 'favorites',
+        );
         setProfileMissing(false);
       })
       .catch(() => {
@@ -129,6 +139,7 @@ export const ProfilePage: React.FC = () => {
               >
                 {profileUser.role}
               </span>
+              {profileUser.creatorPlus && <CreatorPlusBadge />}
             </div>
 
             <div style={usernameStyle}>@{profileUser.username}</div>
@@ -148,7 +159,9 @@ export const ProfilePage: React.FC = () => {
                 <strong>{profileUser.followersCount}</strong>
                 <span>{t('profile.followers')}</span>
               </div>
-              {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
+              {(profileUser.role === 'creator' ||
+                profileUser.role === 'admin' ||
+                profileUser.role === 'owner') && (
                 <>
                   <div style={statDividerStyle}></div>
                   <div style={statItemStyle}>
@@ -201,7 +214,9 @@ export const ProfilePage: React.FC = () => {
 
       {/* Tabs Menu */}
       <div style={tabsContainerStyle}>
-        {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
+        {(profileUser.role === 'creator' ||
+          profileUser.role === 'admin' ||
+          profileUser.role === 'owner') && (
           <button
             onClick={() => setActiveTab('games')}
             style={{
@@ -362,7 +377,9 @@ export const ProfilePage: React.FC = () => {
                 <div style={aboutStatValStyle}>{profileUser.followersCount}</div>
                 <div style={aboutStatLblStyle}>{t('profile.followers')}</div>
               </div>
-              {(profileUser.role === 'creator' || profileUser.role === 'admin' || profileUser.role === 'owner') && (
+              {(profileUser.role === 'creator' ||
+                profileUser.role === 'admin' ||
+                profileUser.role === 'owner') && (
                 <>
                   <div style={aboutStatBoxStyle}>
                     <div style={aboutStatValStyle}>{creatorGames.length}</div>

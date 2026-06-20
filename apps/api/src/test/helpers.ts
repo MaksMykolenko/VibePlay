@@ -4,6 +4,7 @@ import { createPrismaClient, type PrismaClient } from '@vibeplay/database';
 import { buildApp } from '../app.js';
 import { hashPassword } from '../lib/crypto.js';
 import type { InlineProcessor } from '../lib/queue.js';
+import type { StripeGateway } from '../lib/stripe.js';
 
 export function testEnv(overrides: Partial<Record<string, string>> = {}): ApiEnv {
   return apiEnvSchema.parse({
@@ -20,6 +21,10 @@ export function testEnv(overrides: Partial<Record<string, string>> = {}): ApiEnv
     GOOGLE_CLIENT_ID: 'test-google-client-id',
     GOOGLE_CLIENT_SECRET: 'test-google-client-secret',
     GOOGLE_REDIRECT_URI: 'http://localhost:3000/api/auth/google/callback',
+    STRIPE_SECRET_KEY: 'sk_test_vibeplay',
+    STRIPE_WEBHOOK_SECRET: 'whsec_test_vibeplay',
+    STRIPE_CREATOR_PLUS_PRICE_ID: 'price_creator_plus_test',
+    PUBLIC_APP_URL: 'http://localhost:5173',
     STORAGE_DRIVER: 'fs',
     FS_STORAGE_ROOT: process.env.VIBEPLAY_TEST_STORAGE ?? '.data/test-storage',
     SCAN_DRIVER: 'off',
@@ -46,10 +51,16 @@ export interface TestContext {
 export async function buildTestApp(
   envOverrides: Partial<Record<string, string>> = {},
   inlineProcessor?: InlineProcessor,
+  options: { stripe?: StripeGateway } = {},
 ): Promise<TestContext> {
   const env = testEnv(envOverrides);
   const prisma = getTestPrisma();
-  const app = await buildApp({ env, prisma, inlineProcessor });
+  const app = await buildApp({
+    env,
+    prisma,
+    inlineProcessor,
+    ...(options.stripe ? { stripe: options.stripe } : {}),
+  });
   await app.ready();
   return { app, prisma, env };
 }
@@ -66,6 +77,8 @@ export async function resetDb(prisma: PrismaClient): Promise<void> {
     prisma.favorite.deleteMany(),
     prisma.like.deleteMany(),
     prisma.moderationDecision.deleteMany(),
+    prisma.stripeWebhookEvent.deleteMany(),
+    prisma.subscription.deleteMany(),
     prisma.upload.deleteMany(),
     prisma.gameScreenshot.deleteMany(),
     prisma.game.updateMany({ data: { publishedVersionId: null } }),

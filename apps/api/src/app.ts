@@ -10,6 +10,7 @@ import { ApiError, type ApiErrorBody, type ErrorCode } from '@vibeplay/shared';
 import { createFsStorage, createS3Storage, type ObjectStorage } from '@vibeplay/storage';
 import { createMailer, type Mailer } from './lib/mailer.js';
 import { createGoogleOAuthService, type GoogleOAuthService } from './lib/googleOAuth.js';
+import { createStripeGateway, type StripeGateway } from './lib/stripe.js';
 import { createValidationQueue, type InlineProcessor } from './lib/queue.js';
 import { RATE_LIMIT_POLICIES, createRateLimitRedis, rateLimitSubject } from './lib/rateLimit.js';
 import { CSRF_COOKIE, resolveSession } from './lib/sessions.js';
@@ -26,6 +27,7 @@ export interface BuildAppOptions {
   mailer?: Mailer;
   inlineProcessor?: InlineProcessor;
   googleOAuth?: GoogleOAuthService;
+  stripe?: StripeGateway;
 }
 
 export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> {
@@ -42,6 +44,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
         paths: [
           'req.headers.authorization',
           'req.headers.cookie',
+          'req.headers["stripe-signature"]',
           'res.headers["set-cookie"]',
           '*.password',
           '*.token',
@@ -77,6 +80,7 @@ export async function buildApp(opts: BuildAppOptions): Promise<FastifyInstance> 
   app.decorate('storage', storage);
   app.decorate('mailer', mailer);
   app.decorate('googleOAuth', opts.googleOAuth ?? createGoogleOAuthService(env));
+  app.decorate('stripe', opts.stripe ?? createStripeGateway(env));
   app.decorate('validationQueue', queue);
   app.decorate('redisPing', redisPing);
   app.decorateRequest('currentUser', null);

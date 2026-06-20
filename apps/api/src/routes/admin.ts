@@ -17,6 +17,7 @@ import {
   suspendUserSchema,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
+import { getCreatorAccess, hasActiveCreatorPlus } from '../lib/entitlements.js';
 import { generateToken, hashToken, signExpiringValue } from '../lib/crypto.js';
 import { requireAdmin } from '../lib/guards.js';
 import {
@@ -43,7 +44,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       include: {
         game: {
           include: {
-            creator: true,
+            creator: { include: { subscription: true } },
             screenshots: true,
             publishedVersion: true,
             versions: true,
@@ -55,6 +56,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     return {
       version: toGameVersionDto(version),
       game: toGameDetail(version.game, null),
+      priority: hasActiveCreatorPlus(version.game.creator.subscription),
     };
   };
 
@@ -64,53 +66,63 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       orderBy: { submittedAt: 'asc' },
       select: { id: true },
     });
-    return { queue: await Promise.all(versions.map((version) => moderationEntry(version.id))) };
+    const queue = await Promise.all(versions.map((version) => moderationEntry(version.id)));
+    return { queue: queue.sort((a, b) => Number(b.priority) - Number(a.priority)) };
   });
 
-  app.post('/moderation/recover-stuck', { config: { rateLimit: rlPolicy('adminAction') } }, async (req) => {
-    const admin = requireAdmin(req);
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60_000);
-    
-    const stuckVersions = await prisma.gameVersion.findMany({
-      where: {
-        status: { in: ['VALIDATING', 'QUARANTINED'] },
-        updatedAt: { lt: thirtyMinutesAgo }
-      },
-      include: { game: true }
-    });
+  app.post(
+    '/moderation/recover-stuck',
+    { config: { rateLimit: rlPolicy('adminAction') } },
+    async (req) => {
+      const admin = requireAdmin(req);
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60_000);
 
-    for (const version of stuckVersions) {
-      const failReason = 'Validation timed out or got stuck. Recovered by admin.';
-      const report = { ok: false, failReason, checks: [], scanner: { ok: false, detail: failReason } };
-      
-      await prisma.gameVersion.update({
-        where: { id: version.id },
-        data: { status: 'SCAN_FAILED', validationReport: report, rejectReason: failReason },
-      });
-      
-      await prisma.notification.create({
-        data: {
-          userId: version.game.creatorId,
-          type: 'GAME_VALIDATION_FAILED',
-          title: 'Build validation failed (System Timeout)',
-          body: `Version ${version.version} of “${version.game.title}” could not be validated due to a system timeout and was recovered.`,
-          metadata: { gameId: version.gameId, versionId: version.id },
+      const stuckVersions = await prisma.gameVersion.findMany({
+        where: {
+          status: { in: ['VALIDATING', 'QUARANTINED'] },
+          updatedAt: { lt: thirtyMinutesAgo },
         },
+        include: { game: true },
       });
-    }
 
-    await audit(prisma, {
-      actorId: admin.id,
-      action: 'system.recovered_stuck_versions',
-      targetType: 'SYSTEM',
-      targetId: 'admin',
-      metadata: { count: stuckVersions.length },
-      req,
-      secret: env.SESSION_SECRET,
-    });
+      for (const version of stuckVersions) {
+        const failReason = 'Validation timed out or got stuck. Recovered by admin.';
+        const report = {
+          ok: false,
+          failReason,
+          checks: [],
+          scanner: { ok: false, detail: failReason },
+        };
 
-    return { recoveredCount: stuckVersions.length };
-  });
+        await prisma.gameVersion.update({
+          where: { id: version.id },
+          data: { status: 'SCAN_FAILED', validationReport: report, rejectReason: failReason },
+        });
+
+        await prisma.notification.create({
+          data: {
+            userId: version.game.creatorId,
+            type: 'GAME_VALIDATION_FAILED',
+            title: 'Build validation failed (System Timeout)',
+            body: `Version ${version.version} of “${version.game.title}” could not be validated due to a system timeout and was recovered.`,
+            metadata: { gameId: version.gameId, versionId: version.id },
+          },
+        });
+      }
+
+      await audit(prisma, {
+        actorId: admin.id,
+        action: 'system.recovered_stuck_versions',
+        targetType: 'SYSTEM',
+        targetId: 'admin',
+        metadata: { count: stuckVersions.length },
+        req,
+        secret: env.SESSION_SECRET,
+      });
+
+      return { recoveredCount: stuckVersions.length };
+    },
+  );
 
   app.get<{ Params: { versionId: string } }>('/game-versions/:versionId', async (req) =>
     moderationEntry(req.params.versionId),
@@ -139,6 +151,20 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       // SCAN_FAILED / REJECTED / etc., so an unscanned or failed build never goes live.
       if (version.status !== 'READY_FOR_REVIEW' || !version.publishedObjectPrefix) {
         throw errors.invalidTransition(version.status, 'PUBLISHED');
+      }
+      if (!version.game.publishedVersionId) {
+        const creatorAccess = await getCreatorAccess(prisma, env, version.game.creatorId);
+        if (!creatorAccess.bypassBillingLimits) {
+          const publishedCount = await prisma.game.count({
+            where: { creatorId: version.game.creatorId, status: 'PUBLISHED' },
+          });
+          if (publishedCount >= creatorAccess.billing.entitlements.maxPublishedGames) {
+            throw errors.planLimit(
+              `Creator plan allows ${creatorAccess.billing.entitlements.maxPublishedGames} published game. Existing games remain live, but this new game cannot be published.`,
+              { limit: 'publishedGames', billing: creatorAccess.billing },
+            );
+          }
+        }
       }
       await prisma.$transaction(async (tx) => {
         await tx.gameVersion.updateMany({
@@ -362,9 +388,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         where: { creatorId: req.params.userId, status: 'SUSPENDED' },
         select: { id: true },
       });
-      await Promise.all(
-        affectedGames.map((g) => validationQueue.publishGameInvalidation(g.id)),
-      );
+      await Promise.all(affectedGames.map((g) => validationQueue.publishGameInvalidation(g.id)));
       reply.status(204).send();
     });
   }
@@ -383,9 +407,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       where: { creatorId: req.params.userId, status: 'HIDDEN' },
       select: { id: true },
     });
-    await Promise.all(
-      restoredGames.map((g) => validationQueue.publishGameInvalidation(g.id)),
-    );
+    await Promise.all(restoredGames.map((g) => validationQueue.publishGameInvalidation(g.id)));
     reply.status(204).send();
   });
 

@@ -31,6 +31,7 @@ function toGame(dto: GameListItemDto | GameDetailDto): Game {
     creatorName: dto.creator.displayName,
     creatorUsername: dto.creator.username,
     creatorAvatar: dto.creator.avatarUrl ?? '',
+    creatorPlus: dto.creator.creatorPlus,
     shortDescription: dto.shortDescription,
     fullDescription: detail.description ?? dto.shortDescription,
     category: dto.category,
@@ -146,6 +147,7 @@ export const RealGamesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               : `${(item.version.compressedSize / (1024 * 1024)).toFixed(1)} MB`,
           moderationVersionId: item.version.id,
           validationReport: item.version.validationReport ?? undefined,
+          priorityModeration: item.priority,
         });
         nextVersionMap[item.game.id] = item.version.id;
       }

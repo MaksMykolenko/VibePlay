@@ -6,6 +6,7 @@ import { registerCreatorRoutes } from './creator.js';
 import { registerProfileRoutes } from './profiles.js';
 import { registerGoogleOAuthRoutes } from './googleOAuth.js';
 import { registerGameCoverRoutes } from './gameCover.js';
+import { registerBillingRoutes, registerStripeWebhookRoutes } from './billing.js';
 
 /**
  * Domain route registry. Route modules are added phase by phase
@@ -14,6 +15,8 @@ import { registerGameCoverRoutes } from './gameCover.js';
 export async function registerDomainRoutes(app: FastifyInstance): Promise<void> {
   await app.register(registerAuthRoutes, { prefix: '/api/auth' });
   await app.register(registerGoogleOAuthRoutes, { prefix: '/api/auth' });
+  await app.register(registerStripeWebhookRoutes, { prefix: '/api' });
+  await app.register(registerBillingRoutes, { prefix: '/api' });
   await app.register(registerGameCoverRoutes, { prefix: '/api' });
   await app.register(registerProfileRoutes, { prefix: '/api' });
   await app.register(registerCatalogRoutes, { prefix: '/api' });
