@@ -13,10 +13,14 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "dotenv": "^17.2.0",
     "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.8"
   }
 }

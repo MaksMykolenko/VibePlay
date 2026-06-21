@@ -108,6 +108,7 @@ export const LoginPage: React.FC = () => {
           unverified_email: t('auth.googleUnverifiedEmail'),
           account_suspended: t('auth.googleAccountSuspended'),
           account_banned: t('auth.googleAccountBanned'),
+          invite_required: t('auth.googleInviteRequired'),
           oauth_failed: t('auth.googleFailed'),
         } as Record<string, string>
       )[oauthError] ?? t('auth.googleFailed'))

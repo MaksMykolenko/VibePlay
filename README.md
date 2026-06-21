@@ -1,6 +1,8 @@
 # VibePlay
 
-VibePlay is an invite-only platform for publishing and playing browser games.
+VibePlay is a platform for publishing and playing browser games. Guests can
+play published games without an account; player accounts add cloud saves and
+other library benefits, while creator publishing requires creator access.
 Independent creators upload static HTML5 game builds as ZIP archives; every
 build goes through automated validation, malware scanning and human
 moderation before players can launch it in a hardened, per-version sandbox.
@@ -11,20 +13,22 @@ readiness assessment.
 
 ## Beta scope
 
-- **Players** — invite registration, email verification, profile, catalog,
+- **Players** — guest play, account registration under the configured policy,
+  cloud saves, email verification, profile, catalog,
   search, launching published games, likes, favorites, recently played,
   comments, reports, notifications.
 - **Creators** — creator profile, game drafts, metadata editing, ZIP upload
   with real validation status and reject reasons, re-uploading new versions,
-  publication strictly after moderation.
+  publication strictly after moderation, including re-review of published
+  metadata and media changes.
 - **Admins** — moderation queue with real build preview and scan report,
   approve/reject, hide/suspend games, reports, user suspension, audit log,
   featured games, invites.
 
-Out of scope for the beta (deliberately): payments, internal currency,
-revenue sharing, item marketplace, multiplayer backend, voice chat, friends,
+Out of scope for the beta (deliberately): internal currency, revenue sharing,
+item marketplace, multiplayer backend, voice chat, friends,
 parties, AI game generator, desktop launcher, native mobile apps, avatar
-economy, advertising.
+economy, advertising. Stripe-backed Creator Plus subscriptions are implemented.
 
 ## Architecture
 
@@ -38,9 +42,9 @@ economy, advertising.
                       │  auth · RBAC · CSRF    │     │ (Prisma)     │
                       │  rate limits (Redis)   │     └──────────────┘
                       └───┬───────────┬────────┘
-              BullMQ jobs │           │ presigned PUT
+              BullMQ jobs │           │ private API streaming
                       ┌───▼────┐  ┌───▼────────┐
-                      │ worker │  │ MinIO / S3 │  quarantine + published buckets
+                      │ worker │  │ MinIO / S3 │  quarantine + published + media
                       │ ZIP    │  └───┬────────┘
                       │ checks │      │ published files (read-only)
                       │ ClamAV │  ┌───▼────────────────────────────────┐
@@ -110,7 +114,8 @@ Everything is documented in [.env.example](.env.example) and validated at
 startup by `packages/config` (services refuse to boot with bad config; secret
 values are never printed). Key groups: origins (`WEB_ORIGIN`, `API_ORIGIN`,
 `GAME_ORIGIN`), database/redis URLs, session/pepper/preview secrets, S3
-storage, ClamAV, SMTP, upload limits, `INVITE_ONLY`, optional `SENTRY_DSN`.
+storage, ClamAV, SMTP, upload limits, and `INVITE_ONLY`. Error monitoring is
+currently structured JSON logging; no Sentry integration is wired.
 
 ## Database
 
@@ -154,7 +159,7 @@ Chromium. Point it at a running Docker stack instead with
 ## Upload pipeline (what happens to a ZIP)
 
 ```text
-upload intent → presigned PUT to quarantine bucket → complete
+upload intent → authenticated same-origin PUT through the API
 → BullMQ job → size/structure checks → safe extraction (path traversal,
   forbidden extensions, limits) → ClamAV scan → publish files to the
   published bucket → READY_FOR_REVIEW → admin preview → approve → PUBLISHED
@@ -178,6 +183,8 @@ Immutable versions move through an explicit state machine
 (`packages/shared/src/stateMachine.ts`); admins preview real builds on a
 dedicated preview origin with short-lived HMAC tokens; self-moderation is
 blocked; every decision is audited. See `docs/MODERATION_STATE_MACHINE.md`.
+Published catalog metadata and media changes are stored as pending revisions;
+the last approved snapshot remains public until an admin approves the revision.
 
 ## Operations
 
@@ -189,8 +196,9 @@ blocked; every decision is audited. See `docs/MODERATION_STATE_MACHINE.md`.
 
 ## Known limitations (beta)
 
-- Email change, avatar uploads and screenshot uploads are disabled (honest
-  501s) — metadata URLs only.
+- Email change and first-party screenshot upload are not implemented. Avatar
+  and cover uploads are implemented; published cover/screenshot URL changes
+  remain private or on the approved snapshot until metadata review.
 - Account deletion / data export are admin-processed requests (30-day SLA),
   not instant self-service.
 - Single API instance assumed for cache invalidation timing; rate limits are

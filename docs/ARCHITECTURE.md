@@ -25,7 +25,8 @@ shared packages. Everything is TypeScript on Node 22.
 ## Data flow: publish & play
 
 1. Creator creates a game draft + version (`UPLOADING`).
-2. API issues an upload intent → presigned PUT into the **quarantine** bucket
+2. API issues an upload intent → authenticated same-origin PUT through the API
+   into the private **quarantine** bucket
    (fs driver falls back to a direct upload endpoint in dev/test).
 3. `complete` flips the version to `QUARANTINED` and enqueues a BullMQ job.
 4. Worker validates and extracts to the **published** bucket under the

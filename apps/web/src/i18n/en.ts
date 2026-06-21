@@ -108,7 +108,7 @@ export const en = {
   'auth.showPassword': 'Show password',
   'auth.hidePassword': 'Hide password',
   'auth.welcomeBack': 'Welcome back',
-  'auth.loginSubtitle': 'Log in to VibePlay to play games and publish creations.',
+  'auth.loginSubtitle': 'Play as a guest, or log in for cloud saves and player features.',
   'auth.email': 'Email Address',
   'auth.password': 'Password',
   'auth.forgotPassword': 'Forgot password?',
@@ -126,10 +126,14 @@ export const en = {
   'auth.googleAccountSuspended': 'This VibePlay account is suspended.',
   'auth.googleAccountBanned': 'This VibePlay account is banned.',
   'auth.googleFailed': 'Google login failed. Please try again.',
+  'auth.googleInviteRequired': 'An invite is required before creating an account with Google.',
   'auth.createAccountTitle': 'Create an account',
-  'auth.registerDefault': 'Create your VibePlay account.',
-  'auth.registerOpen': 'Create your VibePlay account. Registration is currently open.',
-  'auth.registerInvite': 'VibePlay is in private beta — registration requires an invite code.',
+  'auth.registerDefault':
+    'Create an account for cloud saves and player features. Publishing requires creator access.',
+  'auth.registerOpen':
+    'Player registration is open for cloud saves. Publishing requires creator access.',
+  'auth.registerInvite':
+    'Player accounts currently require an invite. Publishing also requires creator access.',
   'auth.inviteCode': 'Invite code',
   'auth.inviteOptional': 'Invite code (optional)',
   'auth.invitePlaceholder': 'Paste your beta invite code',

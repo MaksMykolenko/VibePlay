@@ -16,7 +16,10 @@ type OAuthErrorCode =
   | 'unverified_email'
   | 'account_suspended'
   | 'account_banned'
+  | 'invite_required'
   | 'oauth_failed';
+
+class InviteRequiredError extends Error {}
 
 interface CallbackQuery {
   code?: string;
@@ -102,6 +105,11 @@ async function findOrCreateGoogleUser(
       });
     });
   }
+
+  // OAuth must obey the same global registration policy as password signup.
+  // Existing or already-linked accounts were handled above; a new account has
+  // no invite credential in this flow, so invite-only mode fails closed.
+  if (env.INVITE_ONLY) throw new InviteRequiredError('Invite required for new OAuth account');
 
   const username = await chooseUsername(prisma, email, identity.sub);
   const passwordHash = await hashPassword(generateToken(), env.PASSWORD_PEPPER);
@@ -206,6 +214,9 @@ export async function registerGoogleOAuthRoutes(app: FastifyInstance): Promise<v
       setSessionCookies(reply, env, token, csrfToken, session.expiresAt);
       return reply.redirect(new URL('/', env.WEB_ORIGIN).toString());
     } catch (err) {
+      if (err instanceof InviteRequiredError) {
+        return redirectToLogin(reply, env, 'invite_required');
+      }
       req.log.error({ err }, 'Google OAuth callback failed');
       return redirectToLogin(reply, env, 'oauth_failed');
     }

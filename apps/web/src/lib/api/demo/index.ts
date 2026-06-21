@@ -701,6 +701,7 @@ export function createDemoClient(): ApiClient {
           (g): CreatorGameSummary => ({
             game: toDetail(g, users, me.id, getLib(me.id)),
             versions: [],
+            pendingMetadataRevision: null,
           }),
         );
     },
@@ -743,7 +744,11 @@ export function createDemoClient(): ApiClient {
       const me = requireUser();
       const game = getGames().find((g) => g.id === gameId && g.creatorId === me.id);
       if (!game) throw new ApiClientError('GAME_NOT_FOUND', 'Game not found', 404);
-      return { game: toDetail(game, getUsers(), me.id, getLib(me.id)), versions: [] };
+      return {
+        game: toDetail(game, getUsers(), me.id, getLib(me.id)),
+        versions: [],
+        pendingMetadataRevision: null,
+      };
     },
     async updateMyGame(gameId, patch) {
       const me = requireUser();
@@ -830,6 +835,15 @@ export function createDemoClient(): ApiClient {
     },
     async adminRejectVersion() {
       notInDemo('Admin moderation');
+    },
+    async adminMetadataRevisions() {
+      notInDemo('Admin metadata moderation');
+    },
+    async adminApproveMetadataRevision() {
+      notInDemo('Admin metadata moderation');
+    },
+    async adminRejectMetadataRevision() {
+      notInDemo('Admin metadata moderation');
     },
     async adminHideGame() {
       notInDemo('Admin moderation');

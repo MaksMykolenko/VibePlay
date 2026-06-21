@@ -6,7 +6,7 @@
 # Domains (see docs/DEPLOY_HOSTINGER_SINGLE_VPS.md):
 #   https://vibeplay.games            → web SPA  (+ /api proxied to api, same-origin)
 #   https://api.vibeplay.games        → api      (direct API endpoint)
-#   https://*.games.vibeplay.games    → game-host (one isolated origin per version)
+#   https://*.games.vibeplayusercontent.com → isolated game-host origin
 #
 # Security model:
 #   - Auth/session/CSRF cookies are HOST-ONLY on vibeplay.games (never a parent
@@ -193,16 +193,15 @@ services:
       SCAN_DRIVER: clamav
       CLAMAV_HOST: clamav
       CLAMAV_PORT: '3310'
-      EMAIL_DRIVER: ${EMAIL_DRIVER:-memory}
-      SMTP_HOST: ${SMTP_HOST:-localhost}
+      EMAIL_DRIVER: smtp
+      SMTP_HOST: ${SMTP_HOST:?set in .env}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_SECURE: ${SMTP_SECURE:-true}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-VibePlay <no-reply@vibeplay.games>}
+      SMTP_FROM: ${SMTP_FROM:?set in .env}
       INVITE_ONLY: ${INVITE_ONLY:-true}
       UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
-      SENTRY_DSN: ${SENTRY_DSN:-}
     healthcheck:
       test:
         - CMD-SHELL

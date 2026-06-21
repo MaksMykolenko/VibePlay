@@ -78,7 +78,12 @@ worker.on('failed', (job, err) => {
         });
         if (version && version.status === 'VALIDATING') {
           const failReason = 'Validation worker failed to process the job after all retries.';
-          const report = { ok: false, failReason, checks: [], scanner: { ok: false, detail: failReason } };
+          const report = {
+            ok: false,
+            failReason,
+            checks: [],
+            scanner: { ok: false, detail: failReason },
+          };
           await prisma.gameVersion.updateMany({
             where: { id: version.id, status: 'VALIDATING' },
             data: { status: 'SCAN_FAILED', validationReport: report, rejectReason: failReason },

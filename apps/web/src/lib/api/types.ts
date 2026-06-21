@@ -13,6 +13,7 @@ import type {
   GameSaveSummaryDto,
   GameVersionDto,
   GameCoverUploadIntentResponseDto,
+  MetadataRevisionDto,
   InviteDto,
   LaunchDescriptorDto,
   NotificationDto,
@@ -63,6 +64,7 @@ export interface RecentlyPlayedEntry {
 export interface CreatorGameSummary {
   game: GameDetailDto;
   versions: GameVersionDto[];
+  pendingMetadataRevision: MetadataRevisionDto | null;
 }
 
 export interface CreateGameInput {
@@ -115,6 +117,12 @@ export interface ModerationQueueEntry {
   version: GameVersionDto;
   game: GameDetailDto;
   priority: boolean;
+}
+
+export interface MetadataRevisionQueueEntry {
+  revision: MetadataRevisionDto;
+  game: GameDetailDto;
+  submittedBy: PublicUserDto;
 }
 
 export interface FeedbackItem {
@@ -263,6 +271,9 @@ export interface ApiClient {
   adminGetVersion(versionId: string): Promise<ModerationQueueEntry>;
   adminApproveVersion(versionId: string, notes?: string): Promise<void>;
   adminRejectVersion(versionId: string, reason: string, notes?: string): Promise<void>;
+  adminMetadataRevisions(): Promise<MetadataRevisionQueueEntry[]>;
+  adminApproveMetadataRevision(revisionId: string): Promise<void>;
+  adminRejectMetadataRevision(revisionId: string, reason: string): Promise<void>;
   adminHideGame(gameId: string): Promise<void>;
   adminRestoreGame(gameId: string): Promise<void>;
   adminFeatureGame(gameId: string, category: string | null): Promise<void>;

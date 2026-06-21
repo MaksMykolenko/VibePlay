@@ -4,9 +4,23 @@ set -euo pipefail
 
 fail=0
 
-# 1. No committed .env files (only .env.example is allowed).
-if git ls-files | grep -E '(^|/)\.env(\..+)?$' | grep -v '\.env\.example$'; then
+# 1. No committed secret env files (only the known value-free templates).
+if git ls-files | grep -E '(^|/)\.env(\..+)?$' | \
+     grep -Ev '(^|/)\.env\.example$|(^|/)\.env\.hostinger\.example$|(^|/)\.env\.railway\.template$'; then
   echo "::error::.env files must never be committed"
+  fail=1
+fi
+
+# 5. Production manifests must fail closed for malware scanning and email, and
+#    object storage must remain private to the service network.
+production_manifests=(
+  docker-compose.production.example.yml
+  docker-compose.hostinger.yml
+  docker-compose.railway.yml
+)
+if grep -nE 'SCAN_DRIVER:[[:space:]]*(none|off)|EMAIL_DRIVER:[[:space:]]*memory|9000:9000|mc anonymous' \
+     "${production_manifests[@]}"; then
+  echo "::error::unsafe production deployment setting found"
   fail=1
 fi
 

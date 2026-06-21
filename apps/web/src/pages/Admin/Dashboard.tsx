@@ -67,7 +67,9 @@ export const AdminDashboard: React.FC = () => {
             <Play size={18} color="var(--success)" />
           </div>
           <div style={statValueStyle}>{publishedGames}</div>
-          <div style={statSubStyle}>{t('admin.totalPlaysText', { count: totalPlays.toLocaleString() })}</div>
+          <div style={statSubStyle}>
+            {t('admin.totalPlaysText', { count: totalPlays.toLocaleString() })}
+          </div>
         </div>
 
         <div

@@ -174,25 +174,18 @@ export async function uploadVersion(
   expect(intent.ok(), await intent.text()).toBeTruthy();
   const intentBody = (await intent.json()) as { uploadId: string; uploadUrl: string };
 
-  if (intentBody.uploadUrl) {
-    const put = await creator.ctx.put(intentBody.uploadUrl, {
-      headers: { 'content-type': 'application/zip' },
-      data: zip,
-    });
-    expect(put.ok()).toBeTruthy();
-  } else {
-    const put = await creator.ctx.put(`/api/uploads/${intentBody.uploadId}/direct`, {
+  // The current production flow is a same-origin, authenticated raw upload.
+  // uploadUrl is deliberately relative; APIRequestContext resolves it against
+  // the API base URL and carries the session cookie. The direct PUT stores,
+  // completes, and enqueues validation in one operation.
+  const put = await creator.ctx.put(
+    intentBody.uploadUrl || `/api/uploads/${intentBody.uploadId}/direct`,
+    {
       headers: { ...authHeaders(creator), 'content-type': 'application/zip' },
       data: zip,
-    });
-    expect(put.status(), await put.text()).toBe(204);
-  }
-
-  const complete = await creator.ctx.post(`/api/uploads/${intentBody.uploadId}/complete`, {
-    headers: authHeaders(creator),
-    data: {},
-  });
-  expect(complete.ok(), await complete.text()).toBeTruthy();
+    },
+  );
+  expect(put.ok(), await put.text()).toBeTruthy();
 
   // Poll the real status endpoint until the pipeline reaches a terminal state.
   let status = '';

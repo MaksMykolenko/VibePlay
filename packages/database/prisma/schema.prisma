@@ -51,25 +51,27 @@ model User {
   notificationPrefs Json       @default("{}")
   stripeCustomerId  String?    @unique
 
-  sessions                Session[]
-  oauthAccounts           OAuthAccount[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  invitesCreated          Invite[]                 @relation("InviteCreatedBy")
-  games                   Game[]
-  likes                   Like[]
-  favorites               Favorite[]
-  playSessions            PlaySession[]
-  comments                Comment[]
-  reports                 Report[]                 @relation("ReportReporter")
-  assignedReports         Report[]                 @relation("ReportAssignee")
-  notifications           Notification[]
-  moderationDecisions     ModerationDecision[]
-  auditLogs               AuditLog[]
-  feedback                Feedback[]               @relation("FeedbackAuthor")
-  feedbackResolved        Feedback[]               @relation("FeedbackResolvedBy")
-  subscription            Subscription?
-  gameSaves               GameSave[]
+  sessions                   Session[]
+  oauthAccounts              OAuthAccount[]
+  emailVerificationTokens    EmailVerificationToken[]
+  passwordResetTokens        PasswordResetToken[]
+  invitesCreated             Invite[]                 @relation("InviteCreatedBy")
+  games                      Game[]
+  likes                      Like[]
+  favorites                  Favorite[]
+  playSessions               PlaySession[]
+  comments                   Comment[]
+  reports                    Report[]                 @relation("ReportReporter")
+  assignedReports            Report[]                 @relation("ReportAssignee")
+  notifications              Notification[]
+  moderationDecisions        ModerationDecision[]
+  metadataRevisionsSubmitted GameMetadataRevision[]   @relation("MetadataRevisionSubmitter")
+  metadataRevisionsReviewed  GameMetadataRevision[]   @relation("MetadataRevisionReviewer")
+  auditLogs                  AuditLog[]
+  feedback                   Feedback[]               @relation("FeedbackAuthor")
+  feedbackResolved           Feedback[]               @relation("FeedbackResolvedBy")
+  subscription               Subscription?
+  gameSaves                  GameSave[]
 
   @@index([status])
   @@index([role])
@@ -259,13 +261,14 @@ model Game {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  versions     GameVersion[]    @relation("GameVersions")
-  screenshots  GameScreenshot[]
-  likes        Like[]
-  favorites    Favorite[]
-  playSessions PlaySession[]
-  comments     Comment[]
-  gameSaves    GameSave[]
+  versions          GameVersion[]          @relation("GameVersions")
+  screenshots       GameScreenshot[]
+  likes             Like[]
+  favorites         Favorite[]
+  playSessions      PlaySession[]
+  comments          Comment[]
+  gameSaves         GameSave[]
+  metadataRevisions GameMetadataRevision[]
 
   @@index([status, category])
   @@index([creatorId])
@@ -353,6 +356,31 @@ model GameScreenshot {
   sortOrder Int    @default(0)
 
   @@index([gameId, sortOrder])
+}
+
+enum MetadataRevisionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Review-gated snapshot of catalog metadata for an already-published game.
+model GameMetadataRevision {
+  id            String                 @id @default(cuid())
+  gameId        String
+  game          Game                   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  submittedById String
+  submittedBy   User                   @relation("MetadataRevisionSubmitter", fields: [submittedById], references: [id], onDelete: Restrict)
+  reviewedById  String?
+  reviewedBy    User?                  @relation("MetadataRevisionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  status        MetadataRevisionStatus @default(PENDING)
+  data          Json
+  reason        String                 @default("")
+  submittedAt   DateTime               @default(now())
+  reviewedAt    DateTime?
+
+  @@index([status, submittedAt])
+  @@index([gameId, submittedAt])
 }
 
 // ---------------------------------------------------------------------------

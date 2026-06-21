@@ -87,5 +87,6 @@ rollbacks (`BACKUP_AND_RESTORE.md`).
 ## Observability
 
 Structured JSON logs (service field, request ids, user ids, no secrets) go
-to stdout → `docker logs` / your log shipper. `SENTRY_DSN` is optional and
-off by default; the app must run without third-party services.
+to stdout → `docker logs` / your log shipper. Sentry is not integrated; do not
+set a DSN and assume capture is active. Alerting/log shipping remains an
+operator responsibility for beta.

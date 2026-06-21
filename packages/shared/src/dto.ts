@@ -139,6 +139,32 @@ export interface GameDetailDto extends GameListItemDto {
   } | null;
 }
 
+export interface MetadataRevisionDataDto {
+  title: string;
+  shortDescription: string;
+  description: string;
+  category: string;
+  ageRating: AgeRating;
+  tags: string[];
+  devices: SupportedDevice[];
+  controls: GameControlDto[];
+  toolsUsed: string[];
+  multiplayer: boolean;
+  aiDisclosure: AiDisclosure;
+  coverUrl: string | null;
+  screenshots: string[];
+}
+
+export interface MetadataRevisionDto {
+  id: string;
+  gameId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  data: MetadataRevisionDataDto;
+  reason: string;
+  submittedAt: string;
+  reviewedAt: string | null;
+}
+
 export interface GameVersionDto {
   id: string;
   gameId: string;

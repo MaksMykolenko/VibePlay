@@ -104,9 +104,7 @@ export const PublishGame: React.FC = () => {
     const maxUploadBytes = billing?.entitlements.maxUploadBytes ?? 100 * 1024 * 1024;
     if (file.size > maxUploadBytes) {
       toast.danger(
-        billing?.plan === 'FREE'
-          ? t('billing.uploadLimitPrompt')
-          : t('publish.archiveTooLarge'),
+        billing?.plan === 'FREE' ? t('billing.uploadLimitPrompt') : t('publish.archiveTooLarge'),
       );
       e.target.value = '';
       return;

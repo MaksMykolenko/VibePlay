@@ -69,6 +69,15 @@ export const EditGame: React.FC = () => {
   const [aiTools] = useState<string[]>(() => game?.aiTools ?? []);
   const [version, setVersion] = useState(() => game?.version ?? '1.0.0');
   const [changelogNotes, setChangelogNotes] = useState('');
+  const [hasPendingMetadata, setHasPendingMetadata] = useState(false);
+
+  useEffect(() => {
+    if (IS_DEMO || !id) return;
+    void api
+      .getMyGame(id)
+      .then((summary) => setHasPendingMetadata(Boolean(summary.pendingMetadataRevision)))
+      .catch(() => {});
+  }, [id]);
 
   useEffect(() => {
     if (game && controlsGameIdRef.current !== game.id) {
@@ -161,7 +170,11 @@ export const EditGame: React.FC = () => {
       status,
     });
 
-    toast.success(statusMsg);
+    if (!IS_DEMO && game.status === 'published') {
+      toast.success('Changes submitted for review. Current public details remain live.');
+    } else {
+      toast.success(statusMsg);
+    }
     navigate('/creator/my-games');
   };
 
@@ -209,9 +222,13 @@ export const EditGame: React.FC = () => {
       setCoverProgress(75);
       const updated = await api.completeGameCover(id, intent.objectKey);
       setCoverProgress(100);
-      setCoverUrl(updated.coverUrl ?? '');
+      if (game.status !== 'published') setCoverUrl(updated.coverUrl ?? '');
       await refreshGames();
-      toast.success(t('cover.success'));
+      toast.success(
+        game.status === 'published'
+          ? 'Cover submitted for review. The current public cover remains live.'
+          : t('cover.success'),
+      );
     } catch (error) {
       toast.danger(errorMessage(error));
     } finally {
@@ -252,9 +269,21 @@ export const EditGame: React.FC = () => {
         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
           {IS_DEMO
             ? 'In demo mode, title changes move the game back to Pending Review.'
-            : 'This form updates catalog metadata only. Uploading a new executable version requires a new ZIP validation and moderation cycle.'}
+            : game.status === 'published'
+              ? 'Published catalog changes require admin review. Current public details remain unchanged until approval.'
+              : 'This form updates catalog metadata only. Uploading a new executable version requires a new ZIP validation and moderation cycle.'}
         </span>
       </div>
+
+      {hasPendingMetadata && (
+        <div style={noticeBoxStyle}>
+          <AlertTriangle size={20} color="var(--warning)" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Catalog changes are pending admin review. Further edits will update that pending
+            revision.
+          </span>
+        </div>
+      )}
 
       {/* Form Card */}
       <form onSubmit={handleFormSubmit} style={formCardStyle} className="bg-glass">

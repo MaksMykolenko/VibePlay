@@ -13,6 +13,11 @@ import { requireCreator, requireOwnershipOrAdmin, requireVerifiedEmail } from '.
 import { rlPolicy } from '../lib/rateLimit.js';
 import { toGameDetail, toGameVersionDto } from '../lib/serializers.js';
 import { parse } from '../lib/validate.js';
+import {
+  submitMetadataRevision,
+  toMetadataRevisionDto,
+  type MetadataRevisionData,
+} from '../lib/metadataRevisions.js';
 
 function slugify(value: string): string {
   return value
@@ -36,6 +41,11 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
         screenshots: true,
         publishedVersion: true,
         versions: { orderBy: { createdAt: 'desc' } },
+        metadataRevisions: {
+          where: { status: 'PENDING' },
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -43,6 +53,9 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
       games: games.map((game) => ({
         game: toGameDetail(game, { liked: false, favorited: false, isOwner: true }),
         versions: game.versions.map(toGameVersionDto),
+        pendingMetadataRevision: game.metadataRevisions[0]
+          ? toMetadataRevisionDto(game.metadataRevisions[0], env.API_ORIGIN)
+          : null,
       })),
     };
   });
@@ -106,6 +119,11 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
         screenshots: true,
         publishedVersion: true,
         versions: { orderBy: { createdAt: 'desc' } },
+        metadataRevisions: {
+          where: { status: 'PENDING' },
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+        },
       },
     });
     if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
@@ -117,16 +135,51 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
         isOwner: game.creatorId === user.id,
       }),
       versions: game.versions.map(toGameVersionDto),
+      pendingMetadataRevision: game.metadataRevisions[0]
+        ? toMetadataRevisionDto(game.metadataRevisions[0], env.API_ORIGIN)
+        : null,
     };
   });
 
   app.patch<{ Params: { gameId: string } }>('/creator/games/:gameId', async (req) => {
-    requireVerifiedEmail(req);
+    const user = requireVerifiedEmail(req);
     requireCreator(req);
     const body = parse(updateGameSchema, req.body);
-    const existing = await prisma.game.findUnique({ where: { id: req.params.gameId } });
+    const existing = await prisma.game.findUnique({
+      where: { id: req.params.gameId },
+      include: { screenshots: true },
+    });
     if (!existing) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
     requireOwnershipOrAdmin(req, existing.creatorId);
+    if (existing.publishedVersionId) {
+      const revisionPatch: Partial<MetadataRevisionData> = {
+        ...body,
+        ...(body.coverUrl !== undefined ? { coverObjectKey: null } : {}),
+      };
+      const revision = await submitMetadataRevision(prisma, existing, user.id, revisionPatch);
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'game.metadata_revision_submitted',
+        targetType: 'GAME',
+        targetId: existing.id,
+        metadata: { revisionId: revision.id, fields: Object.keys(body) },
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      const live = await prisma.game.findUniqueOrThrow({
+        where: { id: existing.id },
+        include: {
+          creator: { include: { subscription: true } },
+          screenshots: true,
+          publishedVersion: true,
+          versions: true,
+        },
+      });
+      return {
+        game: toGameDetail(live, { liked: false, favorited: false, isOwner: true }),
+        pendingMetadataRevision: toMetadataRevisionDto(revision, env.API_ORIGIN),
+      };
+    }
     const game = await prisma.$transaction(async (tx) => {
       if (body.screenshots) {
         await tx.gameScreenshot.deleteMany({ where: { gameId: existing.id } });

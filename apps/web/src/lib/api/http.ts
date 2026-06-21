@@ -34,6 +34,7 @@ import type {
   GamesListParams,
   LibraryResponse,
   ModerationQueueEntry,
+  MetadataRevisionQueueEntry,
   ProfileResponse,
   RecentlyPlayedEntry,
   RegisterInput,
@@ -526,6 +527,24 @@ export function createHttpClient(): ApiClient {
       await request(`/admin/game-versions/${versionId}/reject`, {
         method: 'POST',
         body: { reason, notes: notes ?? '' },
+      });
+    },
+    async adminMetadataRevisions() {
+      const response = await request<{ revisions: MetadataRevisionQueueEntry[] }>(
+        '/admin/metadata-revisions',
+      );
+      return response.revisions;
+    },
+    async adminApproveMetadataRevision(revisionId) {
+      await request(`/admin/metadata-revisions/${revisionId}/approve`, {
+        method: 'POST',
+        body: {},
+      });
+    },
+    async adminRejectMetadataRevision(revisionId, reason) {
+      await request(`/admin/metadata-revisions/${revisionId}/reject`, {
+        method: 'POST',
+        body: { reason, notes: '' },
       });
     },
     async adminHideGame(gameId) {

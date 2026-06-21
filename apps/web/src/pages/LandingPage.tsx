@@ -223,7 +223,9 @@ export const LandingPage: React.FC = () => {
           <div style={creatorCtaInfoColStyle}>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{t('home.creatorTitle')}</h2>
             <p style={creatorCtaDescStyle}>{t('home.creatorDescription')}</p>
-            {currentUser?.role === 'creator' || currentUser?.role === 'admin' || currentUser?.role === 'owner' ? (
+            {currentUser?.role === 'creator' ||
+            currentUser?.role === 'admin' ||
+            currentUser?.role === 'owner' ? (
               <Link to="/creator" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
                 {t('home.creatorDashboard')}
               </Link>

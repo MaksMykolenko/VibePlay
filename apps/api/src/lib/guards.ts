@@ -32,6 +32,10 @@ export function requireVerifiedEmail(req: FastifyRequest): User {
 // OWNER is the highest privilege tier — a strict superset of ADMIN.
 const ROLE_ORDER: Record<UserRole, number> = { PLAYER: 0, CREATOR: 1, ADMIN: 2, OWNER: 3 };
 
+export function canManageRole(actorRole: UserRole, targetRole: UserRole): boolean {
+  return ROLE_ORDER[actorRole] > ROLE_ORDER[targetRole];
+}
+
 export function requireRole(req: FastifyRequest, role: UserRole): User {
   const user = requireActiveUser(req);
   if (ROLE_ORDER[user.role] < ROLE_ORDER[role]) {

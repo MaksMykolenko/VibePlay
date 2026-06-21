@@ -7,13 +7,13 @@ and a **local MinIO** for storage. Domain: **vibeplay.games**.
 ```
 https://vibeplay.games          → web SPA  (+ /api proxied to api, same-origin)
 https://api.vibeplay.games      → api      (direct API endpoint)
-https://*.games.vibeplay.games  → game-host (one isolated origin per game version)
+https://*.games.vibeplayusercontent.com  → game-host (one isolated origin per game version)
 ```
 
 **Security model (do not weaken):** auth/session/CSRF cookies are HttpOnly +
 Secure + SameSite=Lax and **host-only on vibeplay.games**, so the game subdomains
 can never receive them. The SPA calls the API same-origin (`/api`) so the
-JS-readable CSRF cookie works. Uploaded games run only on `*.games.vibeplay.games`,
+JS-readable CSRF cookie works. Uploaded games run only on `*.games.vibeplayusercontent.com`,
 never on the frontend origin. CSRF, origin isolation and ClamAV scanning stay ON.
 
 Files used: `docker-compose.hostinger.yml`, `infra/caddy/hostinger.Caddyfile`,
@@ -23,27 +23,28 @@ Files used: `docker-compose.hostinger.yml`, `infra/caddy/hostinger.Caddyfile`,
 
 ## 1. DNS — Hostinger DNS Zone Editor
 
-In **hPanel → Domains → vibeplay.games → DNS / Nameservers → DNS Zone Editor**,
-make sure the domain uses **Hostinger nameservers** (ns1/ns2.dns-parking.com),
-then add these **A records** pointing at your VPS IP `<VPS_IP>`:
+Configure both the app domain (`vibeplay.games`) and the separately registered
+UGC domain (`vibeplayusercontent.com`) in DNS. The domains must not share a
+registrable domain. Add these **A records** pointing at `<VPS_IP>`:
 
 | Type | Name (Host) | Points to | TTL |
 |---|---|---|---|
 | A | `@`        | `<VPS_IP>` | 300 |
 | A | `api`      | `<VPS_IP>` | 300 |
-| A | `games`    | `<VPS_IP>` | 300 |
-| A | `*.games`  | `<VPS_IP>` | 300 |
+| A | `games` in `vibeplayusercontent.com` | `<VPS_IP>` | 300 |
+| A | `*.games` in `vibeplayusercontent.com` | `<VPS_IP>` | 300 |
 
 Notes:
-- `@` is the root `vibeplay.games`. `*.games` is a wildcard — Hostinger's Zone
-  Editor accepts `*.games` as the Name; it covers every `<x>.games.vibeplay.games`.
+- `@` and `api` belong to the `vibeplay.games` zone. `games` and `*.games`
+  belong to the `vibeplayusercontent.com` zone and are required for every
+  per-version hostname.
 - Delete any pre-filled parking/`A @` record that points elsewhere.
 - If the VPS has IPv6, add the same four as `AAAA` records too.
 
 Verify propagation before deploying:
 
 ```bash
-dig +short vibeplay.games api.vibeplay.games games.vibeplay.games anything.games.vibeplay.games
+dig +short vibeplay.games api.vibeplay.games games.vibeplayusercontent.com anything.games.vibeplayusercontent.com
 # every line should print <VPS_IP>
 ```
 
@@ -109,14 +110,15 @@ Then edit `.env`: paste those values and confirm the origins/domains:
 WEB_ORIGIN=https://vibeplay.games
 API_ORIGIN=https://vibeplay.games
 PUBLIC_API_ORIGIN=https://api.vibeplay.games
-GAME_HOST_BASE_DOMAIN=games.vibeplay.games
+GAME_HOST_BASE_DOMAIN=games.vibeplayusercontent.com # separately registered domain
 ACME_EMAIL=you@vibeplay.games        # real address for Let's Encrypt notices
 S3_ENDPOINT=http://minio:9000        # local MinIO (internal)
 S3_FORCE_PATH_STYLE=true
 ```
 
-Leave `EMAIL_DRIVER=memory` unless you have SMTP. **Never commit `.env`** (already
-covered by `.gitignore`).
+Configure working SMTP before launch. Production rejects `EMAIL_DRIVER=memory`
+and readiness returns 503 if the SMTP server cannot be verified. **Never commit
+`.env`** (already covered by `.gitignore`).
 
 ## 6. Launch
 
@@ -133,7 +135,7 @@ docker compose -f docker-compose.hostinger.yml logs -f caddy   # watch cert issu
 ```
 
 Caddy automatically obtains Let's Encrypt certificates for `vibeplay.games`,
-`api.vibeplay.games` and `games.vibeplay.games` (HTTP-01). Per-version game
+`api.vibeplay.games` and `games.vibeplayusercontent.com` (HTTP-01). Per-version game
 subdomains get their certs on first request via on-demand TLS (see §10).
 
 ## 7. Database migrations
@@ -169,14 +171,8 @@ docker compose --env-file .env -f docker-compose.hostinger.yml up -d api
 
 Log in at https://vibeplay.games → admin panel + invite-link generation.
 
-> To test the **creator/upload** flow you need a verified email. With
-> `EMAIL_DRIVER=memory` no mail is sent, so either set real SMTP, or mark a test
-> account verified once:
-> ```bash
-> docker compose --env-file .env -f docker-compose.hostinger.yml run --rm \
->   -e DATABASE_URL="postgresql://vibeplay:$(grep '^POSTGRES_PASSWORD=' .env|cut -d= -f2-)@postgres:5432/vibeplay" \
->   migrate sh -lc 'cd /repo/packages/database && npx tsx -e "import{createPrismaClient}from\"./src/index.js\";const db=createPrismaClient({databaseUrl:process.env.DATABASE_URL});await db.user.update({where:{email:\"you@vibeplay.games\"},data:{emailVerifiedAt:new Date()}});console.log(\"verified\");process.exit(0)"'
-> ```
+To test the **creator/upload** flow, use the verification message delivered by
+the configured SMTP service. Do not manually mark production users verified.
 
 ---
 
@@ -186,9 +182,9 @@ Log in at https://vibeplay.games → admin panel + invite-link generation.
 
 ```bash
 curl -fsS https://vibeplay.games/api/health/live      # {"status":"ok"}
-curl -fsS https://vibeplay.games/api/health/ready     # {"status":"ok"} (db+storage+redis)
+curl -fsS https://vibeplay.games/api/health/ready     # db+storage+redis+clamav+smtp
 curl -fsS https://api.vibeplay.games/api/health/ready # same, via the direct API host
-curl -fsS https://games.vibeplay.games/health/live    # game-host {"status":"ok"}
+curl -fsS https://games.vibeplayusercontent.com/health/live    # game-host {"status":"ok"}
 # TLS cert sanity (issuer should be Let's Encrypt):
 echo | openssl s_client -connect vibeplay.games:443 -servername vibeplay.games 2>/dev/null | openssl x509 -noout -issuer -dates
 ```
@@ -219,7 +215,7 @@ docker compose -f docker-compose.hostinger.yml logs -f worker
 version → approve it → the audit log records the action.
 
 **Game launch + isolation**: open the published game. It must load in an iframe
-from `https://<versionId>--<gameId>.games.vibeplay.games` — confirm DevTools shows
+from `https://<versionId>--<gameId>.games.vibeplayusercontent.com` — confirm DevTools shows
 that game origin, **not** vibeplay.games. First load of a new subdomain pauses ~1s
 while Caddy issues its on-demand certificate.
 
@@ -230,20 +226,20 @@ while Caddy issues its on-demand certificate.
 
 ---
 
-## 10. TLS details (and an optional later upgrade)
+## 10. Required wildcard DNS and TLS coverage
 
-- `vibeplay.games`, `api.vibeplay.games`, `games.vibeplay.games` → Let's Encrypt
+- `vibeplay.games`, `api.vibeplay.games`, `games.vibeplayusercontent.com` → Let's Encrypt
   HTTP-01, issued automatically by Caddy. No DNS API needed.
-- `*.games.vibeplay.games` (per-version origins) → **on-demand TLS**: Caddy issues
+- `*.games.vibeplayusercontent.com` DNS and TLS coverage are mandatory.
+  The provided Caddy config uses **on-demand TLS**: Caddy issues
   a Let's Encrypt cert the first time each game subdomain is requested. An internal
   ask-gate (`:5555`) ensures certs are only ever issued for hostnames ending in
-  `.games.vibeplay.games`. This is the default and needs nothing beyond the A records.
+  `.games.vibeplayusercontent.com`. This is the default and needs nothing beyond the A records.
 
-> Optional later: a **DNS-01 wildcard** cert for `*.games.vibeplay.games` removes
-> the ~1s first-load issuance delay. It requires building a Caddy image with the
-> DNS plugin for whatever DNS provider you use and an API token for the zone, then
-> swapping `tls { on_demand }` for `tls { dns <provider> <token> }` in
-> `infra/caddy/hostinger.Caddyfile`. It is **not required** — on-demand works fully.
+A DNS-01 wildcard certificate may replace on-demand issuance, but TLS coverage
+for every per-version hostname is never optional. If using DNS-01, build Caddy
+with the provider plugin and store its API token only in the deployment secret
+manager.
 
 ## Verification & Recovery Reference
 
@@ -276,7 +272,7 @@ curl -i https://vibeplay.games/api/health/ready
 curl -i https://vibeplay.games/api/auth/config
 
 # Verify Game Host is live
-curl -i https://games.vibeplay.games/health/live
+curl -i https://games.vibeplayusercontent.com/health/live
 ```
 
 **4. Apply Caddyfile configuration updates:**
@@ -317,7 +313,7 @@ incident — **do not "fix" it by re-pinning an older tag.**
   the VPS resolved to `RELEASE.2025-09-07T16-13-09Z`. After switching to it, MinIO
   started healthy and all three health checks returned `200`:
   `https://vibeplay.games/api/health/ready`, `https://vibeplay.games/api/auth/config`,
-  and `https://games.vibeplay.games/health/live`.
+  and `https://games.vibeplayusercontent.com/health/live`.
 - **Future pinning is allowed only after manual validation on the VPS against the
   existing production volume** — i.e. confirm a candidate tag starts healthy and
   reads `miniodata` on the VPS itself before committing a pinned tag. Until then,
@@ -343,7 +339,7 @@ docker compose --env-file .env -f docker-compose.hostinger.yml ps
 docker compose --env-file .env -f docker-compose.hostinger.yml logs --tail=80 minio
 curl -i https://vibeplay.games/api/health/ready
 curl -i https://vibeplay.games/api/auth/config
-curl -i https://games.vibeplay.games/health/live
+curl -i https://games.vibeplayusercontent.com/health/live
 ```
 
 ---
@@ -353,7 +349,7 @@ curl -i https://games.vibeplay.games/health/live
 - **Cert not issued / SSL errors:** DNS must resolve to the VPS (`dig`), and ports
   80+443 open in UFW (and the Hostinger panel firewall, if any). `docker compose logs caddy`.
 - **Game subdomain won't get a cert:** the `:5555` ask-gate only allows
-  `*.games.vibeplay.games`; confirm the host matches and `dig` resolves it.
+  `*.games.vibeplayusercontent.com`; confirm the host matches and `dig` resolves it.
 - **api healthy but /ready is 503:** `/ready` checks db+storage+redis — check
   `logs api`, that `minio-init` finished, and DATABASE_URL/REDIS_URL.
 - **Login works but mutations 403 CSRF_FAILED:** the SPA must be same-origin with

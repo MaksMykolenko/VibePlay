@@ -126,10 +126,42 @@ describe('Google OAuth', () => {
       include: { oauthAccounts: true },
     });
     expect(user?.emailVerifiedAt).toBeInstanceOf(Date);
+    expect(user?.role).toBe('PLAYER');
     expect(user?.passwordHash).toMatch(/^\$argon2id\$/);
     expect(user?.oauthAccounts).toMatchObject([
       { provider: 'google', providerAccountId: 'google-sub-123' },
     ]);
+  });
+
+  it('blocks first-time account creation when registration is invite-only', async () => {
+    const inviteOnlyEnv = testEnv({ INVITE_ONLY: 'true' });
+    const inviteOnlyGoogle = new FakeGoogleOAuth();
+    const inviteOnlyApp = await buildApp({
+      env: inviteOnlyEnv,
+      prisma,
+      googleOAuth: inviteOnlyGoogle,
+    });
+    await inviteOnlyApp.ready();
+    try {
+      const start = await inviteOnlyApp.inject({ method: 'GET', url: '/api/auth/google/start' });
+      const state = start.cookies.find(
+        (cookie) => cookie.name === GOOGLE_OAUTH_STATE_COOKIE,
+      )?.value;
+      expect(state).toBeTruthy();
+      const response = await inviteOnlyApp.inject({
+        method: 'GET',
+        url: `/api/auth/google/callback?code=test-code&state=${encodeURIComponent(state!)}`,
+        cookies: { [GOOGLE_OAUTH_STATE_COOKIE]: state! },
+      });
+
+      expect(response.statusCode).toBe(302);
+      expect(response.headers.location).toBe(
+        'http://localhost:5173/login?oauth_error=invite_required',
+      );
+      expect(await prisma.user.count()).toBe(0);
+    } finally {
+      await inviteOnlyApp.close();
+    }
   });
 
   it('callback safely links a verified Google email to an existing user', async () => {
@@ -154,6 +186,40 @@ describe('Google OAuth', () => {
     expect(
       (await prisma.user.findUnique({ where: { id: existing.id } }))?.emailVerifiedAt,
     ).toBeInstanceOf(Date);
+  });
+
+  it('allows an existing linked Google user to log in while invite-only', async () => {
+    const linked = await createUser(prisma, env, {
+      email: 'oauth@example.com',
+      username: 'linked_user',
+    });
+    await prisma.oAuthAccount.create({
+      data: {
+        provider: 'google',
+        providerAccountId: google.identity.sub,
+        userId: linked.id,
+      },
+    });
+    const inviteOnlyEnv = testEnv({ INVITE_ONLY: 'true' });
+    const inviteOnlyApp = await buildApp({ env: inviteOnlyEnv, prisma, googleOAuth: google });
+    await inviteOnlyApp.ready();
+    try {
+      const start = await inviteOnlyApp.inject({ method: 'GET', url: '/api/auth/google/start' });
+      const state = start.cookies.find(
+        (cookie) => cookie.name === GOOGLE_OAUTH_STATE_COOKIE,
+      )?.value;
+      const response = await inviteOnlyApp.inject({
+        method: 'GET',
+        url: `/api/auth/google/callback?code=test-code&state=${encodeURIComponent(state!)}`,
+        cookies: { [GOOGLE_OAUTH_STATE_COOKIE]: state! },
+      });
+
+      expect(response.headers.location).toBe('http://localhost:5173/');
+      expect(response.cookies.some((cookie) => cookie.name === 'vp_session')).toBe(true);
+      expect(await prisma.user.count()).toBe(1);
+    } finally {
+      await inviteOnlyApp.close();
+    }
   });
 
   it('callback creates a normal VibePlay session cookie', async () => {

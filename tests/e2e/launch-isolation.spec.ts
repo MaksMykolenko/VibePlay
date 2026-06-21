@@ -93,8 +93,9 @@ test.describe('launch and origin isolation', () => {
   test('game A cannot read game B storage (distinct origins, runtime proof)', async ({ page }) => {
     const admin = await adminAgent();
     const { agent: creator } = await registerVerifiedCreator(admin);
+    const { agent: secondCreator } = await registerVerifiedCreator(admin);
     const gameA = await publishGame(admin, creator, uniq('Iso A '));
-    const gameB = await publishGame(admin, creator, uniq('Iso B '));
+    const gameB = await publishGame(admin, secondCreator, uniq('Iso B '));
 
     const originA = `http://${gameA.versionId}--${gameA.gameId}.games.localhost:${E2E.gameHostPort}`;
     const originB = `http://${gameB.versionId}--${gameB.gameId}.games.localhost:${E2E.gameHostPort}`;
@@ -138,8 +139,8 @@ test.describe('launch and origin isolation', () => {
       await page.evaluate(async () => Boolean(await navigator.serviceWorker.getRegistration('/'))),
     ).toBe(false);
 
-    // Two versions of the same game are isolated too: A's old origin is dead
-    // once a new version is published (immutable per-version origins).
+    // The active version remains available only on its exact version/game host.
+    // Archived-version denial is covered by the game-host contract suite.
     const sameGameCheck = await page.request.get(`${originA}/index.html`);
     expect(sameGameCheck.status()).toBe(200); // still the published version
 

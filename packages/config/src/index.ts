@@ -118,7 +118,6 @@ const uploadSchema = z.object({
 
 const betaSchema = z.object({
   INVITE_ONLY: booleanish.default(true),
-  SENTRY_DSN: z.string().optional().default(''),
 });
 
 const googleOAuthSchema = z.object({
@@ -134,7 +133,75 @@ const stripeSchema = z.object({
   PUBLIC_APP_URL: z.url(),
 });
 
-export const apiEnvSchema = baseSchema
+const COMMON_PUBLIC_SUFFIX_LABELS = new Set([
+  'co.uk',
+  'com.au',
+  'com.br',
+  'com.pl',
+  'co.jp',
+  'co.nz',
+]);
+
+/**
+ * Conservative registrable-domain approximation for deployment guardrails.
+ * This is deliberately not used for request authorization. It catches the
+ * supported deployment shapes (including common two-label public suffixes)
+ * and fails closed when app and hostile UGC are under the same site boundary.
+ */
+function registrableDomain(hostname: string): string {
+  const labels = hostname.toLowerCase().replace(/\.$/, '').split('.').filter(Boolean);
+  if (labels.length <= 2) return labels.join('.');
+  const lastTwo = labels.slice(-2).join('.');
+  return COMMON_PUBLIC_SUFFIX_LABELS.has(lastTwo) ? labels.slice(-3).join('.') : lastTwo;
+}
+
+function addProductionSafetyChecks<T extends z.ZodRawShape>(schema: z.ZodObject<T>) {
+  return schema.check((ctx) => {
+    const value = ctx.value as Record<string, unknown>;
+    if (value.NODE_ENV !== 'production') return;
+
+    if ('SCAN_DRIVER' in value && value.SCAN_DRIVER !== 'clamav') {
+      ctx.issues.push({
+        code: 'custom',
+        path: ['SCAN_DRIVER'],
+        message: 'SCAN_DRIVER must be clamav in production; scan bypass modes are forbidden',
+        input: value,
+      });
+    }
+    if ('EMAIL_DRIVER' in value && value.EMAIL_DRIVER !== 'smtp') {
+      ctx.issues.push({
+        code: 'custom',
+        path: ['EMAIL_DRIVER'],
+        message: 'EMAIL_DRIVER must be smtp in production; memory email is forbidden',
+        input: value,
+      });
+    }
+    if ('STORAGE_DRIVER' in value && value.STORAGE_DRIVER !== 's3') {
+      ctx.issues.push({
+        code: 'custom',
+        path: ['STORAGE_DRIVER'],
+        message: 'STORAGE_DRIVER must be s3 in production',
+        input: value,
+      });
+    }
+
+    if (typeof value.WEB_ORIGIN === 'string' && typeof value.GAME_ORIGIN === 'string') {
+      const appHost = new URL(value.WEB_ORIGIN).hostname;
+      const gameHost = new URL(value.GAME_ORIGIN).hostname;
+      if (appHost === gameHost || registrableDomain(appHost) === registrableDomain(gameHost)) {
+        ctx.issues.push({
+          code: 'custom',
+          path: ['GAME_ORIGIN'],
+          message:
+            'GAME_ORIGIN must use a separate registrable domain from WEB_ORIGIN in production',
+          input: value,
+        });
+      }
+    }
+  });
+}
+
+const apiEnvBaseSchema = baseSchema
   .extend(originsSchema.shape)
   .extend(databaseSchema.shape)
   .extend(redisSchema.shape)
@@ -154,7 +221,9 @@ export const apiEnvSchema = baseSchema
     TEST_MAILBOX: booleanish.default(false),
   });
 
-export const workerEnvSchema = baseSchema
+export const apiEnvSchema = addProductionSafetyChecks(apiEnvBaseSchema);
+
+const workerEnvBaseSchema = baseSchema
   .extend(databaseSchema.shape)
   .extend(redisSchema.shape)
   .extend(storageSchema.shape)
@@ -165,7 +234,9 @@ export const workerEnvSchema = baseSchema
     WORKER_HEALTH_PORT: z.coerce.number().int().default(3002),
   });
 
-export const gameHostEnvSchema = baseSchema
+export const workerEnvSchema = addProductionSafetyChecks(workerEnvBaseSchema);
+
+const gameHostEnvBaseSchema = baseSchema
   .extend(databaseSchema.shape)
   .extend(storageSchema.shape)
   .extend({
@@ -183,6 +254,8 @@ export const gameHostEnvSchema = baseSchema
     /** Positive lookup cache TTL; hidden games stop serving within this window. */
     ACCESS_CACHE_TTL_SECONDS: z.coerce.number().int().min(1).max(120).default(15),
   });
+
+export const gameHostEnvSchema = addProductionSafetyChecks(gameHostEnvBaseSchema);
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;

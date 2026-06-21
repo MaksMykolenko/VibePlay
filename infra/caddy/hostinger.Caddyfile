@@ -2,13 +2,13 @@
 # No external DNS API needed. Values come from .env:
 #   WEB_ORIGIN=https://vibeplay.games
 #   PUBLIC_API_ORIGIN=https://api.vibeplay.games
-#   GAME_HOST_BASE_DOMAIN=games.vibeplay.games
+#   GAME_HOST_BASE_DOMAIN=games.vibeplayusercontent.com
 #
 # TLS:
-#   vibeplay.games / api.vibeplay.games / games.vibeplay.games → Let's Encrypt HTTP-01
+#   vibeplay.games / api.vibeplay.games / games.vibeplayusercontent.com → Let's Encrypt HTTP-01
 #     (issued automatically; only needs the A records + ports 80/443 open).
-#   *.games.vibeplay.games (per-version game origins) → on-demand TLS, gated so a
-#     cert is only ever issued for hostnames ending in .games.vibeplay.games.
+#   *.games.vibeplayusercontent.com (per-version game origins) → on-demand TLS, gated so a
+#     cert is only ever issued for hostnames ending in .games.vibeplayusercontent.com.
 
 {
 	admin off
@@ -22,7 +22,7 @@
 }
 
 # Internal-only gate for on-demand TLS (listens on loopback inside the container).
-# Allows issuance ONLY for hostnames ending in ".games.vibeplay.games".
+# Allows issuance ONLY for hostnames ending in ".games.vibeplayusercontent.com".
 :5555 {
 	@allowed `{http.request.uri.query.domain}.endsWith(".{$GAME_HOST_BASE_DOMAIN}")`
 	respond @allowed 200

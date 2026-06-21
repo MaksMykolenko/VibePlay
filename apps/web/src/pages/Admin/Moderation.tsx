@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
@@ -8,6 +8,7 @@ import { useI18n } from '../../i18n/useI18n';
 import { Check, X, Cpu, Eye } from 'lucide-react';
 import { api } from '../../lib/api';
 import { IS_DEMO } from '../../lib/appMode';
+import type { MetadataRevisionQueueEntry } from '../../lib/api/types';
 
 export const AdminModeration: React.FC = () => {
   const { t } = useI18n();
@@ -17,6 +18,39 @@ export const AdminModeration: React.FC = () => {
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReasonText, setRejectReasonText] = useState('');
+  const [metadataRevisions, setMetadataRevisions] = useState<MetadataRevisionQueueEntry[]>([]);
+
+  const refreshMetadataRevisions = () => {
+    if (IS_DEMO) return;
+    void api
+      .adminMetadataRevisions()
+      .then(setMetadataRevisions)
+      .catch((error) => toast.danger(error instanceof Error ? error.message : 'Queue failed'));
+  };
+
+  useEffect(refreshMetadataRevisions, []);
+
+  const approveMetadataRevision = async (revisionId: string) => {
+    try {
+      await api.adminApproveMetadataRevision(revisionId);
+      toast.success('Catalog updates approved.');
+      refreshMetadataRevisions();
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : 'Approval failed');
+    }
+  };
+
+  const rejectMetadataRevision = async (revisionId: string) => {
+    const reason = window.prompt('Explain what the creator must change:')?.trim();
+    if (!reason) return;
+    try {
+      await api.adminRejectMetadataRevision(revisionId, reason);
+      toast.success('Catalog updates rejected.');
+      refreshMetadataRevisions();
+    } catch (error) {
+      toast.danger(error instanceof Error ? error.message : 'Rejection failed');
+    }
+  };
 
   // The moderation queue = games that have a version awaiting review. The API
   // returns READY_FOR_REVIEW / VALIDATING / SCAN_FAILED versions regardless of the
@@ -118,6 +152,64 @@ export const AdminModeration: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {!IS_DEMO && (
+        <section style={{ ...diagnosticsCardStyle, marginBottom: '2rem' }} className="bg-glass">
+          <h2 style={titleStyle}>Published metadata review ({metadataRevisions.length})</h2>
+          {metadataRevisions.length === 0 ? (
+            <p style={descTextStyle}>No published catalog changes are waiting for review.</p>
+          ) : (
+            metadataRevisions.map(({ revision, game: live, submittedBy }) => (
+              <div key={revision.id} style={metaCardStyle}>
+                <div style={diagnosticsHeaderStyle}>
+                  <div>
+                    <strong>{live.title}</strong>
+                    <div style={descTextStyle}>Submitted by {submittedBy.displayName}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      className="btn btn-success btn-sm"
+                      onClick={() => void approveMetadataRevision(revision.id)}
+                    >
+                      <Check size={14} /> Approve changes
+                    </button>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => void rejectMetadataRevision(revision.id)}
+                    >
+                      <X size={14} /> Reject
+                    </button>
+                  </div>
+                </div>
+                <div style={infoGridStyle}>
+                  <div>
+                    <strong>Current</strong>
+                    <div>Title: {live.title}</div>
+                    <div>Category: {live.category}</div>
+                    <div>Age rating: {live.ageRating}</div>
+                    <div>Tags: {live.tags.join(', ') || 'None'}</div>
+                  </div>
+                  <div>
+                    <strong>Proposed</strong>
+                    <div>Title: {revision.data.title}</div>
+                    <div>Category: {revision.data.category}</div>
+                    <div>Age rating: {revision.data.ageRating}</div>
+                    <div>Tags: {revision.data.tags.join(', ') || 'None'}</div>
+                  </div>
+                </div>
+                <p style={descTextStyle}>Proposed description: {revision.data.description}</p>
+                {revision.data.coverUrl && (
+                  <img
+                    src={revision.data.coverUrl}
+                    alt="Proposed cover"
+                    style={{ maxWidth: 240 }}
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </section>
       )}
 
       {/* Main Grid split */}

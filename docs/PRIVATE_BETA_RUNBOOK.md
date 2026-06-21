@@ -21,6 +21,7 @@ CREATOR invites — there is no self-serve creator upgrade in the beta.
 3. Open reports (`/admin/reports`) — malicious-game reports first.
 4. `docker compose ps` — everything healthy; disk: `df -h` (backups dir!).
 5. Backup cron produced today's dump (`ls -lt backups/postgres | head`).
+6. `/api/health/ready` includes DB, Redis, storage, ClamAV, and SMTP checks.
 
 ## Moderation duty
 
@@ -31,6 +32,9 @@ CREATOR invites — there is no self-serve creator upgrade in the beta.
   their games), keep the quarantine object until investigated, note it in
   the audit log; follow `INCIDENT_RESPONSE.md` if anything was published.
 - You cannot moderate your own games (enforced).
+- Review pending published metadata/media separately; compare current and
+  proposed title, descriptions, rating, tags, controls/devices, screenshots,
+  and cover before approval.
 
 ## Abuse & account requests
 
@@ -64,6 +68,27 @@ Weekly: tag, dedupe, and move actionable items into the issue tracker.
 - ≤ ~50 invited users, ≤ ~100 published versions on the reference host.
 - Upload limits via env (`UPLOAD_MAX_*`); shown to creators on the upload
   screen. Raise deliberately, not reactively.
+
+## Production acceptance checks
+
+Before opening registration or creator invites, record evidence for each:
+
+1. Upload an EICAR test archive and confirm ClamAV rejects it; upload a clean
+   fixture and confirm it reaches `READY_FOR_REVIEW`.
+2. Deliver verification and password-reset email to an external mailbox; SMTP
+   readiness must remain 200 without exposing credentials.
+3. Send a Stripe CLI test webhook and confirm signature verification plus a
+   single idempotent event record after replay.
+4. Complete Google OAuth for an existing user and confirm first-time signup is
+   blocked while `INVITE_ONLY=true`.
+5. Resolve a random per-version wildcard hostname over TLS; verify unknown,
+   malformed, and bare game hosts return 404.
+6. From outside the service network, verify MinIO/S3 list and object GET are
+   denied for quarantine, published, and media buckets.
+7. Run the backup/restore drill into clean targets and re-check private bucket
+   policies before routing traffic.
+8. Inspect app and game-host CSP, iframe sandbox, Permissions-Policy, host-only
+   secure cookies, and absence of auth cookies on game origins.
 
 ## Escalation
 

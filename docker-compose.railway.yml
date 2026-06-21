@@ -13,7 +13,10 @@
 #   - Redis         → Railway Redis plugin      (REDIS_URL   injected automatically)
 #   - Object store  → Cloudflare R2 (free 10 GB, S3-compatible, no egress fees)
 #                     See RAILWAY_DEPLOY.md §3 for setup instructions.
-#   - ClamAV        → disabled (SCAN_DRIVER=none); add later via sidecar if needed
+#   - ClamAV        → required private clamd endpoint (CLAMAV_HOST/CLAMAV_PORT)
+#
+# This path is unsupported until both the private ClamAV service and the
+# separate registrable wildcard game domain are configured.
 #
 # Service communication:
 #   Railway Docker Compose services share an internal network.
@@ -36,6 +39,7 @@ x-storage-env: &storage-env
   S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
   S3_QUARANTINE_BUCKET: ${S3_QUARANTINE_BUCKET:-vibeplay-quarantine}
   S3_PUBLISHED_BUCKET: ${S3_PUBLISHED_BUCKET:-vibeplay-published}
+  S3_AVATARS_BUCKET: ${S3_AVATARS_BUCKET:-vibeplay-avatars}
   S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-false}
 
 x-required-secrets: &required-secrets
@@ -85,7 +89,9 @@ services:
       STRIPE_CREATOR_PLUS_PRICE_ID: ${STRIPE_CREATOR_PLUS_PRICE_ID}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL}
       TRUST_PROXY: 'true'
-      SCAN_DRIVER: none
+      SCAN_DRIVER: clamav
+      CLAMAV_HOST: ${CLAMAV_HOST}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
       EMAIL_DRIVER: smtp
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT:-587}
@@ -95,7 +101,6 @@ services:
       SMTP_FROM: ${SMTP_FROM}
       INVITE_ONLY: ${INVITE_ONLY:-true}
       UPLOAD_MAX_COMPRESSED_MB: ${UPLOAD_MAX_COMPRESSED_MB:-100}
-      SENTRY_DSN: ${SENTRY_DSN:-}
     expose:
       - '3000'
     healthcheck:
@@ -121,7 +126,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
-      SCAN_DRIVER: none
+      SCAN_DRIVER: clamav
+      CLAMAV_HOST: ${CLAMAV_HOST}
+      CLAMAV_PORT: ${CLAMAV_PORT:-3310}
       WORKER_HEALTH_PORT: '3002'
     healthcheck:
       test:

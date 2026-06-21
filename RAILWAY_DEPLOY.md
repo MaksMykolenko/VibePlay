@@ -1,6 +1,8 @@
 # VibePlay — Railway Deployment Guide
 
-This guide takes you from zero to a running private beta in about 15 minutes.
+This guide describes the Railway deployment shape. It is **unsupported for
+production UGC** until a private ClamAV endpoint and a separate registrable
+wildcard game domain with TLS are configured and verified.
 All four application services (api, worker, game-host, web) are defined in
 `docker-compose.railway.yml` and deploy automatically when you push to GitHub.
 
@@ -26,6 +28,9 @@ Railway plugins (managed, outside your compose):
 
 External storage (free):
   Cloudflare R2     → S3_* env vars
+
+External security service:
+  private clamd     → CLAMAV_HOST / CLAMAV_PORT
 ```
 
 ---
@@ -35,8 +40,8 @@ External storage (free):
 - GitHub repository with the VibePlay source
 - Railway account (free tier is sufficient for a private beta)
 - Cloudflare account (for R2 object storage — free 10 GB)
-- A domain name for the wildcard game subdomain
-  (optional for first deploy, required for full per-version origin isolation)
+- A separately registered domain for the wildcard game subdomain (required)
+- A clamd service reachable only over the private service network (required)
 
 ---
 
@@ -64,9 +69,10 @@ No further configuration is needed for either plugin.
 ## §3 — Set up Cloudflare R2
 
 1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com) → **R2** → **Create bucket**.
-2. Create two buckets:
+2. Create three private buckets:
    - `vibeplay-quarantine` (stores uploaded ZIPs before processing)
    - `vibeplay-published` (stores processed, live game files)
+   - `vibeplay-avatars` (stores private avatars and moderated game covers/media)
 3. In R2 → **Manage R2 API Tokens** → **Create API Token**.
    - Select **Object Read & Write** permission for both buckets.
    - Save the **Access Key ID** and **Secret Access Key**.
@@ -100,18 +106,18 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 | `SESSION_SECRET` | `<64-byte hex>` |
 | `PASSWORD_PEPPER` | `<32-byte hex>` |
 | `PREVIEW_URL_SECRET` | `<32-byte hex>` |
-| `WEB_ORIGIN` | `https://vibeplay.up.railway.app` |
-| `GAME_ORIGIN` | `https://vibeplay-game-host.up.railway.app` |
-| `GAME_FRAME_SRC` | `https://vibeplay-game-host.up.railway.app` |
+| `WEB_ORIGIN` | `https://beta.vibeplay.example` |
+| `GAME_ORIGIN` | `https://games.vibeplayusercontent.example` |
+| `GAME_FRAME_SRC` | `https://*.games.vibeplayusercontent.example` |
 | `S3_ENDPOINT` | `https://<account>.r2.cloudflarestorage.com` |
 | `S3_ACCESS_KEY_ID` | `<R2 token key ID>` |
 | `S3_SECRET_ACCESS_KEY` | `<R2 token secret>` |
+| `CLAMAV_HOST` | `<private clamd hostname>` |
 | `SMTP_HOST` | `smtp.resend.com` |
 | `SMTP_FROM` | `VibePlay <no-reply@yourdomain.com>` |
 
-> **Note:** `WEB_ORIGIN` and `GAME_ORIGIN` are the Railway-assigned URLs. After
-> the first deploy Railway shows you the URL for each service — update these
-> variables and redeploy if they differ.
+`GAME_ORIGIN` must not use the shared Railway service URL or a subdomain of the
+app's registrable domain. Production startup rejects an unsafe origin pair.
 
 ---
 
@@ -128,15 +134,14 @@ Railway will now build and run each service from the compose definition.
 
 ---
 
-## §6 — Custom wildcard domain for game-host (recommended)
+## §6 — Required wildcard domain for game-host
 
-Without a wildcard domain, all game versions share the game-host Railway URL.
-The app still works, but you lose the per-version origin isolation that prevents
-one game from accessing another game's cookies or storage.
+Without wildcard DNS and TLS, game versions cannot use their required unique
+origins. Do not launch UGC or mark this deployment supported without it.
 
 To enable full isolation:
 
-1. Register a domain (e.g. `vibeplayusercontent.com`) — a `.xyz` costs ~$1/year.
+1. Register a separate domain (for example `vibeplayusercontent.com`).
 2. In Railway → `game-host` service → **Settings** → **Networking** →
    **Custom Domain** → add `*.games.yourdomain.com`.
 3. Railway shows you a CNAME target (e.g. `xxx.railway.app`).
@@ -168,7 +173,7 @@ Once all variables are set:
 # Health checks (replace with your Railway URLs)
 curl https://vibeplay.up.railway.app/api/health/live    # → {"status":"ok"}
 curl https://vibeplay.up.railway.app/api/health/ready   # → {"status":"ok"}
-curl https://vibeplay-game-host.up.railway.app/health/live  # → {"status":"ok"}
+curl https://games.vibeplayusercontent.example/health/live # → {"status":"ok"}
 ```
 
 ---
@@ -176,31 +181,13 @@ curl https://vibeplay-game-host.up.railway.app/health/live  # → {"status":"ok"
 ## §8 — Create the first admin account
 
 The app runs with `INVITE_ONLY=true` by default, so registration is gated.
-Create the first admin via the Railway shell:
+Create the first account through the normal Argon2id/pepper registration path,
+then grant ADMIN through the existing script:
 
-1. In Railway → `api` service → **Shell** tab.
-2. Run:
-   ```bash
-   node -e "
-   const { PrismaClient } = require('@prisma/client');
-   const bcrypt = require('bcrypt');
-   const db = new PrismaClient();
-   const hash = await bcrypt.hash('YOUR_PASSWORD', 12);
-   await db.user.create({
-     data: {
-       email: 'admin@yourdomain.com',
-       username: 'admin',
-       displayName: 'Admin',
-       passwordHash: hash,
-       role: 'ADMIN',
-       emailVerifiedAt: new Date(),
-     }
-   });
-   console.log('done');
-   process.exit(0);
-   "
-   ```
-3. Log in to the web UI and generate invite links from the admin panel.
+1. Temporarily set `INVITE_ONLY=false`, redeploy API, and register through the UI.
+2. In the Railway shell run `npm run grant-admin -- admin@yourdomain.com`.
+3. Immediately restore `INVITE_ONLY=true` and redeploy API.
+4. Log in and create email-bound, expiring invites from the admin panel.
 
 ---
 

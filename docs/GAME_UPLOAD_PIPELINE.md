@@ -9,7 +9,7 @@ creator                api                       storage              worker
   │  create version      │                          │                    │
   ├─────────────────────►│  GameVersion: UPLOADING  │                    │
   │  upload intent       │                          │                    │
-  ├─────────────────────►│ presigned PUT ──────────►│ quarantine bucket  │
+  ├─────────────────────►│ authenticated direct PUT►│ quarantine bucket  │
   │  PUT zip (browser)   │                          │                    │
   ├──────────────────────┼─────────────────────────►│                    │
   │  complete            │  status: QUARANTINED     │                    │

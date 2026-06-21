@@ -18,8 +18,8 @@ import {
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { getCreatorAccess, hasActiveCreatorPlus } from '../lib/entitlements.js';
-import { generateToken, hashToken, signExpiringValue } from '../lib/crypto.js';
-import { requireAdmin } from '../lib/guards.js';
+import { generateToken, hashToken, sha256, signExpiringValue } from '../lib/crypto.js';
+import { canManageRole, requireAdmin } from '../lib/guards.js';
 import {
   paginated,
   toCurrentUser,
@@ -30,13 +30,24 @@ import {
 } from '../lib/serializers.js';
 import { rlPolicy } from '../lib/rateLimit.js';
 import { parse } from '../lib/validate.js';
+import { metadataRevisionDataSchema, toMetadataRevisionDto } from '../lib/metadataRevisions.js';
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
-  const { prisma, env, validationQueue } = app;
+  const { prisma, env, storage, validationQueue } = app;
 
   app.addHook('preHandler', async (req) => {
     requireAdmin(req);
   });
+
+  const manageableTarget = async (actor: ReturnType<typeof requireAdmin>, userId: string) => {
+    if (actor.id === userId) throw errors.forbidden('Cannot manage your own account');
+    const target = await prisma.user.findUnique({ where: { id: userId } });
+    if (!target) throw errors.notFound('USER_NOT_FOUND', 'User not found');
+    if (!canManageRole(actor.role, target.role)) {
+      throw errors.forbidden('You cannot manage a user with an equal or higher role');
+    }
+    return target;
+  };
 
   const moderationEntry = async (versionId: string) => {
     const version = await prisma.gameVersion.findUnique({
@@ -69,6 +80,159 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     const queue = await Promise.all(versions.map((version) => moderationEntry(version.id)));
     return { queue: queue.sort((a, b) => Number(b.priority) - Number(a.priority)) };
   });
+
+  app.get('/metadata-revisions', async () => {
+    const revisions = await prisma.gameMetadataRevision.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { submittedAt: 'asc' },
+      include: {
+        submittedBy: { include: { subscription: true } },
+        game: {
+          include: {
+            creator: { include: { subscription: true } },
+            screenshots: true,
+            publishedVersion: true,
+            versions: true,
+          },
+        },
+      },
+    });
+    return {
+      revisions: revisions.map((revision) => ({
+        revision: toMetadataRevisionDto(revision, env.API_ORIGIN),
+        game: toGameDetail(revision.game, null),
+        submittedBy: toPublicUser(revision.submittedBy),
+      })),
+    };
+  });
+
+  app.post<{ Params: { revisionId: string } }>(
+    '/metadata-revisions/:revisionId/approve',
+    { config: { rateLimit: rlPolicy('adminAction') } },
+    async (req, reply) => {
+      const admin = requireAdmin(req);
+      const revision = await prisma.gameMetadataRevision.findUnique({
+        where: { id: req.params.revisionId },
+        include: { game: { include: { screenshots: true } } },
+      });
+      if (!revision) throw errors.notFound('NOT_FOUND', 'Metadata revision not found');
+      if (revision.status !== 'PENDING') throw errors.conflict('Revision was already reviewed');
+      if (revision.game.creatorId === admin.id && admin.role !== 'OWNER') {
+        throw errors.forbidden('Only OWNER can moderate their own metadata changes');
+      }
+      const data = metadataRevisionDataSchema.parse(revision.data);
+      const coverUrl = data.coverObjectKey
+        ? `${env.API_ORIGIN}/api/games/${revision.gameId}/cover?v=${sha256(data.coverObjectKey).slice(0, 12)}`
+        : data.coverUrl;
+
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.gameMetadataRevision.updateMany({
+          where: { id: revision.id, status: 'PENDING' },
+          data: { status: 'APPROVED', reviewedById: admin.id, reviewedAt: new Date() },
+        });
+        if (claimed.count !== 1) throw errors.conflict('Revision was already reviewed');
+        await tx.gameScreenshot.deleteMany({ where: { gameId: revision.gameId } });
+        await tx.game.update({
+          where: { id: revision.gameId },
+          data: {
+            title: data.title,
+            shortDescription: data.shortDescription,
+            description: data.description,
+            category: data.category,
+            ageRating: data.ageRating,
+            tags: data.tags,
+            devices: data.devices,
+            controls: data.controls,
+            toolsUsed: data.toolsUsed,
+            multiplayer: data.multiplayer,
+            aiDisclosure: data.aiDisclosure,
+            coverUrl,
+            coverObjectKey: data.coverObjectKey,
+            screenshots: {
+              create: data.screenshots.map((url, sortOrder) => ({ url, sortOrder })),
+            },
+          },
+        });
+        await tx.notification.create({
+          data: {
+            userId: revision.game.creatorId,
+            type: 'GAME_APPROVED',
+            title: 'Game details approved',
+            body: `Your catalog updates for “${data.title}” are now live.`,
+            metadata: { gameId: revision.gameId, revisionId: revision.id },
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            actorId: admin.id,
+            action: 'game.metadata_revision_approved',
+            targetType: 'GAME',
+            targetId: revision.gameId,
+            metadata: { revisionId: revision.id },
+          },
+        });
+      });
+      if (revision.game.coverObjectKey && revision.game.coverObjectKey !== data.coverObjectKey) {
+        await storage
+          .deleteObject(env.S3_AVATARS_BUCKET, revision.game.coverObjectKey)
+          .catch(() => {});
+      }
+      reply.status(204).send();
+    },
+  );
+
+  app.post<{ Params: { revisionId: string } }>(
+    '/metadata-revisions/:revisionId/reject',
+    { config: { rateLimit: rlPolicy('adminAction') } },
+    async (req, reply) => {
+      const admin = requireAdmin(req);
+      const body = parse(rejectVersionSchema, req.body);
+      const revision = await prisma.gameMetadataRevision.findUnique({
+        where: { id: req.params.revisionId },
+        include: { game: true },
+      });
+      if (!revision) throw errors.notFound('NOT_FOUND', 'Metadata revision not found');
+      if (revision.status !== 'PENDING') throw errors.conflict('Revision was already reviewed');
+      if (revision.game.creatorId === admin.id && admin.role !== 'OWNER') {
+        throw errors.forbidden('Only OWNER can moderate their own metadata changes');
+      }
+      const data = metadataRevisionDataSchema.parse(revision.data);
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.gameMetadataRevision.updateMany({
+          where: { id: revision.id, status: 'PENDING' },
+          data: {
+            status: 'REJECTED',
+            reason: body.reason,
+            reviewedById: admin.id,
+            reviewedAt: new Date(),
+          },
+        });
+        if (claimed.count !== 1) throw errors.conflict('Revision was already reviewed');
+        await tx.notification.create({
+          data: {
+            userId: revision.game.creatorId,
+            type: 'GAME_REJECTED',
+            title: 'Game details need changes',
+            body: `Your catalog updates were rejected: ${body.reason}`,
+            metadata: { gameId: revision.gameId, revisionId: revision.id },
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            actorId: admin.id,
+            action: 'game.metadata_revision_rejected',
+            targetType: 'GAME',
+            targetId: revision.gameId,
+            metadata: { revisionId: revision.id, reason: body.reason },
+          },
+        });
+      });
+      if (data.coverObjectKey && data.coverObjectKey !== revision.game.coverObjectKey) {
+        await storage.deleteObject(env.S3_AVATARS_BUCKET, data.coverObjectKey).catch(() => {});
+      }
+      reply.status(204).send();
+    },
+  );
 
   app.post(
     '/moderation/recover-stuck',
@@ -366,7 +530,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   for (const action of ['suspend', 'ban'] as const) {
     app.post<{ Params: { userId: string } }>(`/users/:userId/${action}`, async (req, reply) => {
       const admin = requireAdmin(req);
-      if (admin.id === req.params.userId) throw errors.forbidden('Cannot change your own status');
+      const target = await manageableTarget(admin, req.params.userId);
       const body = parse(suspendUserSchema, req.body);
       const status = action === 'suspend' ? 'SUSPENDED' : 'BANNED';
       await prisma.$transaction([
@@ -389,32 +553,65 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         select: { id: true },
       });
       await Promise.all(affectedGames.map((g) => validationQueue.publishGameInvalidation(g.id)));
+      await audit(prisma, {
+        actorId: admin.id,
+        action: `user.${action}`,
+        targetType: 'USER',
+        targetId: target.id,
+        metadata: { reason: body.reason, targetRole: target.role },
+        req,
+        secret: env.SESSION_SECRET,
+      });
       reply.status(204).send();
     });
   }
 
   app.post<{ Params: { userId: string } }>('/users/:userId/restore', async (req, reply) => {
+    const admin = requireAdmin(req);
+    const target = await manageableTarget(admin, req.params.userId);
     await prisma.user.update({
-      where: { id: req.params.userId },
+      where: { id: target.id },
       data: { status: 'ACTIVE', statusReason: null },
     });
     await prisma.game.updateMany({
-      where: { creatorId: req.params.userId, status: 'SUSPENDED' },
+      where: { creatorId: target.id, status: 'SUSPENDED' },
       data: { status: 'HIDDEN' },
     });
     // Invalidate cache for restored games (status changed).
     const restoredGames = await prisma.game.findMany({
-      where: { creatorId: req.params.userId, status: 'HIDDEN' },
+      where: { creatorId: target.id, status: 'HIDDEN' },
       select: { id: true },
     });
     await Promise.all(restoredGames.map((g) => validationQueue.publishGameInvalidation(g.id)));
+    await audit(prisma, {
+      actorId: admin.id,
+      action: 'user.restored',
+      targetType: 'USER',
+      targetId: target.id,
+      metadata: { targetRole: target.role },
+      req,
+      secret: env.SESSION_SECRET,
+    });
     reply.status(204).send();
   });
 
   app.post<{ Params: { userId: string } }>('/users/:userId/promote-creator', async (req, reply) => {
+    const admin = requireAdmin(req);
+    const target = await manageableTarget(admin, req.params.userId);
+    if (target.role !== 'PLAYER') {
+      throw errors.conflict('Only PLAYER accounts can be promoted to CREATOR');
+    }
     await prisma.user.update({
-      where: { id: req.params.userId },
+      where: { id: target.id },
       data: { role: 'CREATOR' },
+    });
+    await audit(prisma, {
+      actorId: admin.id,
+      action: 'user.promoted_creator',
+      targetType: 'USER',
+      targetId: target.id,
+      req,
+      secret: env.SESSION_SECRET,
     });
     reply.status(204).send();
   });

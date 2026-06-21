@@ -14,10 +14,20 @@ import {
   isGameCoverKey,
   newGameCoverObjectKey,
 } from '../lib/gameCover.js';
-import { requireCreator, requireOwnershipOrAdmin, requireVerifiedEmail } from '../lib/guards.js';
+import {
+  requireActiveUser,
+  requireCreator,
+  requireOwnershipOrAdmin,
+  requireVerifiedEmail,
+} from '../lib/guards.js';
 import { rlPolicy } from '../lib/rateLimit.js';
 import { toGameDetail } from '../lib/serializers.js';
 import { parse } from '../lib/validate.js';
+import {
+  metadataRevisionDataSchema,
+  submitMetadataRevision,
+  toMetadataRevisionDto,
+} from '../lib/metadataRevisions.js';
 
 const MAX_COVER_BYTES = 5 * 1024 * 1024;
 
@@ -35,7 +45,10 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
     async (req) => {
       requireVerifiedEmail(req);
       requireCreator(req);
-      const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
+      const game = await prisma.game.findUnique({
+        where: { id: req.params.gameId },
+        include: { screenshots: true },
+      });
       if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
       requireOwnershipOrAdmin(req, game.creatorId);
 
@@ -76,7 +89,10 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
     async (req) => {
       requireVerifiedEmail(req);
       requireCreator(req);
-      const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
+      const game = await prisma.game.findUnique({
+        where: { id: req.params.gameId },
+        include: { screenshots: true },
+      });
       if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
       requireOwnershipOrAdmin(req, game.creatorId);
 
@@ -114,7 +130,10 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
     async (req) => {
       const user = requireVerifiedEmail(req);
       requireCreator(req);
-      const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
+      const game = await prisma.game.findUnique({
+        where: { id: req.params.gameId },
+        include: { screenshots: true },
+      });
       if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
       requireOwnershipOrAdmin(req, game.creatorId);
 
@@ -128,6 +147,35 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
       const bytes = await storage.getObjectBuffer(mediaBucket, body.objectKey);
       if (sniffImageType(bytes) !== gameCoverContentTypeForKey(body.objectKey)) {
         throw errors.validation([{ path: 'objectKey', message: 'Stored image is invalid' }]);
+      }
+
+      if (game.publishedVersionId) {
+        const revision = await submitMetadataRevision(prisma, game, user.id, {
+          coverObjectKey: body.objectKey,
+          coverUrl: coverServingUrl(env.API_ORIGIN, game.id, body.objectKey),
+        });
+        await audit(prisma, {
+          actorId: user.id,
+          action: 'game.metadata_revision_submitted',
+          targetType: 'GAME',
+          targetId: game.id,
+          metadata: { revisionId: revision.id, fields: ['cover'] },
+          req,
+          secret: env.SESSION_SECRET,
+        });
+        const live = await prisma.game.findUniqueOrThrow({
+          where: { id: game.id },
+          include: {
+            creator: { include: { subscription: true } },
+            screenshots: true,
+            publishedVersion: true,
+            versions: true,
+          },
+        });
+        return {
+          game: toGameDetail(live, { liked: false, favorited: false, isOwner: true }),
+          pendingMetadataRevision: toMetadataRevisionDto(revision, env.API_ORIGIN),
+        };
       }
 
       const updated = await prisma.game.update({
@@ -159,11 +207,30 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
   );
 
   app.delete<{ Params: { gameId: string } }>('/creator/games/:gameId/cover', async (req) => {
-    requireVerifiedEmail(req);
+    const user = requireVerifiedEmail(req);
     requireCreator(req);
-    const game = await prisma.game.findUnique({ where: { id: req.params.gameId } });
+    const game = await prisma.game.findUnique({
+      where: { id: req.params.gameId },
+      include: { screenshots: true },
+    });
     if (!game) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
     requireOwnershipOrAdmin(req, game.creatorId);
+    if (game.publishedVersionId) {
+      const revision = await submitMetadataRevision(prisma, game, user.id, {
+        coverObjectKey: null,
+        coverUrl: null,
+      });
+      await audit(prisma, {
+        actorId: user.id,
+        action: 'game.metadata_revision_submitted',
+        targetType: 'GAME',
+        targetId: game.id,
+        metadata: { revisionId: revision.id, fields: ['cover'] },
+        req,
+        secret: env.SESSION_SECRET,
+      });
+      return { ok: true, pendingMetadataRevision: toMetadataRevisionDto(revision, env.API_ORIGIN) };
+    }
     await prisma.game.update({
       where: { id: game.id },
       data: { coverObjectKey: null, coverUrl: null },
@@ -173,6 +240,33 @@ export async function registerGameCoverRoutes(app: FastifyInstance): Promise<voi
     }
     return { ok: true };
   });
+
+  app.get<{ Params: { revisionId: string } }>(
+    '/metadata-revisions/:revisionId/cover',
+    async (req, reply) => {
+      const user = requireActiveUser(req);
+      const revision = await prisma.gameMetadataRevision.findUnique({
+        where: { id: req.params.revisionId },
+        include: { game: true },
+      });
+      if (!revision) throw errors.notFound('COVER_NOT_FOUND', 'No pending cover');
+      if (revision.game.creatorId !== user.id && user.role !== 'ADMIN' && user.role !== 'OWNER') {
+        throw errors.forbidden();
+      }
+      const key = metadataRevisionDataSchema.parse(revision.data).coverObjectKey;
+      if (!key) throw errors.notFound('COVER_NOT_FOUND', 'No pending cover');
+      const object = await storage.headObject(mediaBucket, key);
+      if (!object) throw errors.notFound('COVER_NOT_FOUND', 'No pending cover');
+      const buffer = await storage.getObjectBuffer(mediaBucket, key);
+      reply
+        .header('content-type', gameCoverContentTypeForKey(key))
+        .header('cache-control', 'private, no-store')
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', "default-src 'none'; sandbox")
+        .header('content-disposition', 'inline');
+      return reply.send(buffer);
+    },
+  );
 
   app.get<{ Params: { gameId: string } }>('/games/:gameId/cover', async (req, reply) => {
     const game = await prisma.game.findUnique({
