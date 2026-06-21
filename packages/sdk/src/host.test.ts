@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeEnvelope } from '@vibeplay/shared/sdk-protocol';
-import { GameBridge } from './host.js';
+import { makeEnvelope, type SaveResultPayload } from '@vibeplay/shared/sdk-protocol';
+import { GameBridge, type HostSaveAdapter } from './host.js';
+
+const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('GameBridge', () => {
   let browserWindow: EventTarget;
@@ -82,6 +84,133 @@ describe('GameBridge', () => {
       }),
       'https://games.example.com',
     );
+    bridge.destroy();
+  });
+
+  // --- cloud saves ----------------------------------------------------------
+
+  function makeAdapter(): HostSaveAdapter {
+    return {
+      get: vi.fn(
+        async (): Promise<SaveResultPayload> => ({
+          code: 'ok',
+          data: { level: 3 },
+          schemaVersion: 2,
+        }),
+      ),
+      set: vi.fn(async (): Promise<SaveResultPayload> => ({ code: 'ok' })),
+      delete: vi.fn(async (): Promise<SaveResultPayload> => ({ code: 'ok' })),
+      status: vi.fn(
+        async (): Promise<SaveResultPayload> => ({
+          code: 'ok',
+          status: { available: true, loggedIn: true, hasSave: true },
+        }),
+      ),
+    };
+  }
+
+  it('delegates save operations to the injected adapter and replies with saveResult', async () => {
+    const saveAdapter = makeAdapter();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      saveAdapter,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+
+    send(
+      'https://games.example.com',
+      makeEnvelope('saveSet', { data: { level: 3 }, schemaVersion: 2, important: true }, 'r1'),
+    );
+    await flush();
+
+    expect(saveAdapter.set).toHaveBeenCalledWith({ level: 3 }, 2, true);
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'saveResult', requestId: 'r1', payload: { code: 'ok' } }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
+
+  it('returns auth_required and fires the CTA hook for a guest save (no adapter)', async () => {
+    const onGuestSaveAttempt = vi.fn();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      events: { onGuestSaveAttempt },
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+
+    send('https://games.example.com', makeEnvelope('saveSet', { data: { level: 1 } }, 'r2'));
+    await flush();
+
+    expect(onGuestSaveAttempt).toHaveBeenCalledOnce();
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'saveResult',
+        requestId: 'r2',
+        payload: { code: 'auth_required' },
+      }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
+
+  it('ignores save messages from an unexpected origin', async () => {
+    const saveAdapter = makeAdapter();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      saveAdapter,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+    postMessage.mockClear();
+
+    send('https://evil.example', makeEnvelope('saveSet', { data: { hacked: true } }, 'r3'));
+    await flush();
+
+    expect(saveAdapter.set).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalled();
+    bridge.destroy();
+  });
+
+  it('round-trips a local-save request (guest-save transfer)', async () => {
+    const onLocalSaveAvailable = vi.fn();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      events: { onLocalSaveAvailable },
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+
+    send(
+      'https://games.example.com',
+      makeEnvelope('localSaveAvailable', { has: true, schemaVersion: 2 }),
+    );
+    await flush();
+    expect(onLocalSaveAvailable).toHaveBeenCalledWith({ has: true, schemaVersion: 2 });
+
+    const promise = bridge.requestLocalSave(1000);
+    const call = postMessage.mock.calls.find(
+      ([m]) => (m as { type?: string }).type === 'requestLocalSave',
+    );
+    expect(call).toBeTruthy();
+    const requestId = (call![0] as { requestId: string }).requestId;
+
+    send(
+      'https://games.example.com',
+      makeEnvelope('localSaveProvided', { data: { level: 9 }, schemaVersion: 2 }, requestId),
+    );
+    const result = await promise;
+    expect(result).toEqual({ data: { level: 9 }, schemaVersion: 2 });
     bridge.destroy();
   });
 });

@@ -9,6 +9,8 @@ import type {
   GameDetailDto,
   GameControlDto,
   GameListItemDto,
+  GameSaveDto,
+  GameSaveSummaryDto,
   GameVersionDto,
   GameCoverUploadIntentResponseDto,
   InviteDto,
@@ -218,6 +220,13 @@ export interface ApiClient {
   // launch
   launchGame(gameId: string): Promise<LaunchDescriptorDto>;
   endPlaySession(sessionId: string): Promise<void>;
+
+  // cloud saves (authenticated; the Play Page bridge calls these on the game's behalf)
+  /** The caller's save for a game, or null when none exists (404). */
+  getGameSave(gameId: string): Promise<GameSaveDto | null>;
+  putGameSave(gameId: string, data: unknown, schemaVersion?: number): Promise<GameSaveDto>;
+  deleteGameSave(gameId: string): Promise<void>;
+  listGameSaves(): Promise<GameSaveSummaryDto[]>;
 
   // creator
   listMyGames(): Promise<CreatorGameSummary[]>;

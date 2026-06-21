@@ -1,6 +1,7 @@
 import type {
   Comment,
   Game,
+  GameSave,
   GameScreenshot,
   GameVersion,
   Notification,
@@ -15,6 +16,8 @@ import type {
   GameDetailDto,
   GameControlDto,
   GameListItemDto,
+  GameSaveDto,
+  GameSaveSummaryDto,
   GameVersionDto,
   NotificationDto,
   PaginatedDto,
@@ -230,4 +233,35 @@ export function paginated<T>(
   total: number,
 ): PaginatedDto<T> {
   return { items, page, perPage, total, totalPages: Math.max(1, Math.ceil(total / perPage)) };
+}
+
+export function toGameSaveDto(s: GameSave): GameSaveDto {
+  return {
+    gameId: s.gameId,
+    data: s.data,
+    schemaVersion: s.schemaVersion,
+    sizeBytes: s.sizeBytes,
+    dataHash: s.dataHash,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+/** Metadata-only view (no payload) for the saves-list endpoint. */
+export function toGameSaveSummary(s: {
+  gameId: string;
+  schemaVersion: number;
+  sizeBytes: number;
+  dataHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}): GameSaveSummaryDto {
+  return {
+    gameId: s.gameId,
+    schemaVersion: s.schemaVersion,
+    sizeBytes: s.sizeBytes,
+    dataHash: s.dataHash,
+    createdAt: s.createdAt.toISOString(),
+    updatedAt: s.updatedAt.toISOString(),
+  };
 }

@@ -38,6 +38,9 @@ export const RATE_LIMIT_POLICIES = {
   dataExport: { max: 3, timeWindow: '24 hours' },
   feedback: { max: 10, timeWindow: '1 hour' },
   billingSession: { max: 10, timeWindow: '1 hour' },
+  // Cloud-save writes. The SDK debounces to ~once per 10-30s, so 30/min leaves
+  // ample headroom for important-event flushes while bounding abuse.
+  gameSaveWrite: { max: 30, timeWindow: '1 minute' },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;

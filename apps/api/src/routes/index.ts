@@ -4,6 +4,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerCatalogRoutes } from './catalog.js';
 import { registerCreatorRoutes } from './creator.js';
 import { registerProfileRoutes } from './profiles.js';
+import { registerGameSaveRoutes } from './gameSaves.js';
 import { registerGoogleOAuthRoutes } from './googleOAuth.js';
 import { registerGameCoverRoutes } from './gameCover.js';
 import { registerBillingRoutes, registerStripeWebhookRoutes } from './billing.js';
@@ -19,6 +20,7 @@ export async function registerDomainRoutes(app: FastifyInstance): Promise<void> 
   await app.register(registerBillingRoutes, { prefix: '/api' });
   await app.register(registerGameCoverRoutes, { prefix: '/api' });
   await app.register(registerProfileRoutes, { prefix: '/api' });
+  await app.register(registerGameSaveRoutes, { prefix: '/api' });
   await app.register(registerCatalogRoutes, { prefix: '/api' });
   await app.register(registerCreatorRoutes, { prefix: '/api' });
   await app.register(registerAdminRoutes, { prefix: '/api/admin' });

@@ -4,7 +4,7 @@ import { useGames } from '../hooks/useGames';
 import { useAuth } from '../hooks/useAuth';
 import { GameCarousel } from '../components/GameCarousel';
 import { OnboardingCard } from '../components/OnboardingCard';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, Cloud } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 
@@ -90,6 +90,12 @@ export const LandingPage: React.FC = () => {
           <div>
             <h1 className="home-greeting__title">{t('home.discoverNew')}</h1>
             <p className="home-greeting__subtitle">{t('home.guestSubtitle')}</p>
+            <p className="cloud-save-tagline" style={{ marginTop: '0.6rem', maxWidth: '52ch' }}>
+              <Cloud size={14} aria-hidden="true" />
+              <span>
+                <strong>{t('cloudSave.tagline')}</strong> {t('cloudSave.taglineBody')}
+              </span>
+            </p>
           </div>
         )}
       </div>

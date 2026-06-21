@@ -20,6 +20,7 @@ import {
   Gamepad2,
   Bot,
   Sparkles,
+  Cloud,
 } from 'lucide-react';
 
 export const GameDetailPage: React.FC = () => {
@@ -303,6 +304,16 @@ export const GameDetailPage: React.FC = () => {
               <AlertTriangle size={16} />
             </button>
           </div>
+
+          {/* Site copy: play instantly as guest, save with a free account. */}
+          {!currentUser && (
+            <p className="cloud-save-tagline" style={{ marginTop: '0.75rem' }}>
+              <Cloud size={14} aria-hidden="true" />
+              <span>
+                <strong>{t('cloudSave.tagline')}</strong> {t('cloudSave.taglineBody')}
+              </span>
+            </p>
+          )}
 
           {/* Tabs Navigation */}
           <div style={tabsContainerStyle}>

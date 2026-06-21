@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { sanitizeReturnTo, withReturnTo } from '../lib/returnTo';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { errorMessage, isApiError } from '../lib/api/errors';
@@ -97,6 +98,7 @@ export const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo'));
   const oauthError = searchParams.get('oauth_error');
   const oauthErrorMessage = oauthError
     ? ((
@@ -126,7 +128,7 @@ export const LoginPage: React.FC = () => {
       toast.danger(localizedError);
     } else {
       toast.success(t('auth.loginSuccess'));
-      navigate('/');
+      navigate(returnTo);
     }
   };
 
@@ -210,7 +212,7 @@ export const LoginPage: React.FC = () => {
 
         <div className="auth-footer">
           {t('auth.noAccount')}{' '}
-          <Link to="/register" style={{ color: 'var(--secondary)' }}>
+          <Link to={withReturnTo('/register', returnTo)} style={{ color: 'var(--secondary)' }}>
             {t('auth.signUp')}
           </Link>
         </div>
@@ -362,7 +364,7 @@ export const RegisterPage: React.FC = () => {
       toast.danger(error);
     } else {
       toast.success(IS_DEMO ? 'Demo account created (browser-local).' : t('auth.accountCreated'));
-      navigate('/');
+      navigate(sanitizeReturnTo(searchParams.get('returnTo')));
     }
   };
 
@@ -600,7 +602,10 @@ export const RegisterPage: React.FC = () => {
 
         <div className="auth-footer">
           {t('auth.hasAccount')}{' '}
-          <Link to="/login" style={{ color: 'var(--secondary)' }}>
+          <Link
+            to={withReturnTo('/login', searchParams.get('returnTo'))}
+            style={{ color: 'var(--secondary)' }}
+          >
             {t('auth.login')}
           </Link>
         </div>

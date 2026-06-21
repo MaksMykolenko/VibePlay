@@ -69,6 +69,7 @@ model User {
   feedback                Feedback[]               @relation("FeedbackAuthor")
   feedbackResolved        Feedback[]               @relation("FeedbackResolvedBy")
   subscription            Subscription?
+  gameSaves               GameSave[]
 
   @@index([status])
   @@index([role])
@@ -264,6 +265,7 @@ model Game {
   favorites    Favorite[]
   playSessions PlaySession[]
   comments     Comment[]
+  gameSaves    GameSave[]
 
   @@index([status, category])
   @@index([creatorId])
@@ -415,6 +417,38 @@ model Comment {
 
   @@index([gameId, status, createdAt])
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Cloud saves
+// ---------------------------------------------------------------------------
+
+/// Per-user, per-game cloud save (spec: cloud saves as a reason to register).
+/// Stores ONLY validated JSON game state — never code, never secrets. Keyed to
+/// the GAME (not a specific version) so progress survives version updates. One
+/// row per (user, game); writes upsert. The API enforces JSON shape, max depth,
+/// and a hard size limit before anything is persisted. Cascades on both user
+/// and game deletion (matches Like/Favorite), so saves never outlive either.
+model GameSave {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gameId        String
+  game          Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  /// Arbitrary game state, validated as safe JSON by the API before storage.
+  data          Json
+  /// Game-defined save format version (lets a game migrate old saves).
+  schemaVersion Int      @default(1)
+  /// Byte length of the canonical JSON, recorded for quotas/observability.
+  sizeBytes     Int
+  /// SHA-256 of the canonical JSON; lets clients skip redundant writes.
+  dataHash      String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, gameId])
+  @@index([gameId])
+  @@index([userId, updatedAt])
 }
 
 // ---------------------------------------------------------------------------

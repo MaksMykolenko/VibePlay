@@ -208,6 +208,28 @@ export interface NotificationDto {
   metadata: Record<string, string>;
 }
 
+/** A single cloud save (full payload). Returned by GET/PUT of one game's save. */
+export interface GameSaveDto {
+  gameId: string;
+  /** The stored game state (opaque JSON to the platform). */
+  data: unknown;
+  schemaVersion: number;
+  sizeBytes: number;
+  dataHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Lightweight save metadata (no payload). Returned by the list endpoint. */
+export interface GameSaveSummaryDto {
+  gameId: string;
+  schemaVersion: number;
+  sizeBytes: number;
+  dataHash: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PaginatedDto<T> {
   items: T[];
   page: number;

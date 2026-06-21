@@ -83,6 +83,27 @@ export const en = {
   'player.reloading': 'Reloading the published game build...',
   'player.restartingDemo': 'Restarting the demo canvas...',
   'player.fullscreenError': 'Fullscreen could not be started in this browser.',
+  // Cloud saves & conversion (Phases 3-4)
+  'cloudSave.tagline': 'Play as guest. Save with account.',
+  'cloudSave.taglineBody':
+    'You can play instantly without registration. Create a free account to save progress, continue on another device, favorite games, comment, and track your play history.',
+  'cloudSave.ctaTitle': 'Want to keep your progress?',
+  'cloudSave.ctaBody':
+    'Create a free VibePlay account to save your progress, continue on another device, and never lose your game data.',
+  'cloudSave.createAccount': 'Create account',
+  'cloudSave.continueGuest': 'Continue as guest',
+  'cloudSave.syncTitle': 'Sync your progress?',
+  'cloudSave.syncBody':
+    'We found local progress for {{game}}. Do you want to sync it to your VibePlay account?',
+  'cloudSave.syncProgress': 'Sync progress',
+  'cloudSave.keepLocal': 'Keep local only',
+  'cloudSave.conflictTitle': 'Which save should we keep?',
+  'cloudSave.conflictBody':
+    'You have progress on this device and a saved game in your account for {{game}}. Choose which to keep.',
+  'cloudSave.keepCloud': 'Keep cloud save',
+  'cloudSave.replaceCloud': "Replace cloud with this device's progress",
+  'cloudSave.syncedToast': 'Progress synced to your account.',
+  'cloudSave.syncFailedToast': 'Could not sync progress. Your local save is safe.',
   'auth.languageHint': 'Display language',
   'auth.showPassword': 'Show password',
   'auth.hidePassword': 'Hide password',

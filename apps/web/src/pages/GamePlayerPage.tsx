@@ -1,11 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { isAllowedGameLaunchUrl, type LaunchDescriptorDto } from '@vibeplay/shared';
-import { GameBridge } from '@vibeplay/sdk';
+import {
+  isAllowedGameLaunchUrl,
+  type LaunchDescriptorDto,
+  type LocalSaveAvailablePayload,
+} from '@vibeplay/shared';
+import { GameBridge, type HostSaveAdapter } from '@vibeplay/sdk';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import { api } from '../lib/api';
 import { GAME_ORIGIN } from '../lib/appMode';
+import { createCloudSaveAdapter } from '../lib/cloudSaveAdapter';
+import { CloudSaveCTA } from '../components/CloudSaveCTA';
+import { CloudSaveSyncPrompt } from '../components/CloudSaveSyncPrompt';
+import { trackEvent } from '../lib/analytics';
+import {
+  canShowCta,
+  suppressCta,
+  markSignupIntent,
+  consumeSignupIntent,
+  CTA_PLAY_THRESHOLD_MS,
+} from '../lib/cloudSaveCta';
+import { withReturnTo } from '../lib/returnTo';
 
 // Module-local static flag: import.meta.env.APP_MODE is folded by Vite at
 // build time, so every demo-only branch below (fake loading texts, canvas
@@ -20,6 +36,7 @@ import {
   VolumeX,
   ShieldCheck,
   AlertCircle,
+  Cloud,
 } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
@@ -73,6 +90,95 @@ export const GamePlayerPage: React.FC = () => {
   const game = games.find((g) => g.slug === slug);
   const gameId = game?.id;
   const launchLoading = IS_DEMO ? loading : launch === null;
+  const isGuest = !currentUser;
+
+  // --- cloud-save conversion CTA + guest-save sync (Phases 3-4) ------------
+  const [ctaVisible, setCtaVisible] = useState(false);
+  const [syncPrompt, setSyncPrompt] = useState<{ hasCloud: boolean } | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const bridgeRef = useRef<GameBridge | null>(null);
+  const ctaShownRef = useRef(false);
+  const syncOfferedRef = useRef(false);
+  const localSaveDataRef = useRef<{ data: unknown; schemaVersion?: number } | null>(null);
+
+  // Show the soft CTA (guests only, never blocking, respect cooldown). The
+  // trigger (time / progress / guest-save) is decided by callers.
+  const requestCta = useCallback(
+    (trigger: string) => {
+      if (IS_DEMO || currentUser) return; // guests only
+      if (!canShowCta(true)) return; // dismissed this session or within cooldown
+      setCtaVisible(true);
+      if (!ctaShownRef.current) {
+        ctaShownRef.current = true;
+        trackEvent('cloud_save_cta_shown', { trigger, game_id: gameId ?? '' });
+      }
+    },
+    [currentUser, gameId],
+  );
+
+  const handleCtaCreateAccount = useCallback(() => {
+    trackEvent('cloud_save_cta_create_account_click', { game_id: gameId ?? '' });
+    const returnTo = slug ? `/play/${slug}` : '/';
+    if (gameId) markSignupIntent(gameId); // so we can offer to sync after signup
+    navigate(withReturnTo('/register', returnTo));
+  }, [gameId, slug, navigate]);
+
+  const handleCtaContinueGuest = useCallback(() => {
+    trackEvent('cloud_save_cta_continue_guest_click', { game_id: gameId ?? '' });
+    suppressCta();
+    setCtaVisible(false);
+  }, [gameId]);
+
+  // Ask the game (over the SDK) for its local save, then decide sync vs conflict.
+  const offerSyncIfNeeded = useCallback(async () => {
+    if (IS_DEMO || !currentUser || !gameId) return;
+    if (syncOfferedRef.current) return;
+    const bridge = bridgeRef.current;
+    if (!bridge) return;
+    syncOfferedRef.current = true;
+    const local = await bridge.requestLocalSave();
+    if (!local || local.data === null || local.data === undefined) {
+      syncOfferedRef.current = false; // nothing provided; allow a later attempt
+      return;
+    }
+    localSaveDataRef.current = { data: local.data, schemaVersion: local.schemaVersion };
+    let hasCloud: boolean;
+    try {
+      hasCloud = (await api.getGameSave(gameId)) !== null;
+    } catch {
+      hasCloud = false;
+    }
+    setSyncPrompt({ hasCloud });
+    trackEvent('cloud_save_sync_prompt_shown', { game_id: gameId });
+  }, [currentUser, gameId]);
+
+  // Upload this device's local save (sync mode, or "replace cloud" in conflict).
+  const handleSyncUpload = useCallback(async () => {
+    if (!gameId) return;
+    const local = localSaveDataRef.current;
+    if (!local) {
+      setSyncPrompt(null);
+      return;
+    }
+    setSyncBusy(true);
+    try {
+      await api.putGameSave(gameId, local.data, local.schemaVersion);
+      trackEvent('cloud_save_synced', { game_id: gameId });
+      toast.success(translateRef.current('cloudSave.syncedToast'));
+      setSyncPrompt(null);
+    } catch {
+      trackEvent('cloud_save_sync_failed', { game_id: gameId });
+      toast.danger(translateRef.current('cloudSave.syncFailedToast'));
+    } finally {
+      setSyncBusy(false);
+    }
+  }, [gameId]);
+
+  const handleSyncDismiss = useCallback(() => {
+    // "Keep cloud" and "Keep local only" both just dismiss — we never delete the
+    // local save automatically; the game owns its local storage.
+    setSyncPrompt(null);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !game) {
@@ -120,6 +226,20 @@ export const GamePlayerPage: React.FC = () => {
 
   useEffect(() => {
     if (IS_DEMO || !launch || !iframeRef.current) return;
+
+    // Authenticated save backend — provided ONLY when logged in. The bridge never
+    // sees tokens/cookies; this adapter performs the same-origin authed calls.
+    const saveAdapter: HostSaveAdapter | null =
+      currentUser && gameId
+        ? createCloudSaveAdapter(api, gameId, {
+            onLoaded: () => trackEvent('cloud_save_loaded', { game_id: gameId }),
+            onAuthRequired: () => {
+              trackEvent('cloud_save_auth_required', { game_id: gameId });
+              requestCta('auth_required');
+            },
+          })
+        : null;
+
     const bridge = new GameBridge({
       iframe: iframeRef.current,
       gameOrigin: new URL(launch.gameUrl).origin,
@@ -131,8 +251,17 @@ export const GamePlayerPage: React.FC = () => {
             avatarUrl: currentUser.avatar || null,
           }
         : null,
+      saveAdapter,
       events: {
         onReady: () => setSdkReady(true),
+        onProgress: () => requestCta('progress'),
+        onGuestSaveAttempt: () => {
+          trackEvent('cloud_save_auth_required', { game_id: gameId ?? '' });
+          requestCta('guest_save');
+        },
+        onLocalSaveAvailable: (meta: LocalSaveAvailablePayload) => {
+          if (meta.has) void offerSyncIfNeeded();
+        },
         onFullscreenRequest: async () => {
           const container = containerRef.current;
           if (!container) return false;
@@ -147,8 +276,27 @@ export const GamePlayerPage: React.FC = () => {
           toast.danger(translateRef.current('player.gameError', { message })),
       },
     });
-    return () => bridge.destroy();
-  }, [currentUser, iframeKey, launch]);
+    bridgeRef.current = bridge;
+    return () => {
+      bridgeRef.current = null;
+      bridge.destroy();
+    };
+  }, [currentUser, iframeKey, launch, gameId, requestCta, offerSyncIfNeeded]);
+
+  // Soft CTA after a few minutes of guest play (complements progress/guest-save).
+  useEffect(() => {
+    if (IS_DEMO || currentUser || !launch) return;
+    const timer = setTimeout(() => requestCta('time'), CTA_PLAY_THRESHOLD_MS);
+    return () => clearTimeout(timer);
+  }, [currentUser, launch, requestCta]);
+
+  // Record the conversion when a player returns to this game after signing up.
+  useEffect(() => {
+    if (IS_DEMO || !currentUser || !gameId) return;
+    if (consumeSignupIntent(gameId)) {
+      trackEvent('signup_returned_to_game', { game_id: gameId });
+    }
+  }, [currentUser, gameId]);
 
   // Loading simulation
   useEffect(() => {
@@ -487,8 +635,41 @@ export const GamePlayerPage: React.FC = () => {
           {IS_DEMO && !loading && isPlaying && (
             <canvas ref={canvasRef} className="game-theater__frame game-theater__canvas"></canvas>
           )}
+
+          {/* Soft conversion CTA — guests only, dismissible, never blocks play. */}
+          {!IS_DEMO && ctaVisible && (
+            <CloudSaveCTA
+              onCreateAccount={handleCtaCreateAccount}
+              onContinueGuest={handleCtaContinueGuest}
+            />
+          )}
+
+          {/* Guest-save transfer prompt after login/registration (Phase 4). */}
+          {!IS_DEMO && syncPrompt && (
+            <CloudSaveSyncPrompt
+              gameTitle={game.title}
+              hasCloud={syncPrompt.hasCloud}
+              busy={syncBusy}
+              onSync={handleSyncUpload}
+              onKeepCloud={handleSyncDismiss}
+              onKeepLocal={handleSyncDismiss}
+            />
+          )}
         </div>
       </div>
+
+      {/* Site copy: "Play as guest. Save with account." (guests, real build). */}
+      {!IS_DEMO && isGuest && (
+        <p
+          className="cloud-save-tagline"
+          style={{ justifyContent: 'center', padding: '0.6rem 1rem' }}
+        >
+          <Cloud size={14} aria-hidden="true" />
+          <span>
+            <strong>{t('cloudSave.tagline')}</strong>
+          </span>
+        </p>
+      )}
     </div>
   );
 };

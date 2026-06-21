@@ -12,6 +12,8 @@ import type {
   CurrentUserDto,
   GameDetailDto,
   GameListItemDto,
+  GameSaveDto,
+  GameSaveSummaryDto,
   NotificationDto,
   PaginatedDto,
   PublicUserDto,
@@ -31,6 +33,7 @@ const LS = {
   comments: 'vibeplay_comments',
   notifications: 'vibeplay_notifications',
   lib: (userId: string) => `vibeplay_lib_${userId}`,
+  saves: (userId: string) => `vibeplay_saves_${userId}`,
 };
 
 function notInDemo(feature: string): never {
@@ -639,6 +642,54 @@ export function createDemoClient(): ApiClient {
       notInDemo('Real game launch');
     },
     async endPlaySession() {},
+
+    // ----- cloud saves (browser-local demo data; no real backend) -----
+    async getGameSave(gameId: string) {
+      const me = currentUser();
+      if (!me) return null;
+      const all = load<Record<string, GameSaveDto>>(LS.saves(me.id), {});
+      return all[gameId] ?? null;
+    },
+    async putGameSave(gameId: string, data: unknown, schemaVersion?: number) {
+      const me = requireUser();
+      const all = load<Record<string, GameSaveDto>>(LS.saves(me.id), {});
+      const serialized = JSON.stringify(data ?? null);
+      const now = new Date().toISOString();
+      const existing = all[gameId];
+      const saveDto: GameSaveDto = {
+        gameId,
+        data: data ?? null,
+        schemaVersion: schemaVersion ?? existing?.schemaVersion ?? 1,
+        sizeBytes: serialized.length,
+        dataHash: `demo-${serialized.length}`,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+      };
+      all[gameId] = saveDto;
+      save(LS.saves(me.id), all);
+      return saveDto;
+    },
+    async deleteGameSave(gameId: string) {
+      const me = requireUser();
+      const all = load<Record<string, GameSaveDto>>(LS.saves(me.id), {});
+      delete all[gameId];
+      save(LS.saves(me.id), all);
+    },
+    async listGameSaves() {
+      const me = currentUser();
+      if (!me) return [];
+      const all = load<Record<string, GameSaveDto>>(LS.saves(me.id), {});
+      return Object.values(all).map(
+        (s): GameSaveSummaryDto => ({
+          gameId: s.gameId,
+          schemaVersion: s.schemaVersion,
+          sizeBytes: s.sizeBytes,
+          dataHash: s.dataHash,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+        }),
+      );
+    },
 
     // ----- creator (local drafts; uploads impossible) -----
     async listMyGames() {

@@ -7,6 +7,8 @@ import type {
   CreatorAnalyticsDto,
   GameDetailDto,
   GameListItemDto,
+  GameSaveDto,
+  GameSaveSummaryDto,
   GameVersionDto,
   GameCoverUploadIntentResponseDto,
   InviteDto,
@@ -353,6 +355,34 @@ export function createHttpClient(): ApiClient {
     },
     async endPlaySession(sessionId) {
       await request(`/play-sessions/${sessionId}/end`, { method: 'POST', body: {} });
+    },
+
+    // ----- cloud saves -----
+    async getGameSave(gameId) {
+      try {
+        const r = await request<{ save: GameSaveDto }>(
+          `/me/game-saves/${encodeURIComponent(gameId)}`,
+        );
+        return r.save;
+      } catch (err) {
+        // No save yet is a normal, non-exceptional state for the caller.
+        if (err instanceof ApiClientError && err.status === 404) return null;
+        throw err;
+      }
+    },
+    async putGameSave(gameId, data, schemaVersion) {
+      const r = await request<{ save: GameSaveDto }>(
+        `/me/game-saves/${encodeURIComponent(gameId)}`,
+        { method: 'PUT', body: { data, schemaVersion } },
+      );
+      return r.save;
+    },
+    async deleteGameSave(gameId) {
+      await request(`/me/game-saves/${encodeURIComponent(gameId)}`, { method: 'DELETE' });
+    },
+    async listGameSaves() {
+      const r = await request<{ saves: GameSaveSummaryDto[] }>('/me/game-saves');
+      return r.saves;
     },
 
     // ----- creator -----

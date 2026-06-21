@@ -23,6 +23,8 @@ export const ERROR_CODES = [
   'UPLOAD_NOT_FOUND',
   'AVATAR_NOT_FOUND',
   'COVER_NOT_FOUND',
+  'SAVE_NOT_FOUND',
+  'SAVE_INVALID',
   'CONFLICT',
   'INVALID_STATE_TRANSITION',
   'ALREADY_COMPLETED',
@@ -80,6 +82,15 @@ export const errors = {
   invalidTransition: (from: string, to: string) =>
     new ApiError(409, 'INVALID_STATE_TRANSITION', `Cannot transition from ${from} to ${to}`),
   tooLarge: (message = 'Payload too large') => new ApiError(413, 'PAYLOAD_TOO_LARGE', message),
+  saveNotFound: (message = 'No save found for this game') =>
+    new ApiError(404, 'SAVE_NOT_FOUND', message),
+  saveInvalid: (detail?: string) =>
+    new ApiError(
+      422,
+      'SAVE_INVALID',
+      detail ?? 'Save data is invalid',
+      detail ? { detail } : undefined,
+    ),
   planLimit: (message: string, details?: unknown) =>
     new ApiError(409, 'PLAN_LIMIT_REACHED', message, details),
   rateLimited: () => new ApiError(429, 'RATE_LIMITED', 'Too many requests, slow down'),
