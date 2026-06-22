@@ -99,7 +99,7 @@ export const AdminModeration: React.FC = () => {
               {t('admin.rejectInstructions', { title: selectedGame.title })}
             </p>
             <textarea
-              placeholder="e.g. Asset check failed: Missing textures. File index.html is empty. Contains malicious script triggers..."
+              placeholder={t('admin.moderation.rejectPlaceholder')}
               value={rejectReasonText}
               onChange={(e) => setRejectReasonText(e.target.value)}
               className="form-input"
@@ -214,14 +214,15 @@ export const AdminModeration: React.FC = () => {
                       {selectedGame.validationReport.checks.map((check) => (
                         <div key={check.name} style={logLineStyle}>
                           <span style={{ color: check.ok ? 'var(--success)' : 'var(--danger)' }}>
-                            [{check.ok ? 'PASS' : 'FAIL'}]
+                            [{t(check.ok ? 'admin.moderation.pass' : 'admin.moderation.fail')}]
                           </span>{' '}
                           {check.name}
                           {check.detail ? `: ${check.detail}` : ''}
                         </div>
                       ))}
                       <div style={{ ...logLineStyle, marginTop: '6px', fontWeight: 600 }}>
-                        Malware scanner: {selectedGame.validationReport.scanner.engine} /{' '}
+                        {t('admin.moderation.malwareScanner')}{' '}
+                        {selectedGame.validationReport.scanner.engine} /{' '}
                         {selectedGame.validationReport.scanner.result}
                       </div>
                     </>

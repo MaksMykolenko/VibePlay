@@ -1,17 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
+import { useI18n } from '../i18n/useI18n';
 
 export const NotFoundPage: React.FC = () => {
+  const { t } = useI18n();
   return (
     <div style={containerStyle}>
       <div style={iconBoxStyle}>
         <AlertCircle size={36} color="var(--danger)" />
       </div>
-      <h1 style={titleStyle}>404 — Page Glitched</h1>
-      <p style={descStyle}>The coordinates you requested do not exist or have been archived.</p>
+      <h1 style={titleStyle}>{t('notFound.title')}</h1>
+      <p style={descStyle}>{t('notFound.body')}</p>
       <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-        Back to Safety (Home)
+        {t('notFound.backHome')}
       </Link>
     </div>
   );

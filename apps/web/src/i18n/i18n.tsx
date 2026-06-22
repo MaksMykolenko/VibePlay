@@ -2,21 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { en } from './en';
 import { uk } from './uk';
 import { I18nContext, type Locale, type TranslationParams } from './context';
+import { pickInitialLocale, translate } from './translate';
 
 const STORAGE_KEY = 'vibeplay.language';
 const dictionaries: Record<Locale, Record<string, string>> = { en, uk };
 
 function detectLocale(): Locale {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored === 'en' || stored === 'uk') return stored;
-  return navigator.languages.some((language) => language.toLowerCase().startsWith('uk'))
-    ? 'uk'
-    : 'en';
-}
-
-function interpolate(message: string, params?: TranslationParams): string {
-  if (!params) return message;
-  return message.replace(/{{(\w+)}}/g, (_, key: string) => String(params[key] ?? `{{${key}}}`));
+  if (typeof window === 'undefined') return 'en';
+  return pickInitialLocale(window.localStorage.getItem(STORAGE_KEY), window.navigator.languages);
 }
 
 export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -32,8 +25,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [locale]);
 
   const t = useCallback(
-    (key: string, params?: TranslationParams) =>
-      interpolate(dictionaries[locale][key] ?? dictionaries.en[key] ?? key, params),
+    (key: string, params?: TranslationParams) => translate(dictionaries, locale, key, params),
     [locale],
   );
 

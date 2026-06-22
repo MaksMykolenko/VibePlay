@@ -27,7 +27,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
   // Single badge priority logic: Featured > New > AI-assisted > Multiplayer
   const getBadge = () => {
     if (game.isFeatured) {
-      return { text: 'Featured', className: 'badge-primary' };
+      return { text: t('card.badge.featured'), className: 'badge-primary' };
     }
 
     // Check if updated in the last 30 days
@@ -35,15 +35,15 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
     const now = new Date().getTime();
     const isNew = now - gameDate < 30 * 24 * 60 * 60 * 1000;
     if (isNew) {
-      return { text: 'New', className: 'badge-success' };
+      return { text: t('card.badge.new'), className: 'badge-success' };
     }
 
     if (game.aiDisclosure && game.aiDisclosure !== 'no') {
-      return { text: 'AI', className: 'badge-secondary' };
+      return { text: t('card.badge.ai'), className: 'badge-secondary' };
     }
 
     if (game.multiplayer) {
-      return { text: 'Multiplayer', className: 'badge-warning' };
+      return { text: t('card.badge.multiplayer'), className: 'badge-warning' };
     }
 
     return null;
@@ -60,7 +60,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
       <Link
         className="game-card__stretched-link"
         to={`/game/${game.slug}`}
-        aria-label={`Open ${game.title} details`}
+        aria-label={t('game.openDetails', { title: game.title })}
         tabIndex={0}
       />
 
@@ -113,7 +113,7 @@ export const GameCard: React.FC<GameCardProps> = ({ game, variant = 'default' })
 
         {variant === 'continue' ? (
           <div className="game-card__continue-action-row">
-            <span className="game-card__last-played mobile-only">Active play</span>
+            <span className="game-card__last-played mobile-only">{t('card.activePlay')}</span>
             <span className="game-card__meta desktop-only" style={metaRowStyle}>
               <ThumbsUp size={11} style={{ marginRight: '3px' }} />
               {likeRatio}% • {t('card.plays', { count: formatPlays(game.plays) })}

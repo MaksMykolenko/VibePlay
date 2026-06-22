@@ -6,6 +6,7 @@ import { toast } from './toastEvents';
 import { useAuth } from '../hooks/useAuth';
 import { useI18n } from '../i18n/useI18n';
 import { versionStatusLabel } from '../lib/versionStatus';
+import { formatDate } from '../lib/formatTime';
 import {
   UploadCloud,
   FileCode,
@@ -60,21 +61,20 @@ function statusBadgeColor(status: GameVersionDto['status']): string {
   }
 }
 
-function uploadErrorMessage(error: unknown): string {
+function uploadErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof ApiClientError) {
-    if (error.code === 'NETWORK_ERROR') return 'Upload endpoint is unreachable. Please try again.';
-    if (error.status === 413) return 'Upload failed: the ZIP exceeds the size limit.';
-    if (error.status === 401 || error.status === 403)
-      return 'Upload failed: your session expired. Please sign in again and retry.';
+    if (error.code === 'NETWORK_ERROR') return t('version.uploadUnreachable');
+    if (error.status === 413) return t('version.uploadTooLarge');
+    if (error.status === 401 || error.status === 403) return t('version.uploadSessionExpired');
     if (error.status === 409) return error.message || 'An update is already in progress.';
-    return error.message || 'Upload failed. Please try again.';
+    return error.message || t('version.uploadFailed');
   }
   if (error instanceof Error && error.message) return error.message;
-  return 'Upload failed. Please try again.';
+  return t('version.uploadFailed');
 }
 
 export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { currentUser } = useAuth();
   const isOwner = currentUser?.role === 'owner';
 
@@ -104,10 +104,10 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
       applyData(data);
       return data;
     } catch (error) {
-      setLoadError(uploadErrorMessage(error));
+      setLoadError(uploadErrorMessage(error, t));
       return null;
     }
-  }, [gameId, applyData]);
+  }, [gameId, applyData, t]);
 
   useEffect(() => {
     let active = true;
@@ -117,13 +117,13 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
         if (active) applyData(data);
       })
       .catch((error) => {
-        if (active) setLoadError(uploadErrorMessage(error));
+        if (active) setLoadError(uploadErrorMessage(error, t));
       });
     return () => {
       active = false;
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [gameId, applyData]);
+  }, [gameId, applyData, t]);
 
   const versions = summary?.versions ?? [];
   const publishedId = summary?.game.publishedVersion?.id ?? null;
@@ -135,7 +135,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
       pollRef.current = setInterval(async () => {
         try {
           const status = await api.getUploadStatus(uploadId);
-          setStatusLine(versionStatusLabel(status.versionStatus));
+          setStatusLine(versionStatusLabel(status.versionStatus, t));
           if (TERMINAL_STATUSES.includes(status.versionStatus)) {
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
@@ -146,7 +146,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
         }
       }, 2500);
     },
-    [load],
+    [load, t],
   );
 
   const handleZip = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -208,7 +208,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
       }
       // 3. Upload the ZIP to quarantine through the same-origin API.
       const status = await api.uploadZipDirect(uploadId, zipFile);
-      setStatusLine(versionStatusLabel(status.versionStatus));
+      setStatusLine(versionStatusLabel(status.versionStatus, t));
       draftRef.current = {};
       setZipFile(null);
       setChangelog('');
@@ -216,7 +216,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
       await load();
       pollStatus(uploadId);
     } catch (error) {
-      toast.danger(uploadErrorMessage(error));
+      toast.danger(uploadErrorMessage(error, t));
     } finally {
       setBusy(false);
     }
@@ -224,11 +224,11 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
 
   const handleApprove = async (versionId: string) => {
     try {
-      await api.adminApproveVersion(versionId, 'Owner self-approval from version manager');
+      await api.adminApproveVersion(versionId, t('version.ownerApprovalReason'));
       toast.success(t('version.approved'));
       await load();
     } catch (error) {
-      toast.danger(uploadErrorMessage(error));
+      toast.danger(uploadErrorMessage(error, t));
     }
   };
 
@@ -266,7 +266,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
           <span style={{ fontSize: '0.85rem' }}>
             {t('version.inProgress')} — v{activeVersion.version}:{' '}
             <strong style={{ color: statusBadgeColor(activeVersion.status) }}>
-              {versionStatusLabel(activeVersion.status)}
+              {versionStatusLabel(activeVersion.status, t)}
             </strong>
           </span>
           {isOwner && activeVersion.status === 'READY_FOR_REVIEW' && (
@@ -365,7 +365,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
                         padding: '1px 8px',
                       }}
                     >
-                      {versionStatusLabel(v.status)}
+                      {versionStatusLabel(v.status, t)}
                     </span>
                     {v.id === publishedId && (
                       <span style={liveBadgeStyle}>{t('version.published')}</span>
@@ -387,7 +387,7 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
                 <span
                   style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}
                 >
-                  {new Date(v.createdAt).toLocaleDateString()}
+                  {formatDate(v.createdAt, locale)}
                 </span>
               </div>
             ))}

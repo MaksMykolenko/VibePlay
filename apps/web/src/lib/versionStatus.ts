@@ -16,6 +16,7 @@ export const VERSION_STATUS_LABELS: Record<GameVersionStatus, string> = {
   ARCHIVED: 'Archived (replaced by a newer version)',
 };
 
-export function versionStatusLabel(status: string): string {
+export function versionStatusLabel(status: string, t?: (key: string) => string): string {
+  if (t && status in VERSION_STATUS_LABELS) return t(`version.status.${status}`);
   return VERSION_STATUS_LABELS[status as GameVersionStatus] ?? status;
 }

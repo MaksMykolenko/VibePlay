@@ -245,7 +245,7 @@ export const LandingPage: React.FC = () => {
               className="bg-glass"
             >
               <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
-                {cat.name}
+                {t(`category.${cat.name}`)}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                 {t('home.gamesCount', { count: cat.count })}

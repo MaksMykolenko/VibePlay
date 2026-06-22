@@ -79,11 +79,11 @@ export const EditGame: React.FC = () => {
 
   useEffect(() => {
     if (!isLoading && !game) {
-      toast.danger('Game build not found.');
+      toast.danger(t('editGame.notFound'));
       navigate('/creator/my-games');
       return;
     }
-  }, [game, isLoading, navigate]);
+  }, [game, isLoading, navigate, t]);
 
   if (isLoading || !game) return null;
 
@@ -95,16 +95,14 @@ export const EditGame: React.FC = () => {
   ) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-        <h2>Unauthorized</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          You do not have permission to edit this game.
-        </p>
+        <h2>{t('common.unauthorized')}</h2>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('editGame.unauthorizedBody')}</p>
         <button
           onClick={() => navigate('/creator/my-games')}
           className="btn btn-secondary"
           style={{ marginTop: '1rem' }}
         >
-          Back to My Games
+          {t('editGame.backToGames')}
         </button>
       </div>
     );
@@ -136,11 +134,11 @@ export const EditGame: React.FC = () => {
     }
 
     let status = game.status;
-    let statusMsg = 'Game details updated successfully!';
+    let statusMsg = t('editGame.updated');
 
     if (IS_DEMO && game.status === 'published' && title !== game.title) {
       status = 'pending';
-      statusMsg = 'Details updated! Title changes flag the build for repeat moderation.';
+      statusMsg = t('editGame.updatedNeedsModeration');
     }
 
     updateGame(game.id, {
@@ -241,25 +239,23 @@ export const EditGame: React.FC = () => {
       <div style={headerStyle}>
         <button onClick={() => navigate('/creator/my-games')} style={backLinkStyle}>
           <ArrowLeft size={16} />
-          <span>My Games</span>
+          <span>{t('nav.myGames')}</span>
         </button>
-        <h1>Edit: {game.title}</h1>
+        <h1>{t('editGame.title', { title: game.title })}</h1>
       </div>
 
       {/* Warnings banner */}
       <div style={noticeBoxStyle}>
         <AlertTriangle size={20} color="var(--warning)" style={{ flexShrink: 0 }} />
         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-          {IS_DEMO
-            ? 'In demo mode, title changes move the game back to Pending Review.'
-            : 'This form updates catalog metadata only. Uploading a new executable version requires a new ZIP validation and moderation cycle.'}
+          {t(IS_DEMO ? 'editGame.demoWarning' : 'editGame.catalogWarning')}
         </span>
       </div>
 
       {/* Form Card */}
       <form onSubmit={handleFormSubmit} style={formCardStyle} className="bg-glass">
         <div className="form-group">
-          <label className="form-label">Game Title</label>
+          <label className="form-label">{t('editGame.gameTitle')}</label>
           <input
             type="text"
             required
@@ -270,7 +266,7 @@ export const EditGame: React.FC = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Category</label>
+          <label className="form-label">{t('editGame.category')}</label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -291,14 +287,14 @@ export const EditGame: React.FC = () => {
               'Strategy',
             ].map((cat) => (
               <option key={cat} value={cat}>
-                {cat}
+                {t(`category.${cat}`)}
               </option>
             ))}
           </select>
         </div>
 
         <div className="form-group">
-          <label className="form-label">Short Description</label>
+          <label className="form-label">{t('editGame.shortDescription')}</label>
           <input
             type="text"
             required
@@ -310,7 +306,7 @@ export const EditGame: React.FC = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Full Description</label>
+          <label className="form-label">{t('editGame.fullDescription')}</label>
           <textarea
             required
             value={fullDesc}
@@ -321,7 +317,7 @@ export const EditGame: React.FC = () => {
         </div>
 
         <div className="form-group">
-          <label className="form-label">Tags (separated by comma)</label>
+          <label className="form-label">{t('editGame.tags')}</label>
           <input
             type="text"
             value={tagsInput}
@@ -459,7 +455,7 @@ export const EditGame: React.FC = () => {
                     maxLength={80}
                     value={control.action}
                     onChange={(event) => updateControl(index, 'action', event.target.value)}
-                    placeholder="Move"
+                    placeholder={t('controls.actionPlaceholder')}
                     className="form-input"
                   />
                 </label>
@@ -470,7 +466,7 @@ export const EditGame: React.FC = () => {
                     maxLength={120}
                     value={control.keys}
                     onChange={(event) => updateControl(index, 'keys', event.target.value)}
-                    placeholder="WASD"
+                    placeholder={t('controls.keysPlaceholder')}
                     className="form-input"
                   />
                 </label>
@@ -503,7 +499,7 @@ export const EditGame: React.FC = () => {
         </fieldset>
 
         <div className="form-group">
-          <label className="form-label">Screenshot URL</label>
+          <label className="form-label">{t('editGame.screenshotUrl')}</label>
           <input
             type="text"
             value={screenshotUrl}
@@ -515,7 +511,7 @@ export const EditGame: React.FC = () => {
         {IS_DEMO ? (
           <>
             <div className="form-group">
-              <label className="form-label">Version Code</label>
+              <label className="form-label">{t('editGame.versionCode')}</label>
               <input
                 type="text"
                 value={version}
@@ -526,20 +522,20 @@ export const EditGame: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Changelog Updates Notes</label>
+              <label className="form-label">{t('editGame.changelogNotes')}</label>
               <textarea
                 value={changelogNotes}
                 onChange={(e) => setChangelogNotes(e.target.value)}
                 className="form-input"
-                placeholder="Describe what has changed in this version..."
+                placeholder={t('editGame.changelogPlaceholder')}
                 style={{ minHeight: '80px', resize: 'vertical' }}
               />
-              <span style={helperStyle}>Leave empty if version code is not changing.</span>
+              <span style={helperStyle}>{t('editGame.changelogHint')}</span>
             </div>
           </>
         ) : (
           <div className="form-group">
-            <label className="form-label">Published Version</label>
+            <label className="form-label">{t('editGame.publishedVersion')}</label>
             <input type="text" value={game.version} className="form-input" disabled />
           </div>
         )}
@@ -553,14 +549,14 @@ export const EditGame: React.FC = () => {
             style={{ gap: '6px' }}
           >
             <Save size={16} />
-            <span>Save Changes</span>
+            <span>{t('settings.save')}</span>
           </button>
           <button
             type="button"
             onClick={() => navigate('/creator/my-games')}
             className="btn btn-secondary"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       </form>

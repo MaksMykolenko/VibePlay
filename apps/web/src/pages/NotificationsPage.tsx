@@ -7,7 +7,7 @@ import { Bell, Check, ArrowRight, ShieldAlert, Sparkles, Cpu, AlertTriangle } fr
 import { toast } from '../components/toastEvents';
 
 export const NotificationsPage: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { currentUser } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications(currentUser?.id);
   const navigate = useNavigate();
@@ -18,10 +18,10 @@ export const NotificationsPage: React.FC = () => {
         <ShieldAlert size={48} color="var(--danger)" />
         <h2 style={{ marginTop: '1rem' }}>{t('notifications.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
-          Please authenticate to access your notifications stream.
+          {t('notifications.authPrompt')}
         </p>
         <button onClick={() => navigate('/login')} className="btn btn-primary">
-          Log In
+          {t('common.logIn')}
         </button>
       </div>
     );
@@ -48,7 +48,7 @@ export const NotificationsPage: React.FC = () => {
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(locale, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -85,7 +85,7 @@ export const NotificationsPage: React.FC = () => {
             <Bell size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
             <h3>{t('notifications.empty')}</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
-              We will alert you here when your games get reviewed or users comment on your builds.
+              {t('notifications.emptyHint')}
             </p>
           </div>
         ) : (
@@ -128,7 +128,7 @@ export const NotificationsPage: React.FC = () => {
                 <button
                   onClick={() => markAsRead(n.id)}
                   style={markReadBtnStyle}
-                  title="Mark as read"
+                  title={t('notifications.markRead')}
                 >
                   <Check size={16} />
                 </button>

@@ -6,6 +6,7 @@ import type { Game } from '../../types';
 import { toast } from '../../components/toastEvents';
 import { useI18n } from '../../i18n/useI18n';
 import { IS_DEMO } from '../../lib/appMode';
+import { formatDate, formatNumber } from '../../lib/formatTime';
 import {
   Edit2,
   Eye,
@@ -18,7 +19,7 @@ import {
 } from 'lucide-react';
 
 export const MyGames: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { currentUser } = useAuth();
   const { games, submitForReview, hideGame, publishGameDraft, deleteGame } = useGames();
 
@@ -29,48 +30,46 @@ export const MyGames: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'published':
-        return <span className="badge badge-success">Published</span>;
+        return <span className="badge badge-success">{t('status.published')}</span>;
       case 'pending':
-        return <span className="badge badge-warning">Pending Review</span>;
+        return <span className="badge badge-warning">{t('status.pending')}</span>;
       case 'rejected':
-        return <span className="badge badge-danger">Rejected</span>;
+        return <span className="badge badge-danger">{t('status.rejected')}</span>;
       case 'hidden':
-        return <span className="badge badge-secondary">Hidden</span>;
+        return <span className="badge badge-secondary">{t('status.hidden')}</span>;
       default:
-        return <span className="badge badge-primary">Draft</span>;
+        return <span className="badge badge-primary">{t('status.draft')}</span>;
     }
   };
 
   const handleSubmitReview = (gameId: string, title: string) => {
     if (!IS_DEMO) {
-      toast.warning('Submit a validated ZIP version through the publishing flow.');
+      toast.warning(t('myGames.submitViaFlow'));
       return;
     }
     submitForReview(gameId);
-    toast.success(`"${title}" submitted for administration review!`);
+    toast.success(t('myGames.submitted', { title }));
   };
 
   const handleHideToggle = (game: Game) => {
     if (game.status === 'published') {
       hideGame(game.id);
-      toast.info(`"${game.title}" is now hidden from the public catalog.`);
+      toast.info(t('myGames.hidden', { title: game.title }));
     } else if (IS_DEMO) {
       publishGameDraft(game.id);
-      toast.success(`"${game.title}" is now published and public.`);
+      toast.success(t('myGames.published', { title: game.title }));
     } else {
-      toast.warning('Only an administrator can restore a hidden game in the private beta.');
+      toast.warning(t('myGames.onlyAdminRestore'));
     }
   };
 
   const handleDelete = (gameId: string, title: string) => {
     const message = IS_DEMO
-      ? `Are you sure you want to delete "${title}" from this browser demo?`
-      : `Archive "${title}" and remove it from the public catalog?`;
+      ? t('myGames.confirmDeleteDemo', { title })
+      : t('myGames.confirmArchive', { title });
     if (window.confirm(message)) {
       deleteGame(gameId);
-      toast.info(
-        IS_DEMO ? `"${title}" was removed from this browser demo.` : `"${title}" was archived.`,
-      );
+      toast.info(IS_DEMO ? t('myGames.removedDemo', { title }) : t('myGames.archived', { title }));
     }
   };
 
@@ -81,7 +80,7 @@ export const MyGames: React.FC = () => {
         <div>
           <h1>{t('myGames.title')}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Upload, submit, and manage versions of your browser builds.
+            {t('myGames.subtitle')}
           </p>
         </div>
         <Link to="/creator/publish" className="btn btn-primary btn-sm" style={{ gap: '6px' }}>
@@ -105,10 +104,10 @@ export const MyGames: React.FC = () => {
               maxWidth: '300px',
             }}
           >
-            Get started by uploading your first Phaser, Three.js or WebGL zip project.
+            {t('myGames.emptyHint')}
           </p>
           <Link to="/creator/publish" className="btn btn-primary">
-            Publish Your First Game
+            {t('myGames.publishFirst')}
           </Link>
         </div>
       ) : (
@@ -143,7 +142,7 @@ export const MyGames: React.FC = () => {
                   <td style={tdStyle}>
                     <div style={{ fontWeight: 600, color: '#fff' }}>{game.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {game.category} • v{game.version}
+                      {t(`category.${game.category}`)} • v{game.version}
                     </div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
                       {game.devices.map((device) => t(`device.${device}`)).join(' • ')}
@@ -166,19 +165,19 @@ export const MyGames: React.FC = () => {
                         }}
                         title={game.rejectReason}
                       >
-                        Reason: {game.rejectReason}
+                        {t('admin.reports.reason')} {game.rejectReason}
                       </div>
                     )}
                   </td>
 
                   {/* Plays */}
-                  <td style={tdStyle}>{game.plays.toLocaleString()}</td>
+                  <td style={tdStyle}>{formatNumber(game.plays, locale)}</td>
 
                   {/* Likes */}
-                  <td style={tdStyle}>{game.likes.toLocaleString()}</td>
+                  <td style={tdStyle}>{formatNumber(game.likes, locale)}</td>
 
                   {/* Updated date */}
-                  <td style={tdStyle}>{new Date(game.updatedAt).toLocaleDateString()}</td>
+                  <td style={tdStyle}>{formatDate(game.updatedAt, locale)}</td>
 
                   {/* Operations actions */}
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
@@ -191,7 +190,7 @@ export const MyGames: React.FC = () => {
                           to={`/game/${game.slug}`}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
-                          title="Preview Detail Page"
+                          title={t('myGames.previewDetail')}
                         >
                           <Eye size={14} />
                         </Link>
@@ -202,7 +201,7 @@ export const MyGames: React.FC = () => {
                         to={`/creator/games/${game.id}/edit`}
                         className="btn btn-secondary btn-sm"
                         style={actionBtnStyle}
-                        title="Edit Details"
+                        title={t('myGames.editDetails')}
                       >
                         <Edit2 size={14} />
                       </Link>
@@ -213,7 +212,7 @@ export const MyGames: React.FC = () => {
                           onClick={() => handleSubmitReview(game.id, game.title)}
                           className="btn btn-secondary btn-sm"
                           style={{ ...actionBtnStyle, color: 'var(--warning)' }}
-                          title="Submit to Moderation Queue"
+                          title={t('myGames.submitQueue')}
                         >
                           <ArrowUpCircle size={14} />
                         </button>
@@ -225,7 +224,11 @@ export const MyGames: React.FC = () => {
                           onClick={() => handleHideToggle(game)}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
-                          title={game.status === 'published' ? 'Hide Game' : 'Publish Game'}
+                          title={t(
+                            game.status === 'published'
+                              ? 'myGames.hideGame'
+                              : 'myGames.publishGame',
+                          )}
                         >
                           {game.status === 'published' ? (
                             <EyeOff size={14} />
@@ -240,7 +243,7 @@ export const MyGames: React.FC = () => {
                         onClick={() => handleDelete(game.id, game.title)}
                         className="btn btn-danger btn-sm"
                         style={actionBtnStyle}
-                        title={IS_DEMO ? 'Delete Demo Build' : 'Archive Build'}
+                        title={t(IS_DEMO ? 'myGames.deleteDemoBuild' : 'myGames.archiveBuild')}
                       >
                         <Trash2 size={14} />
                       </button>

@@ -135,7 +135,7 @@ export const LoginPage: React.FC = () => {
 
   const handleDemoLogin = (role: 'player' | 'creator' | 'admin') => {
     switchDemoRole(role);
-    toast.success(`Demo build: logged in as Demo ${role.toUpperCase()}.`);
+    toast.success(t('auth.demoLogin', { role: t(`role.${role}`) }));
     if (role === 'creator') navigate('/creator');
     else if (role === 'admin') navigate('/admin');
     else navigate('/');
@@ -162,7 +162,7 @@ export const LoginPage: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="form-input"
@@ -220,17 +220,15 @@ export const LoginPage: React.FC = () => {
 
         {import.meta.env.APP_MODE === 'demo' && demoRolesEnabled && (
           <div style={demoBoxStyle}>
-            <div style={demoTitleStyle}>Demo accounts (demo build only)</div>
-            <p style={demoDescStyle}>
-              This is the GitHub Pages demo. Data lives only in your browser.
-            </p>
+            <div style={demoTitleStyle}>{t('auth.demoAccountsTitle')}</div>
+            <p style={demoDescStyle}>{t('auth.demoAccountsBody')}</p>
             <div style={demoGridStyle}>
               <button
                 onClick={() => handleDemoLogin('player')}
                 style={{ ...demoBtnStyle, minHeight: '44px' }}
               >
                 <Gamepad2 size={14} aria-hidden="true" />
-                <span>Demo Player</span>
+                <span>{t('auth.demoRole', { role: t('role.player') })}</span>
               </button>
               <button
                 onClick={() => handleDemoLogin('creator')}
@@ -243,7 +241,7 @@ export const LoginPage: React.FC = () => {
                 }}
               >
                 <Wrench size={14} aria-hidden="true" />
-                <span>Demo Creator</span>
+                <span>{t('auth.demoRole', { role: t('role.creator') })}</span>
               </button>
               <button
                 onClick={() => handleDemoLogin('admin')}
@@ -256,7 +254,7 @@ export const LoginPage: React.FC = () => {
                 }}
               >
                 <ShieldCheck size={14} aria-hidden="true" />
-                <span>Demo Admin</span>
+                <span>{t('auth.demoRole', { role: t('role.admin') })}</span>
               </button>
             </div>
           </div>
@@ -377,7 +375,7 @@ export const RegisterPage: React.FC = () => {
         source: returnTo.startsWith('/play/') ? 'play_page' : 'register_page',
         logged_in: true,
       });
-      toast.success(IS_DEMO ? 'Demo account created (browser-local).' : t('auth.accountCreated'));
+      toast.success(IS_DEMO ? t('auth.demoAccountCreated') : t('auth.accountCreated'));
       navigate(returnTo);
     }
   };
@@ -389,7 +387,7 @@ export const RegisterPage: React.FC = () => {
         <h1 className="auth-title">{t('auth.createAccountTitle')}</h1>
         <p className="auth-subtitle">
           {IS_DEMO
-            ? 'Join the VibePlay demo (data stays in your browser).'
+            ? t('auth.demoRegisterSubtitle')
             : inviteOnly === true
               ? t('auth.registerInvite')
               : inviteOnly === false
@@ -439,7 +437,7 @@ export const RegisterPage: React.FC = () => {
                 minLength={3}
                 maxLength={20}
                 pattern="[a-z0-9_]+"
-                placeholder="diana_rider"
+                placeholder={t('auth.usernamePlaceholder')}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="form-input"
@@ -463,7 +461,7 @@ export const RegisterPage: React.FC = () => {
                 type="text"
                 required
                 maxLength={50}
-                placeholder="Diana Rider"
+                placeholder={t('auth.displayNamePlaceholder')}
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="form-input"
@@ -483,7 +481,7 @@ export const RegisterPage: React.FC = () => {
                 type="email"
                 autoComplete="email"
                 required
-                placeholder="you@example.com"
+                placeholder={t('auth.emailPlaceholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="form-input"
@@ -684,7 +682,7 @@ export const ForgotPasswordPage: React.FC = () => {
                     type="email"
                     autoComplete="email"
                     required
-                    placeholder="you@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="form-input"

@@ -1,8 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { MessageSquare } from 'lucide-react';
+import { useI18n } from '../i18n/useI18n';
 
 export const Footer: React.FC = () => {
+  const { t } = useI18n();
   return (
     <footer style={footerStyle}>
       <div style={footerContainerStyle} className="container">
@@ -14,13 +16,10 @@ export const Footer: React.FC = () => {
               <div style={logoPlayStyle}></div>
             </div>
             <span style={logoTextStyle}>
-              Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+              Vibe<span style={{ color: 'var(--primary)' }}>Play</span> {/* i18n-ignore: brand */}
             </span>
           </Link>
-          <p style={taglineStyle}>
-            Discover browser games created by independent developers and AI-powered builders. No
-            downloads. Just play.
-          </p>
+          <p style={taglineStyle}>{t('footer.tagline')}</p>
           <div style={socialsStyle}>
             <a
               href="https://discord.gg/vibeplay"
@@ -61,56 +60,56 @@ export const Footer: React.FC = () => {
         {/* Links Grid */}
         <div style={linksGridStyle}>
           <div style={linkColStyle}>
-            <h4 style={colTitleStyle}>Product</h4>
+            <h4 style={colTitleStyle}>{t('footer.product')}</h4>
             <Link to="/games" className="footer-link" style={footerLinkStyle}>
-              Discover Games
+              {t('footer.discoverGames')}
             </Link>
             <Link to="/games?sort=newest" className="footer-link" style={footerLinkStyle}>
-              New Releases
+              {t('footer.newReleases')}
             </Link>
             <Link to="/games?sort=trending" className="footer-link" style={footerLinkStyle}>
-              Trending Now
+              {t('footer.trendingNow')}
             </Link>
             <Link to="/games?ai=true" className="footer-link" style={footerLinkStyle}>
-              AI-Assisted Games
+              {t('footer.aiAssisted')}
             </Link>
           </div>
 
           <div style={linkColStyle}>
-            <h4 style={colTitleStyle}>Creators</h4>
+            <h4 style={colTitleStyle}>{t('footer.creators')}</h4>
             <Link to="/creator" className="footer-link" style={footerLinkStyle}>
-              Creator Hub
+              {t('footer.creatorHub')}
             </Link>
             <Link to="/creator/publish" className="footer-link" style={footerLinkStyle}>
-              Publish Game
+              {t('footer.publishGame')}
             </Link>
             <Link to="/content-guidelines" className="footer-link" style={footerLinkStyle}>
-              Submission Rules
+              {t('footer.submissionRules')}
             </Link>
             <Link to="/community-guidelines" className="footer-link" style={footerLinkStyle}>
-              Community Guidelines
+              {t('footer.communityGuidelines')}
             </Link>
           </div>
 
           <div style={linkColStyle}>
-            <h4 style={colTitleStyle}>Legal</h4>
+            <h4 style={colTitleStyle}>{t('footer.legal')}</h4>
             <Link to="/terms" className="footer-link" style={footerLinkStyle}>
-              Terms of Service
+              {t('footer.terms')}
             </Link>
             <Link to="/privacy" className="footer-link" style={footerLinkStyle}>
-              Privacy Policy
+              {t('footer.privacy')}
             </Link>
             <Link to="/content-guidelines" className="footer-link" style={footerLinkStyle}>
-              Content Guidelines
+              {t('footer.contentGuidelines')}
             </Link>
             <Link to="/copyright" className="footer-link" style={footerLinkStyle}>
-              Copyright & Takedown
+              {t('footer.copyright')}
             </Link>
             <Link to="/report-abuse" className="footer-link" style={footerLinkStyle}>
-              Report Abuse
+              {t('footer.reportAbuse')}
             </Link>
             <Link to="/contact" className="footer-link" style={footerLinkStyle}>
-              Contact Us
+              {t('footer.contact')}
             </Link>
           </div>
         </div>
@@ -118,11 +117,13 @@ export const Footer: React.FC = () => {
 
       <div style={bottomBarStyle} className="container">
         <div style={copyrightStyle}>
-          &copy; {new Date().getFullYear()} VibePlay by NeoFlux Software. All rights reserved.
+          &copy; {new Date().getFullYear()} {t('footer.rights')}
         </div>
         <div style={developerCreditStyle}>
-          Operated by{' '}
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>NeoFlux Software</span>
+          {t('footer.operatedBy')}{' '}
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+            NeoFlux Software {/* i18n-ignore: company name */}
+          </span>
         </div>
       </div>
     </footer>

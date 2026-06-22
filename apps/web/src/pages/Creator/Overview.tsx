@@ -5,11 +5,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import { Play, ThumbsUp, Layers, HelpCircle, Activity, ArrowRight, Eye, Edit } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
+import { formatDate, formatNumber } from '../../lib/formatTime';
 
 export const CreatorOverview: React.FC = () => {
   const { currentUser } = useAuth();
   const { games, comments } = useGames();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   if (!currentUser) return null;
 
@@ -21,11 +22,17 @@ export const CreatorOverview: React.FC = () => {
   const pendingReviews = myGames.filter((g) => g.status === 'pending').length;
 
   const statusSummary = [
-    { label: 'Published', count: myGames.filter((game) => game.status === 'published').length },
-    { label: 'In moderation', count: pendingReviews },
-    { label: 'Draft', count: myGames.filter((game) => game.status === 'draft').length },
-    { label: 'Rejected', count: myGames.filter((game) => game.status === 'rejected').length },
-    { label: 'Hidden', count: myGames.filter((game) => game.status === 'hidden').length },
+    {
+      label: t('status.published'),
+      count: myGames.filter((game) => game.status === 'published').length,
+    },
+    { label: t('status.pending'), count: pendingReviews },
+    { label: t('status.draft'), count: myGames.filter((game) => game.status === 'draft').length },
+    {
+      label: t('status.rejected'),
+      count: myGames.filter((game) => game.status === 'rejected').length,
+    },
+    { label: t('status.hidden'), count: myGames.filter((game) => game.status === 'hidden').length },
   ];
 
   // Get recent activity
@@ -49,7 +56,7 @@ export const CreatorOverview: React.FC = () => {
       <div style={welcomeStyle}>
         <h1>{t('creator.welcome', { name: currentUser.displayName })}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Here is a summary of how your published browser builds are performing.
+          {t('creator.overviewSubtitle')}
         </p>
       </div>
 
@@ -61,7 +68,7 @@ export const CreatorOverview: React.FC = () => {
             <Layers size={18} color="var(--secondary)" />
           </div>
           <div style={statValueStyle}>{myGames.length}</div>
-          <div style={statSubStyle}>Draft & published builds</div>
+          <div style={statSubStyle}>{t('creator.statDraftPublished')}</div>
         </div>
 
         <div style={statBoxStyle} className="bg-glass">
@@ -69,8 +76,8 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.totalPlays')}</span>
             <Play size={18} color="var(--primary)" />
           </div>
-          <div style={statValueStyle}>{totalPlays.toLocaleString()}</div>
-          <div style={statSubStyle}>Accumulated launches</div>
+          <div style={statValueStyle}>{formatNumber(totalPlays, locale)}</div>
+          <div style={statSubStyle}>{t('creator.statLaunches')}</div>
         </div>
 
         <div style={statBoxStyle} className="bg-glass">
@@ -78,8 +85,8 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.totalLikes')}</span>
             <ThumbsUp size={18} color="var(--success)" />
           </div>
-          <div style={statValueStyle}>{totalLikes.toLocaleString()}</div>
-          <div style={statSubStyle}>Positive developer feedback</div>
+          <div style={statValueStyle}>{formatNumber(totalLikes, locale)}</div>
+          <div style={statSubStyle}>{t('creator.statPositive')}</div>
         </div>
 
         <div style={statBoxStyle} className="bg-glass">
@@ -88,7 +95,7 @@ export const CreatorOverview: React.FC = () => {
             <HelpCircle size={18} color="var(--warning)" />
           </div>
           <div style={statValueStyle}>{pendingReviews}</div>
-          <div style={statSubStyle}>Pending administrator reviews</div>
+          <div style={statSubStyle}>{t('creator.statPending')}</div>
         </div>
       </div>
 
@@ -97,7 +104,9 @@ export const CreatorOverview: React.FC = () => {
         <div style={chartCardStyle} className="bg-glass">
           <div style={cardHeaderStyle}>
             <h3 style={cardTitleStyle}>{t('creator.buildStatus')}</h3>
-            <span style={chartTotalStyle}>{myGames.length} total</span>
+            <span style={chartTotalStyle}>
+              {t('creator.totalCount', { count: myGames.length })}
+            </span>
           </div>
 
           <div
@@ -126,7 +135,7 @@ export const CreatorOverview: React.FC = () => {
             ))}
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '1rem' }}>
-            Daily time-series analytics are not available in the private beta.
+            {t('creator.noTimeSeries')}
           </p>
         </div>
 
@@ -138,7 +147,7 @@ export const CreatorOverview: React.FC = () => {
               to="/creator/my-games"
               style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: 600 }}
             >
-              My Games
+              {t('nav.myGames')}
             </Link>
           </div>
 
@@ -146,7 +155,7 @@ export const CreatorOverview: React.FC = () => {
             {recentComments.length === 0 ? (
               <div style={emptyActivityStyle}>
                 <Activity size={28} style={{ opacity: 0.15, marginBottom: '6px' }} />
-                <span>No comments on your games yet.</span>
+                <span>{t('creator.noComments')}</span>
               </div>
             ) : (
               recentComments.map((c) => (
@@ -154,12 +163,10 @@ export const CreatorOverview: React.FC = () => {
                   <img src={c.userAvatar} alt={c.username} style={activityAvatarStyle} />
                   <div style={activityBodyStyle}>
                     <div style={{ fontSize: '0.85rem' }}>
-                      <strong>{c.username}</strong> commented:
+                      <strong>{c.username}</strong> {t('creator.commented')}
                     </div>
                     <p style={activityCommentStyle}>"{c.content}"</p>
-                    <span style={activityTimeStyle}>
-                      {new Date(c.timestamp).toLocaleDateString()}
-                    </span>
+                    <span style={activityTimeStyle}>{formatDate(c.timestamp, locale)}</span>
                   </div>
                 </div>
               ))
@@ -172,7 +179,9 @@ export const CreatorOverview: React.FC = () => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-            My Published Builds ({myGames.filter((g) => g.status === 'published').length})
+            {t('creator.publishedBuilds', {
+              count: myGames.filter((g) => g.status === 'published').length,
+            })}
           </h2>
           <Link to="/creator/my-games" style={linkBtnStyle}>
             <span>{t('creator.manageAll')}</span>
@@ -188,7 +197,7 @@ export const CreatorOverview: React.FC = () => {
               className="btn btn-primary btn-sm"
               style={{ marginTop: '0.75rem' }}
             >
-              Publish Your First Game
+              {t('myGames.publishFirst')}
             </Link>
           </div>
         ) : (
@@ -204,10 +213,10 @@ export const CreatorOverview: React.FC = () => {
                     <span
                       className={`badge ${g.status === 'published' ? 'badge-success' : g.status === 'pending' ? 'badge-warning' : 'badge-secondary'}`}
                     >
-                      {g.status}
+                      {t(`status.${g.status}`)}
                     </span>
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      Plays: {g.plays.toLocaleString()}
+                      {t('creator.playsLabel', { count: formatNumber(g.plays, locale) })}
                     </span>
                   </div>
                 </div>

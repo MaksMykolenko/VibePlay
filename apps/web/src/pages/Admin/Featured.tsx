@@ -3,12 +3,21 @@ import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../../components/toastEvents';
 import { Sparkles } from 'lucide-react';
+import { useI18n } from '../../i18n/useI18n';
 
 export const AdminFeatured: React.FC = () => {
   const { games, toggleFeaturedGame } = useGames();
   const { currentUser } = useAuth();
+  const { t } = useI18n();
 
   const publishedGames = games.filter((g) => g.status === 'published');
+
+  const featuredLabel = (category: string | null | undefined): string => {
+    if (category === 'hero') return t('admin.featured.hero');
+    if (category === 'trending') return t('admin.featured.trending');
+    if (category === 'editors_choice') return t('admin.featured.editorsChoice');
+    return t('admin.featured.featured');
+  };
 
   const handleFeatureToggle = (
     gameId: string,
@@ -17,16 +26,16 @@ export const AdminFeatured: React.FC = () => {
   ) => {
     if (!currentUser) return;
     toggleFeaturedGame(gameId, category, currentUser.id, currentUser.displayName);
-    toast.success(`Featuring updated for "${title}".`);
+    toast.success(t('admin.featured.updated', { title }));
   };
 
   return (
     <div style={containerStyle} className="animate-fade">
       {/* Header */}
       <div>
-        <h1>Featured Configurator</h1>
+        <h1>{t('admin.featured.title')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-          Assign published builds to primary marketing grids on the platform homepage.
+          {t('admin.featured.subtitle')}
         </p>
       </div>
 
@@ -37,10 +46,10 @@ export const AdminFeatured: React.FC = () => {
         <table style={tableStyle}>
           <thead>
             <tr style={tableHeaderRowStyle}>
-              <th style={thStyle}>Game Build</th>
-              <th style={thStyle}>Category</th>
-              <th style={thStyle}>Featuring Status</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Assign HomePage Grid Role</th>
+              <th style={thStyle}>{t('admin.featured.colGame')}</th>
+              <th style={thStyle}>{t('admin.featured.colCategory')}</th>
+              <th style={thStyle}>{t('admin.featured.colStatus')}</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>{t('admin.featured.colAssign')}</th>
             </tr>
           </thead>
           <tbody>
@@ -53,24 +62,24 @@ export const AdminFeatured: React.FC = () => {
                     <div>
                       <div style={{ fontWeight: 600, color: '#fff' }}>{game.title}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        by @{game.creatorName}
+                        {t('admin.featured.by', { name: game.creatorName })}
                       </div>
                     </div>
                   </div>
                 </td>
 
                 {/* Category */}
-                <td style={tdStyle}>{game.category}</td>
+                <td style={tdStyle}>{t(`category.${game.category}`)}</td>
 
                 {/* Status Badges */}
                 <td style={tdStyle}>
                   {game.isFeatured ? (
                     <span className="badge badge-primary" style={{ gap: '4px' }}>
                       <Sparkles size={10} />
-                      {game.featuredCategory?.replace('_', ' ').toUpperCase() || 'FEATURED'}
+                      {featuredLabel(game.featuredCategory)}
                     </span>
                   ) : (
-                    <span className="badge badge-secondary">Standard Catalog</span>
+                    <span className="badge badge-secondary">{t('admin.featured.standard')}</span>
                   )}
                 </td>
 
@@ -86,7 +95,7 @@ export const AdminFeatured: React.FC = () => {
                       }
                       style={gridBtnStyle}
                     >
-                      Hero Card
+                      {t('admin.featured.hero')}
                     </button>
                     <button
                       onClick={() => handleFeatureToggle(game.id, 'trending', game.title)}
@@ -97,7 +106,7 @@ export const AdminFeatured: React.FC = () => {
                       }
                       style={gridBtnStyle}
                     >
-                      Trending Grid
+                      {t('admin.featured.trending')}
                     </button>
                     <button
                       onClick={() => handleFeatureToggle(game.id, 'editors_choice', game.title)}
@@ -108,7 +117,7 @@ export const AdminFeatured: React.FC = () => {
                       }
                       style={gridBtnStyle}
                     >
-                      Editor's Choice
+                      {t('admin.featured.editorsChoice')}
                     </button>
                     {game.isFeatured && (
                       <button
@@ -116,7 +125,7 @@ export const AdminFeatured: React.FC = () => {
                         className="btn btn-danger btn-sm"
                         style={gridBtnStyle}
                       >
-                        Clear
+                        {t('admin.featured.clear')}
                       </button>
                     )}
                   </div>
