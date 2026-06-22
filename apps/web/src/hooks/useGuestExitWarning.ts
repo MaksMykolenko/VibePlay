@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trackEvent } from '../lib/analytics';
 import { withReturnTo } from '../lib/returnTo';
-import { markSignupIntent } from '../lib/cloudSaveCta';
+import { markGameAuthIntent } from '../lib/cloudSaveCta';
+import type { AnalyticsEventType } from '@vibeplay/shared';
 import {
   guestExitWarningParams,
   installGuestExitGuard,
@@ -22,6 +23,10 @@ export interface UseGuestExitWarningOptions {
   playPath: string;
   /** Where "Leave anyway" goes for back/refresh-style attempts (no link target). */
   exitFallbackPath: string;
+  onAnalyticsEvent?: (
+    type: AnalyticsEventType,
+    metadata: { navigationSource: GuestExitSource },
+  ) => void;
 }
 
 export interface GuestExitWarning {
@@ -61,6 +66,7 @@ export function useGuestExitWarning({
   gameSlug,
   playPath,
   exitFallbackPath,
+  onAnalyticsEvent,
 }: UseGuestExitWarningOptions): GuestExitWarning {
   const navigate = useNavigate();
   const [pending, setPending] = useState<PendingExit | null>(null);
@@ -85,8 +91,9 @@ export function useGuestExitWarning({
     ) => {
       const { gameId: id, gameSlug: slug } = trackParamsRef.current;
       trackEvent(name, guestExitWarningParams({ gameId: id, gameSlug: slug, source }));
+      onAnalyticsEvent?.(name, { navigationSource: source });
     },
-    [],
+    [onAnalyticsEvent],
   );
 
   const openWarning = useCallback(
@@ -161,7 +168,7 @@ export function useGuestExitWarning({
       track('guest_exit_warning_signup_clicked', current?.source ?? 'exit_button');
       leavingRef.current = true;
       // Remember the game so post-signup we can offer to sync local progress.
-      if (gameId) markSignupIntent(gameId);
+      if (gameId) markGameAuthIntent(gameId, 'registration');
       navigate(withReturnTo('/register', playPath));
       return null;
     });
@@ -171,7 +178,7 @@ export function useGuestExitWarning({
     setPending((current) => {
       track('guest_exit_warning_login_clicked', current?.source ?? 'exit_button');
       leavingRef.current = true;
-      if (gameId) markSignupIntent(gameId);
+      if (gameId) markGameAuthIntent(gameId, 'login');
       navigate(withReturnTo('/login', playPath));
       return null;
     });

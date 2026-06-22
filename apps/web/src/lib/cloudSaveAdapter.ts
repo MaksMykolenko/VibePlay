@@ -44,6 +44,8 @@ export interface CloudSaveAdapterHooks {
   onLoaded?: () => void;
   /** Fired when a write fails because the session is no longer authenticated. */
   onAuthRequired?: () => void;
+  /** Privacy-safe operation outcome. No save payload is included. */
+  onResult?: (operation: 'get' | 'set', result: SaveResultPayload) => void;
 }
 
 export function createCloudSaveAdapter(
@@ -55,20 +57,31 @@ export function createCloudSaveAdapter(
     async get() {
       try {
         const save = await api.getGameSave(gameId);
-        if (!save) return { code: 'not_found' };
+        if (!save) {
+          const result = { code: 'not_found' } as const;
+          hooks.onResult?.('get', result);
+          return result;
+        }
         hooks.onLoaded?.();
-        return { code: 'ok', data: save.data, schemaVersion: save.schemaVersion };
+        const result = { code: 'ok', data: save.data, schemaVersion: save.schemaVersion } as const;
+        hooks.onResult?.('get', { code: 'ok' });
+        return result;
       } catch (err) {
-        return mapError(err);
+        const result = mapError(err);
+        hooks.onResult?.('get', result);
+        return result;
       }
     },
     async set(data, schemaVersion) {
       try {
         await api.putGameSave(gameId, data, schemaVersion);
-        return { code: 'ok' };
+        const result = { code: 'ok' } as const;
+        hooks.onResult?.('set', result);
+        return result;
       } catch (err) {
         const mapped = mapError(err);
         if (mapped.code === 'auth_required') hooks.onAuthRequired?.();
+        hooks.onResult?.('set', mapped);
         return mapped;
       }
     },

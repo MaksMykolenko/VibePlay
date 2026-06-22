@@ -94,4 +94,32 @@ describe('SDK protocol', () => {
     expect(parseGameMessage(makeEnvelope('progress', { kind: 'level_up' }))?.type).toBe('progress');
     expect(parseGameMessage(makeEnvelope('progress', { kind: 'x'.repeat(65) }))).toBeNull();
   });
+
+  it('accepts only privacy-safe SDK analytics messages', () => {
+    expect(parseGameMessage(makeEnvelope('analyticsReady'))?.type).toBe('analyticsReady');
+    expect(
+      parseGameMessage(makeEnvelope('analyticsError', { code: 'sdk_timeout', label: 'startup' }))
+        ?.type,
+    ).toBe('analyticsError');
+    expect(
+      parseGameMessage(
+        makeEnvelope('analyticsCustomEvent', {
+          name: 'level_started',
+          value: 2,
+          label: 'level_2',
+        }),
+      )?.type,
+    ).toBe('analyticsCustomEvent');
+    expect(
+      parseGameMessage(
+        makeEnvelope('analyticsCustomEvent', {
+          name: 'level_started',
+          nested: { email: 'private@example.com' },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseGameMessage(makeEnvelope('analyticsError', { code: 'sdk_timeout', stack: 'raw stack' })),
+    ).toBeNull();
+  });
 });

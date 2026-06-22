@@ -41,6 +41,8 @@ export const RATE_LIMIT_POLICIES = {
   // Cloud-save writes. The SDK debounces to ~once per 10-30s, so 30/min leaves
   // ample headroom for important-event flushes while bounding abuse.
   gameSaveWrite: { max: 30, timeWindow: '1 minute' },
+  /** First-party events: enough for a heartbeat plus bounded interaction bursts. */
+  analyticsEvents: { max: 120, timeWindow: '1 minute' },
 } as const satisfies Record<string, RateLimitPolicy>;
 
 export type RateLimitPolicyName = keyof typeof RATE_LIMIT_POLICIES;

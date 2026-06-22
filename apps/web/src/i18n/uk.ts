@@ -836,7 +836,9 @@ export const uk: Record<keyof typeof en, string> = {
   'shell.mobileNavigation': 'Мобільна навігація',
   'shell.closeMenu': 'Закрити меню',
   'shell.demoBanner':
-    'Демо фронтенду — дані зберігаються лише в цьому браузері. Для завантажень, листів і модерації потрібен справжній бекенд VibePlay.',
+    import.meta.env.APP_MODE === 'demo'
+      ? 'Демо фронтенду — дані зберігаються лише в цьому браузері. Для завантажень, листів і модерації потрібен справжній бекенд VibePlay.'
+      : 'Недоступно в цій збірці.',
   'shell.accessDenied': 'Доступ заборонено',
   'shell.creatorRequired': 'Щоб відкрити цю панель, потрібно зареєструватися як автор.',
   'shell.restrictedArea': 'Обмежений розділ',
@@ -845,8 +847,14 @@ export const uk: Record<keyof typeof en, string> = {
   'auth.usernamePlaceholder': 'diana_rider',
   'auth.displayNamePlaceholder': 'Diana Rider',
   'auth.demoLogin': 'Демо-версія: виконано вхід із роллю «{{role}}».',
-  'auth.demoAccountsTitle': 'Демо-облікові записи (лише для демо-версії)',
-  'auth.demoAccountsBody': 'Це демо на GitHub Pages. Дані зберігаються лише у вашому браузері.',
+  'auth.demoAccountsTitle':
+    import.meta.env.APP_MODE === 'demo'
+      ? 'Демо-облікові записи (лише для демо-версії)'
+      : 'Недоступно',
+  'auth.demoAccountsBody':
+    import.meta.env.APP_MODE === 'demo'
+      ? 'Це демо на GitHub Pages. Дані зберігаються лише у вашому браузері.'
+      : 'Недоступно в цій збірці.',
   'auth.demoRole': 'Демо: {{role}}',
   'auth.demoAccountCreated': 'Демо-обліковий запис створено в цьому браузері.',
   'auth.demoRegisterSubtitle': 'Приєднуйтеся до демо VibePlay — дані залишаться у браузері.',
@@ -920,6 +928,53 @@ export const uk: Record<keyof typeof en, string> = {
   'analytics.conversionTitle': 'Конверсія реєстрації',
   'analytics.conversionUnavailable':
     'Внутрішніх даних поки недостатньо. Події заклику до реєстрації не зберігаються у виробничій базі, тому коефіцієнт конверсії не показується.',
+  'analytics.internalEventsTitle': 'Внутрішні події VibePlay',
+  'analytics.internalEventsBody':
+    'Безпечні для приватності події запуску, гри, збережень і взаємодій, які збирає VibePlay.',
+  'analytics.launchSuccesses': 'Успішні запуски',
+  'analytics.launchFailures': 'Невдалі запуски',
+  'analytics.playsStarted': 'Розпочаті ігрові сеанси',
+  'analytics.noInternalEvents': 'Внутрішніх аналітичних даних поки недостатньо.',
+  'analytics.launchCount': 'Успішні запуски: {{count}}',
+  'analytics.eventInsightsTitle': 'Розширені дані про події',
+  'analytics.launchSuccessRate': 'Частка успішних запусків',
+  'analytics.notEnoughInternalData': 'Внутрішніх аналітичних даних поки недостатньо.',
+  'analytics.cloudSaveFunnel': 'Воронка хмарних збережень',
+  'analytics.cloudSaveFunnelValues':
+    'Показано: {{shown}} · натиснуто: {{clicked}} · синхронізовано: {{synced}}',
+  'analytics.failureReasons': 'Безпечні коди помилок запуску: {{reasons}}',
+  'analytics.customEvents': 'Власні події ігор: {{events}}',
+  'analytics.conversionValues':
+    'Реєстрація: натискань {{registrationClicks}} / завершено {{registrationCompletions}}. Вхід: натискань {{loginClicks}} / завершено {{loginCompletions}}.',
+  'analytics.event.game_page_view': 'Перегляди сторінки гри',
+  'analytics.event.game_launch_requested': 'Запити на запуск',
+  'analytics.event.game_launch_success': 'Успішні запуски',
+  'analytics.event.game_launch_failed': 'Невдалі запуски',
+  'analytics.event.play_session_started': 'Розпочаті ігрові сеанси',
+  'analytics.event.play_heartbeat': 'Сигнали активної гри',
+  'analytics.event.play_session_ended': 'Завершені ігрові сеанси',
+  'analytics.event.cloud_save_cta_shown': 'Показані пропозиції хмарного збереження',
+  'analytics.event.cloud_save_cta_signup_clicked': 'Переходи до реєстрації зі збереження',
+  'analytics.event.cloud_save_cta_login_clicked': 'Переходи до входу зі збереження',
+  'analytics.event.cloud_save_sync_prompt_shown': 'Показані пропозиції синхронізації',
+  'analytics.event.cloud_save_sync_accepted': 'Прийняті синхронізації',
+  'analytics.event.cloud_save_sync_dismissed': 'Відхилені синхронізації',
+  'analytics.event.cloud_save_set_success': 'Записи хмарного збереження',
+  'analytics.event.cloud_save_set_failed': 'Помилки запису хмарного збереження',
+  'analytics.event.cloud_save_get_success': 'Читання хмарного збереження',
+  'analytics.event.cloud_save_get_failed': 'Помилки читання хмарного збереження',
+  'analytics.event.guest_exit_warning_shown': 'Показані попередження гостю',
+  'analytics.event.guest_exit_warning_keep_playing': 'Гість продовжив гру',
+  'analytics.event.guest_exit_warning_leave_anyway': 'Гість усе одно вийшов',
+  'analytics.event.guest_exit_warning_signup_clicked': 'Переходи до реєстрації з попередження',
+  'analytics.event.guest_exit_warning_login_clicked': 'Переходи до входу з попередження',
+  'analytics.event.register_from_game_clicked': 'Переходи до реєстрації з гри',
+  'analytics.event.login_from_game_clicked': 'Переходи до входу з гри',
+  'analytics.event.registration_completed_from_game': 'Завершені реєстрації з гри',
+  'analytics.event.login_completed_from_game': 'Завершені входи з гри',
+  'analytics.event.sdk_ready': 'SDK готовий',
+  'analytics.event.sdk_error': 'Помилки SDK',
+  'analytics.event.game_custom_event': 'Власні події гри',
   'editGame.notFound': 'Збірку гри не знайдено.',
   'editGame.unauthorizedBody': 'У вас немає дозволу редагувати цю гру.',
   'editGame.backToGames': 'Назад до моїх ігор',

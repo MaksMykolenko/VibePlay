@@ -1,4 +1,6 @@
 import type {
+  AnalyticsEventBatchInput,
+  AnalyticsEventInput,
   AuditLogEntryDto,
   AvatarUploadIntentResponseDto,
   BillingMeDto,
@@ -50,6 +52,7 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  keepalive?: boolean;
 }
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
@@ -69,6 +72,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       credentials: 'include',
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       signal: opts.signal,
+      keepalive: opts.keepalive,
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') throw err;
@@ -356,6 +360,12 @@ export function createHttpClient(): ApiClient {
     },
     async endPlaySession(sessionId) {
       await request(`/play-sessions/${sessionId}/end`, { method: 'POST', body: {} });
+    },
+    async trackAnalyticsEvent(event: AnalyticsEventInput) {
+      await request('/analytics/events', { method: 'POST', body: event, keepalive: true });
+    },
+    async trackAnalyticsBatch(batch: AnalyticsEventBatchInput) {
+      await request('/analytics/batch', { method: 'POST', body: batch, keepalive: true });
     },
 
     // ----- cloud saves -----

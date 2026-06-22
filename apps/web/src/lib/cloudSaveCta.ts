@@ -83,19 +83,43 @@ export function canOfferCloudSaveSync(
 // offer to sync any local progress to their new account (Phase 4).
 const SIGNUP_INTENT_KEY = 'vp_cloudsave_signup_intent';
 
-export function markSignupIntent(gameId: string, storage?: CtaStorage | null): void {
+export type GameAuthIntent = 'registration' | 'login';
+
+export function markGameAuthIntent(
+  gameId: string,
+  intent: GameAuthIntent,
+  storage?: CtaStorage | null,
+): void {
   const s = storage === undefined ? safeStorage('session') : storage;
-  s?.setItem(SIGNUP_INTENT_KEY, gameId);
+  s?.setItem(SIGNUP_INTENT_KEY, JSON.stringify({ gameId, intent }));
+}
+
+export function consumeGameAuthIntent(
+  gameId: string,
+  storage?: CtaStorage | null,
+): GameAuthIntent | null {
+  const s = storage === undefined ? safeStorage('session') : storage;
+  if (!s) return null;
+  const value = s.getItem(SIGNUP_INTENT_KEY);
+  let storedGameId = value;
+  let intent: GameAuthIntent = 'registration';
+  try {
+    const parsed = JSON.parse(value ?? '') as { gameId?: unknown; intent?: unknown };
+    if (typeof parsed.gameId === 'string') storedGameId = parsed.gameId;
+    if (parsed.intent === 'login') intent = 'login';
+  } catch {
+    // Backward-compatible with the prior plain game-id value.
+  }
+  if (storedGameId !== gameId) return null;
+  s.setItem(SIGNUP_INTENT_KEY, '');
+  return intent;
+}
+
+export function markSignupIntent(gameId: string, storage?: CtaStorage | null): void {
+  markGameAuthIntent(gameId, 'registration', storage);
 }
 
 /** Returns true (once) if the player just returned from signup for this game. */
 export function consumeSignupIntent(gameId: string, storage?: CtaStorage | null): boolean {
-  const s = storage === undefined ? safeStorage('session') : storage;
-  if (!s) return false;
-  const value = s.getItem(SIGNUP_INTENT_KEY);
-  if (value === gameId) {
-    s.setItem(SIGNUP_INTENT_KEY, '');
-    return true;
-  }
-  return false;
+  return consumeGameAuthIntent(gameId, storage) !== null;
 }

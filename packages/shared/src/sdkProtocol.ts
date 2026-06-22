@@ -26,7 +26,11 @@ export type GameToHostType =
   | 'saveStatus'
   // Guest-save transfer (Phase 4):
   | 'localSaveAvailable'
-  | 'localSaveProvided';
+  | 'localSaveProvided'
+  // Privacy-safe first-party analytics, relayed by the parent Play Page:
+  | 'analyticsReady'
+  | 'analyticsError'
+  | 'analyticsCustomEvent';
 
 export type HostToGameType =
   | 'init'
@@ -131,6 +135,17 @@ export interface ProgressPayload {
   label?: string;
 }
 
+export interface AnalyticsErrorPayload {
+  code: string;
+  label?: string;
+}
+
+export interface AnalyticsCustomEventPayload {
+  name: string;
+  value?: number;
+  label?: string;
+}
+
 const MAX_STRING = 5000;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -155,6 +170,9 @@ const GAME_TO_HOST_TYPES: ReadonlySet<string> = new Set([
   'saveStatus',
   'localSaveAvailable',
   'localSaveProvided',
+  'analyticsReady',
+  'analyticsError',
+  'analyticsCustomEvent',
 ]);
 
 const HOST_TO_GAME_TYPES: ReadonlySet<string> = new Set([
@@ -178,6 +196,14 @@ const SAVE_RESULT_CODES: ReadonlySet<string> = new Set([
 
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowed: readonly string[]): boolean {
+  return Object.keys(value).every((key) => allowed.includes(key));
+}
+
+function isSafeAnalyticsSlug(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z0-9_.-]{1,40}$/.test(value);
 }
 
 /** Validate a raw postMessage payload coming FROM a game iframe. */
@@ -216,6 +242,22 @@ export function parseGameMessage(data: unknown): SdkEnvelope<GameToHostType> | n
     const p = data.payload;
     if (!isPlainObject(p) || !('data' in p)) return null;
     if (p.schemaVersion !== undefined && !isFiniteNumber(p.schemaVersion)) return null;
+  }
+  if (data.type === 'analyticsError') {
+    const p = data.payload;
+    if (!isPlainObject(p) || !hasOnlyKeys(p, ['code', 'label'])) return null;
+    if (!isSafeAnalyticsSlug(p.code)) return null;
+    if (p.label !== undefined && !isShortString(p.label, 80)) return null;
+  }
+  if (data.type === 'analyticsReady' && data.payload !== undefined) return null;
+  if (data.type === 'analyticsCustomEvent') {
+    const p = data.payload;
+    if (!isPlainObject(p) || !hasOnlyKeys(p, ['name', 'value', 'label'])) return null;
+    if (!isSafeAnalyticsSlug(p.name)) return null;
+    if (p.value !== undefined && (!isFiniteNumber(p.value) || Math.abs(p.value) > 1_000_000)) {
+      return null;
+    }
+    if (p.label !== undefined && !isShortString(p.label, 80)) return null;
   }
   return data as unknown as SdkEnvelope<GameToHostType>;
 }

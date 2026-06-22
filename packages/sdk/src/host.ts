@@ -18,6 +18,8 @@ import {
   parseGameMessage,
   type LocalSaveAvailablePayload,
   type LocalSaveProvidedPayload,
+  type AnalyticsCustomEventPayload,
+  type AnalyticsErrorPayload,
   type PlayerSummaryPayload,
   type SaveResultPayload,
   type SaveSetPayload,
@@ -51,6 +53,9 @@ export interface GameBridgeEvents {
   onGuestSaveAttempt?: () => void;
   /** The game announced a local (device) save exists (Phase 4 sync prompt). */
   onLocalSaveAvailable?: (meta: LocalSaveAvailablePayload) => void;
+  onAnalyticsReady?: () => void;
+  onAnalyticsError?: (event: AnalyticsErrorPayload) => void;
+  onAnalyticsCustomEvent?: (event: AnalyticsCustomEventPayload) => void;
 }
 
 export interface GameBridgeOptions {
@@ -206,6 +211,18 @@ export class GameBridge {
           this.hostPending.delete(id);
           entry.resolve((msg.payload as LocalSaveProvidedPayload) ?? null);
         }
+        break;
+      }
+      case 'analyticsReady': {
+        this.events.onAnalyticsReady?.();
+        break;
+      }
+      case 'analyticsError': {
+        this.events.onAnalyticsError?.(msg.payload as AnalyticsErrorPayload);
+        break;
+      }
+      case 'analyticsCustomEvent': {
+        this.events.onAnalyticsCustomEvent?.(msg.payload as AnalyticsCustomEventPayload);
         break;
       }
     }

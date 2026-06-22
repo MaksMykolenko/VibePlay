@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   adminAgent,
+  apiGuest,
   authHeaders,
   publishGame,
   registerVerifiedCreator,
@@ -23,7 +24,8 @@ test.describe('launch and origin isolation', () => {
     page,
   }) => {
     const admin = await adminAgent();
-    const { agent: creator } = await registerVerifiedCreator(admin);
+    const creatorAccount = await registerVerifiedCreator(admin);
+    const { agent: creator } = creatorAccount;
     const game = await publishGame(admin, creator, uniq('Playable '));
 
     // Player registers and logs in through the UI.
@@ -76,6 +78,20 @@ test.describe('launch and origin isolation', () => {
       timeout: 20_000,
     });
 
+    await expect
+      .poll(async () => {
+        const response = await page.request.get(
+          `${E2E.apiUrl}/api/test/analytics/count?gameId=${game.gameId}&type=game_launch_success`,
+        );
+        return ((await response.json()) as { count: number }).count;
+      })
+      .toBeGreaterThan(0);
+
+    const guest = await apiGuest();
+    const privateAnalytics = await guest.ctx.get('/api/creator/analytics?range=7d');
+    expect(privateAnalytics.status()).toBe(401);
+    await guest.ctx.dispose();
+
     // Exiting stores playEnded (204 from /play-sessions/:id/end).
     const endResponse = page.waitForResponse(
       (res) => res.url().includes('/play-sessions/') && res.status() === 204,
@@ -88,6 +104,11 @@ test.describe('launch and origin isolation', () => {
     expect(recent.ok()).toBeTruthy();
     const items = (await recent.json()).items as { game: { id: string } }[];
     expect(items.some((item) => item.game.id === game.gameId)).toBe(true);
+
+    await uiLogin(page, creatorAccount.email, creatorAccount.password);
+    await page.goto('/creator/analytics');
+    await expect(page.getByRole('heading', { name: /VibePlay internal events/i })).toBeVisible();
+    await expect(page.getByText('Launch successes', { exact: true }).first()).toBeVisible();
   });
 
   test('game A cannot read game B storage (distinct origins, runtime proof)', async ({ page }) => {

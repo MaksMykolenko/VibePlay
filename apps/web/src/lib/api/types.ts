@@ -1,4 +1,6 @@
 import type {
+  AnalyticsEventBatchInput,
+  AnalyticsEventInput,
   AuditLogEntryDto,
   AvatarUploadIntentResponseDto,
   BillingMeDto,
@@ -222,6 +224,8 @@ export interface ApiClient {
   // launch
   launchGame(gameId: string): Promise<LaunchDescriptorDto>;
   endPlaySession(sessionId: string): Promise<void>;
+  trackAnalyticsEvent(event: AnalyticsEventInput): Promise<void>;
+  trackAnalyticsBatch(batch: AnalyticsEventBatchInput): Promise<void>;
 
   // cloud saves (authenticated; the Play Page bridge calls these on the game's behalf)
   /** The caller's save for a game, or null when none exists (404). */

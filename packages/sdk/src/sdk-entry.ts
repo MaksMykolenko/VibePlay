@@ -50,6 +50,7 @@ import {
   makeEnvelope,
   parseHostMessage,
   type LocalSaveProvidedPayload,
+  type AnalyticsCustomEventPayload,
   type PlayerSummaryPayload,
   type SaveResultPayload,
   type SaveStatusInfo,
@@ -91,6 +92,16 @@ export interface VibePlaySaveApi {
   onLocalSaveRequested(provider: LocalSaveProvider): void;
 }
 
+/** Privacy-safe analytics surface. All calls use postMessage; no API credentials are exposed. */
+export interface VibePlayAnalyticsApi {
+  /** Signal that the game's analytics integration is ready. */
+  ready(): void;
+  /** Report a bounded safe error code, never a stack or free-form message. */
+  error(code: string, label?: string): boolean;
+  /** Track a creator-defined event with only name/value/label metadata. */
+  trackCustomEvent(event: AnalyticsCustomEventPayload): boolean;
+}
+
 /** Don't write more often than this unless the caller marks the event important. */
 const SAVE_MIN_INTERVAL_MS = 10_000;
 const SAVE_REQUEST_TIMEOUT_MS = 15_000;
@@ -111,6 +122,7 @@ export class VibePlayGameSdk {
 
   /** Cloud-save API namespace (see VibePlaySaveApi). */
   readonly save: VibePlaySaveApi;
+  readonly analytics: VibePlayAnalyticsApi;
 
   constructor() {
     window.addEventListener('message', (event: MessageEvent) => this.onMessage(event));
@@ -123,6 +135,19 @@ export class VibePlayGameSdk {
       reportLocalSave: (meta) => this.send('localSaveAvailable', meta),
       onLocalSaveRequested: (provider) => {
         this.localSaveProvider = provider;
+      },
+    };
+    this.analytics = {
+      ready: () => this.send('analyticsReady'),
+      error: (code, label) => {
+        if (!isSafeAnalyticsSlug(code) || !isSafeLabel(label)) return false;
+        this.send('analyticsError', { code, ...(label ? { label } : {}) });
+        return true;
+      },
+      trackCustomEvent: (event) => {
+        if (!isValidCustomEvent(event)) return false;
+        this.send('analyticsCustomEvent', event);
+        return true;
       },
     };
   }
@@ -319,6 +344,29 @@ export class VibePlayGameSdk {
     }
     this.send('localSaveProvided', payload, requestId);
   }
+}
+
+function isSafeAnalyticsSlug(value: unknown): value is string {
+  return typeof value === 'string' && /^[a-z0-9_.-]{1,40}$/.test(value);
+}
+
+function isSafeLabel(value: unknown): value is string | undefined {
+  return (
+    value === undefined || (typeof value === 'string' && value.length > 0 && value.length <= 80)
+  );
+}
+
+function isValidCustomEvent(value: unknown): value is AnalyticsCustomEventPayload {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  if (!Object.keys(record).every((key) => ['name', 'value', 'label'].includes(key))) return false;
+  if (!isSafeAnalyticsSlug(record.name) || !isSafeLabel(record.label)) return false;
+  return (
+    record.value === undefined ||
+    (typeof record.value === 'number' &&
+      Number.isFinite(record.value) &&
+      Math.abs(record.value) <= 1_000_000)
+  );
 }
 
 let singleton: VibePlayGameSdk | null = null;

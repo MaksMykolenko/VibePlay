@@ -97,6 +97,13 @@ function response(overrides: Partial<CreatorAnalyticsDto> = {}): CreatorAnalytic
       { type: 'LIKE', count: 3, latestAt: null },
       { type: 'COMMENT', count: 2, latestAt: null },
     ],
+    eventMetrics: {
+      launchSuccesses: 8,
+      launchFailures: 1,
+      playsStarted: 9,
+      recent: [{ type: 'game_launch_success', count: 8 }],
+      topGamesByLaunch: [{ gameId: 'game-1', slug: 'real-game', title: 'Real Game', launches: 8 }],
+    },
     entitlements: { creatorPlus: false, advancedAnalytics: false },
     advanced: null,
     ...overrides,
@@ -172,14 +179,34 @@ describe('CreatorAnalyticsView', () => {
         durationPercentiles: { p50Seconds: 60, p90Seconds: 300 },
         comparison: { previousPeriodPlays: 30, changePercent: 40, daily: [] },
         games: [],
-        conversion: { registrationCta: 'NOT_ENOUGH_INTERNAL_DATA' },
+        conversion: {
+          registrationCta: 'AVAILABLE',
+          registrationClicks: 4,
+          registrationCompletions: 2,
+          loginClicks: 3,
+          loginCompletions: 2,
+        },
+        eventInsights: {
+          launchSuccessRate: 88.9,
+          launchFailureReasons: [{ code: 'iframe_load_failed', count: 1 }],
+          cloudSaveFunnel: {
+            ctaShown: 5,
+            signupClicks: 2,
+            loginClicks: 1,
+            syncPrompts: 2,
+            syncAccepted: 1,
+          },
+          guestExitActions: [],
+          customEvents: [{ name: 'level_started', count: 3 }],
+          versions: [],
+        },
       },
     });
     const markup = render(advanced);
     expect(markup).toContain('Advanced Analytics');
     expect(markup).toContain('Unique signed-in players');
     expect(markup).toContain('Cloud save adoption');
-    expect(markup).toContain('Not enough internal data yet.');
+    expect(markup).toContain('Registration conversion');
     expect(markup).not.toContain('Detailed analytics are included with Creator Plus');
   });
 });
