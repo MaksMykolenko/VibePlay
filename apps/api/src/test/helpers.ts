@@ -73,6 +73,7 @@ export async function resetDb(prisma: PrismaClient): Promise<void> {
     prisma.notification.deleteMany(),
     prisma.report.deleteMany(),
     prisma.comment.deleteMany(),
+    prisma.analyticsEvent.deleteMany(),
     prisma.playSession.deleteMany(),
     prisma.favorite.deleteMany(),
     prisma.like.deleteMany(),

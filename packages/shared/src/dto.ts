@@ -13,6 +13,7 @@ import type {
   UserRole,
   UserStatus,
 } from './enums.js';
+import type { AnalyticsEventType } from './analyticsEvents.js';
 
 /** Public view of a user (safe to expose to anyone). */
 export interface PublicUserDto {
@@ -92,6 +93,18 @@ export interface CreatorAnalyticsDto {
     count: number;
     latestAt: string | null;
   }[];
+  eventMetrics: {
+    launchSuccesses: number;
+    launchFailures: number;
+    playsStarted: number;
+    recent: { type: AnalyticsEventType; count: number }[];
+    topGamesByLaunch: {
+      gameId: string;
+      slug: string;
+      title: string;
+      launches: number;
+    }[];
+  };
   entitlements: {
     creatorPlus: boolean;
     advancedAnalytics: boolean;
@@ -134,7 +147,33 @@ export interface CreatorAnalyticsDto {
       }[];
     }[];
     conversion: {
-      registrationCta: 'NOT_ENOUGH_INTERNAL_DATA';
+      registrationCta: 'AVAILABLE' | 'NOT_ENOUGH_INTERNAL_DATA';
+      registrationClicks: number;
+      registrationCompletions: number;
+      loginClicks: number;
+      loginCompletions: number;
+    };
+    eventInsights: {
+      launchSuccessRate: number | null;
+      launchFailureReasons: { code: string; count: number }[];
+      cloudSaveFunnel: {
+        ctaShown: number;
+        signupClicks: number;
+        loginClicks: number;
+        syncPrompts: number;
+        syncAccepted: number;
+      };
+      guestExitActions: { type: AnalyticsEventType; count: number }[];
+      customEvents: { name: string; count: number }[];
+      versions: {
+        gameId: string;
+        gameTitle: string;
+        versionId: string;
+        version: string;
+        events: number;
+        launchSuccesses: number;
+        launchFailures: number;
+      }[];
     };
   } | null;
 }

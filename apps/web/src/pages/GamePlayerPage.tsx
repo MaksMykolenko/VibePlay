@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   isAllowedGameLaunchUrl,
+  type AnalyticsEventType,
   type LaunchDescriptorDto,
   type LocalSaveAvailablePayload,
+  type SaveResultCode,
 } from '@vibeplay/shared';
 import { GameBridge, type HostSaveAdapter } from '@vibeplay/sdk';
 import { useAuth } from '../hooks/useAuth';
@@ -16,11 +18,12 @@ import { CloudSaveSyncPrompt } from '../components/CloudSaveSyncPrompt';
 import { GuestExitWarningModal } from '../components/GuestExitWarningModal';
 import { useGuestExitWarning } from '../hooks/useGuestExitWarning';
 import { trackEvent } from '../lib/analytics';
+import { trackInternalEvent } from '../lib/internalAnalytics';
 import {
   canShowCta,
   suppressCta,
-  markSignupIntent,
-  consumeSignupIntent,
+  markGameAuthIntent,
+  consumeGameAuthIntent,
   canOfferCloudSaveSync,
   CTA_PLAY_THRESHOLD_MS,
 } from '../lib/cloudSaveCta';
@@ -30,6 +33,8 @@ import { withReturnTo } from '../lib/returnTo';
 // build time, so every demo-only branch below (fake loading texts, canvas
 // simulation) is dead-code-eliminated from the real bundle.
 const IS_DEMO = import.meta.env.APP_MODE === 'demo';
+const HEARTBEAT_INTERVAL_MS = 45_000;
+type CtaTrigger = 'time' | 'progress' | 'guest_save' | 'auth_required';
 import {
   ArrowLeft,
   Maximize2,
@@ -45,15 +50,18 @@ import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
-const LOADING_TEXTS = [
-  'Securing browser sandbox environment...',
-  'Performing static scanning on files...',
-  'Extracting game assets from ZIP...',
-  'Validating index.html entrance...',
-  'Injecting sandboxed canvas APIs...',
-  'Initializing audio drivers and WebGL...',
-  'VibePlay Player Ready!',
-];
+const LOADING_TEXTS =
+  import.meta.env.APP_MODE === 'demo'
+    ? [
+        'Securing browser sandbox environment...',
+        'Performing static scanning on files...',
+        'Extracting game assets from ZIP...',
+        'Validating index.html entrance...',
+        'Injecting sandboxed canvas APIs...',
+        'Initializing audio drivers and WebGL...',
+        'VibePlay Player Ready!',
+      ]
+    : [];
 
 interface WebkitFullscreenElement extends HTMLElement {
   webkitRequestFullscreen?: () => Promise<void> | void;
@@ -85,6 +93,12 @@ export const GamePlayerPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
   const translateRef = useRef(t);
+  const pageViewRef = useRef<string | null>(null);
+  const launchRequestedRef = useRef(new Set<string>());
+  const launchSuccessRef = useRef(new Set<string>());
+  const launchFailureRef = useRef(new Set<string>());
+  const sessionEndedRef = useRef(new Set<string>());
+  const sdkReadyRef = useRef(new Set<string>());
 
   useEffect(() => {
     translateRef.current = t;
@@ -95,6 +109,21 @@ export const GamePlayerPage: React.FC = () => {
   const launchLoading = IS_DEMO ? loading : launch === null;
   const isGuest = !currentUser;
 
+  const emitPlayAnalytics = useCallback(
+    (type: AnalyticsEventType, metadata?: unknown) => {
+      if (!gameId) return;
+      trackInternalEvent(
+        type,
+        {
+          gameId,
+          ...(launch ? { versionId: launch.gameVersionId, playSessionId: launch.sessionId } : {}),
+        },
+        metadata,
+      );
+    },
+    [gameId, launch],
+  );
+
   // Guest exit warning (real build only): once the iframe has launched, a guest
   // could have local-only progress — warn before they navigate away/refresh.
   const playActive = !IS_DEMO && launch !== null;
@@ -104,6 +133,15 @@ export const GamePlayerPage: React.FC = () => {
     gameSlug: slug,
     playPath: slug ? `/play/${slug}` : '/',
     exitFallbackPath: game ? `/game/${game.slug}` : '/games',
+    onAnalyticsEvent: (type, metadata) => {
+      emitPlayAnalytics(type, metadata);
+      if (type === 'guest_exit_warning_signup_clicked') {
+        emitPlayAnalytics('register_from_game_clicked');
+      }
+      if (type === 'guest_exit_warning_login_clicked') {
+        emitPlayAnalytics('login_from_game_clicked');
+      }
+    },
   });
 
   // --- cloud-save conversion CTA + guest-save sync (Phases 3-4) ------------
@@ -118,7 +156,7 @@ export const GamePlayerPage: React.FC = () => {
   // Show the soft CTA (guests only, never blocking, respect cooldown). The
   // trigger (time / progress / guest-save) is decided by callers.
   const requestCta = useCallback(
-    (trigger: string) => {
+    (trigger: CtaTrigger) => {
       if (IS_DEMO || currentUser) return; // guests only
       if (!canShowCta(true)) return; // dismissed this session or within cooldown
       setCtaVisible(true);
@@ -133,9 +171,10 @@ export const GamePlayerPage: React.FC = () => {
         } as const;
         trackEvent('cloud_save_cta_shown', params);
         trackEvent('signup_cta_shown', params);
+        emitPlayAnalytics('cloud_save_cta_shown', { trigger });
       }
     },
-    [currentUser, gameId, slug],
+    [currentUser, emitPlayAnalytics, gameId, slug],
   );
 
   const handleCtaCreateAccount = useCallback(() => {
@@ -146,10 +185,12 @@ export const GamePlayerPage: React.FC = () => {
       cta_location: 'play_overlay',
       logged_in: false,
     });
+    emitPlayAnalytics('cloud_save_cta_signup_clicked');
+    emitPlayAnalytics('register_from_game_clicked');
     const returnTo = slug ? `/play/${slug}` : '/';
-    if (gameId) markSignupIntent(gameId); // so we can offer to sync after signup
+    if (gameId) markGameAuthIntent(gameId, 'registration');
     navigate(withReturnTo('/register', returnTo));
-  }, [gameId, slug, navigate]);
+  }, [emitPlayAnalytics, gameId, slug, navigate]);
 
   const handleCtaLogin = useCallback(() => {
     trackEvent('login_cta_clicked', {
@@ -159,10 +200,12 @@ export const GamePlayerPage: React.FC = () => {
       cta_location: 'play_overlay',
       logged_in: false,
     });
+    emitPlayAnalytics('cloud_save_cta_login_clicked');
+    emitPlayAnalytics('login_from_game_clicked');
     const returnTo = slug ? `/play/${slug}` : '/';
-    if (gameId) markSignupIntent(gameId);
+    if (gameId) markGameAuthIntent(gameId, 'login');
     navigate(withReturnTo('/login', returnTo));
-  }, [gameId, slug, navigate]);
+  }, [emitPlayAnalytics, gameId, slug, navigate]);
 
   const handleCtaContinueGuest = useCallback(() => {
     suppressCta();
@@ -195,7 +238,10 @@ export const GamePlayerPage: React.FC = () => {
       source: hasCloud ? 'save_conflict' : 'local_progress',
       logged_in: true,
     });
-  }, [currentUser, gameId, slug]);
+    emitPlayAnalytics('cloud_save_sync_prompt_shown', {
+      state: hasCloud ? 'save_conflict' : 'local_progress',
+    });
+  }, [currentUser, emitPlayAnalytics, gameId, slug]);
 
   // Upload this device's local save (sync mode, or "replace cloud" in conflict).
   const handleSyncUpload = useCallback(async () => {
@@ -212,16 +258,20 @@ export const GamePlayerPage: React.FC = () => {
       source: syncPrompt?.hasCloud ? 'replace_cloud' : 'local_progress',
       logged_in: true,
     });
+    const choice = syncPrompt?.hasCloud ? 'replace_cloud' : 'local_progress';
+    emitPlayAnalytics('cloud_save_sync_accepted', { choice });
     try {
       await api.putGameSave(gameId, local.data, local.schemaVersion);
+      emitPlayAnalytics('cloud_save_set_success');
       toast.success(translateRef.current('cloudSave.syncedToast'));
       setSyncPrompt(null);
     } catch {
+      emitPlayAnalytics('cloud_save_set_failed', { code: 'error' });
       toast.danger(translateRef.current('cloudSave.syncFailedToast'));
     } finally {
       setSyncBusy(false);
     }
-  }, [gameId, slug, syncPrompt]);
+  }, [emitPlayAnalytics, gameId, slug, syncPrompt]);
 
   const handleSyncDismiss = useCallback(
     (source: 'keep_cloud' | 'keep_local') => {
@@ -233,10 +283,17 @@ export const GamePlayerPage: React.FC = () => {
         source,
         logged_in: true,
       });
+      emitPlayAnalytics('cloud_save_sync_dismissed', { choice: source });
       setSyncPrompt(null);
     },
-    [gameId, slug],
+    [emitPlayAnalytics, gameId, slug],
   );
+
+  useEffect(() => {
+    if (IS_DEMO || !gameId || pageViewRef.current === gameId) return;
+    pageViewRef.current = gameId;
+    trackInternalEvent('game_page_view', { gameId });
+  }, [gameId]);
 
   useEffect(() => {
     if (!isLoading && !game) {
@@ -249,6 +306,13 @@ export const GamePlayerPage: React.FC = () => {
     if (IS_DEMO || !gameId) return;
     let active = true;
     let sessionId: string | undefined;
+    let launchedDescriptor: LaunchDescriptorDto | undefined;
+    const endedSessions = sessionEndedRef.current;
+    const requestKey = `${gameId}:${currentUser?.id ?? 'guest'}`;
+    if (!launchRequestedRef.current.has(requestKey)) {
+      launchRequestedRef.current.add(requestKey);
+      trackInternalEvent('game_launch_requested', { gameId });
+    }
 
     queueMicrotask(() => {
       if (active) setLaunch(null);
@@ -262,12 +326,18 @@ export const GamePlayerPage: React.FC = () => {
           throw new Error(translateRef.current('player.originError'));
         }
         sessionId = descriptor.sessionId;
+        launchedDescriptor = descriptor;
         if (!active) {
           void api.endPlaySession(sessionId);
           return;
         }
         setLaunch(descriptor);
         setIsPlaying(true);
+        trackInternalEvent('play_session_started', {
+          gameId,
+          versionId: descriptor.gameVersionId,
+          playSessionId: descriptor.sessionId,
+        });
         trackEvent('play_started', {
           game_id: gameId,
           game_slug: slug ?? '',
@@ -277,6 +347,11 @@ export const GamePlayerPage: React.FC = () => {
       })
       .catch((error) => {
         if (!active) return;
+        const failureKey = `${gameId}:${requestKey}`;
+        if (!launchFailureRef.current.has(failureKey)) {
+          launchFailureRef.current.add(failureKey);
+          trackInternalEvent('game_launch_failed', { gameId }, { code: 'launch_request_failed' });
+        }
         toast.danger(
           error instanceof Error ? error.message : translateRef.current('player.launchError'),
         );
@@ -284,9 +359,44 @@ export const GamePlayerPage: React.FC = () => {
 
     return () => {
       active = false;
-      if (sessionId) void api.endPlaySession(sessionId);
+      if (sessionId) {
+        if (!endedSessions.has(sessionId)) {
+          endedSessions.add(sessionId);
+          if (launchedDescriptor?.sessionId === sessionId) {
+            trackInternalEvent('play_session_ended', {
+              gameId,
+              versionId: launchedDescriptor.gameVersionId,
+              playSessionId: sessionId,
+            });
+          }
+        }
+        void api.endPlaySession(sessionId);
+      }
     };
   }, [currentUser, gameId, slug]);
+
+  const handleIframeLoad = useCallback(() => {
+    if (!launch || !gameId || launchSuccessRef.current.has(launch.sessionId)) return;
+    launchSuccessRef.current.add(launch.sessionId);
+    emitPlayAnalytics('game_launch_success');
+  }, [emitPlayAnalytics, gameId, launch]);
+
+  const handleIframeError = useCallback(() => {
+    if (!launch || !gameId || launchFailureRef.current.has(launch.sessionId)) return;
+    launchFailureRef.current.add(launch.sessionId);
+    emitPlayAnalytics('game_launch_failed', { code: 'iframe_load_failed' });
+  }, [emitPlayAnalytics, gameId, launch]);
+
+  useEffect(() => {
+    if (IS_DEMO || !launch) return;
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      emitPlayAnalytics('play_heartbeat', {
+        elapsedSeconds: Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+      });
+    }, HEARTBEAT_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [emitPlayAnalytics, launch]);
 
   useEffect(() => {
     if (IS_DEMO || !launch || !iframeRef.current) return;
@@ -297,6 +407,18 @@ export const GamePlayerPage: React.FC = () => {
       currentUser && gameId
         ? createCloudSaveAdapter(api, gameId, {
             onAuthRequired: () => requestCta('auth_required'),
+            onResult: (operation, result) => {
+              if (result.code === 'ok') {
+                emitPlayAnalytics(
+                  operation === 'get' ? 'cloud_save_get_success' : 'cloud_save_set_success',
+                );
+              } else {
+                emitPlayAnalytics(
+                  operation === 'get' ? 'cloud_save_get_failed' : 'cloud_save_set_failed',
+                  { code: result.code as Exclude<SaveResultCode, 'ok'> },
+                );
+              }
+            },
           })
         : null;
 
@@ -313,7 +435,21 @@ export const GamePlayerPage: React.FC = () => {
         : null,
       saveAdapter,
       events: {
-        onReady: () => setSdkReady(true),
+        onReady: () => {
+          setSdkReady(true);
+          if (!sdkReadyRef.current.has(launch.sessionId)) {
+            sdkReadyRef.current.add(launch.sessionId);
+            emitPlayAnalytics('sdk_ready');
+          }
+        },
+        onAnalyticsReady: () => {
+          if (!sdkReadyRef.current.has(launch.sessionId)) {
+            sdkReadyRef.current.add(launch.sessionId);
+            emitPlayAnalytics('sdk_ready');
+          }
+        },
+        onAnalyticsError: (event) => emitPlayAnalytics('sdk_error', event),
+        onAnalyticsCustomEvent: (event) => emitPlayAnalytics('game_custom_event', event),
         onProgress: () => requestCta('progress'),
         onGuestSaveAttempt: () => {
           requestCta('guest_save');
@@ -331,8 +467,10 @@ export const GamePlayerPage: React.FC = () => {
           await (container as WebkitFullscreenElement).webkitRequestFullscreen?.();
           return true;
         },
-        onGameError: (message) =>
-          toast.danger(translateRef.current('player.gameError', { message })),
+        onGameError: (message) => {
+          emitPlayAnalytics('sdk_error', { code: 'game_reported_error' });
+          toast.danger(translateRef.current('player.gameError', { message }));
+        },
       },
     });
     bridgeRef.current = bridge;
@@ -340,7 +478,7 @@ export const GamePlayerPage: React.FC = () => {
       bridgeRef.current = null;
       bridge.destroy();
     };
-  }, [currentUser, iframeKey, launch, gameId, requestCta, offerSyncIfNeeded]);
+  }, [currentUser, emitPlayAnalytics, iframeKey, launch, gameId, requestCta, offerSyncIfNeeded]);
 
   // Soft CTA after a few minutes of guest play (complements progress/guest-save).
   useEffect(() => {
@@ -351,11 +489,17 @@ export const GamePlayerPage: React.FC = () => {
 
   // Record the conversion when a player returns to this game after signing up.
   useEffect(() => {
-    if (IS_DEMO || !currentUser || !gameId) return;
-    if (consumeSignupIntent(gameId)) {
+    if (IS_DEMO || !currentUser || !gameId || !launch || !sdkReady) return;
+    const intent = consumeGameAuthIntent(gameId);
+    if (intent) {
+      emitPlayAnalytics(
+        intent === 'registration'
+          ? 'registration_completed_from_game'
+          : 'login_completed_from_game',
+      );
       void offerSyncIfNeeded();
     }
-  }, [currentUser, gameId, offerSyncIfNeeded]);
+  }, [currentUser, emitPlayAnalytics, gameId, launch, offerSyncIfNeeded, sdkReady]);
 
   // Loading simulation
   useEffect(() => {
@@ -688,6 +832,8 @@ export const GamePlayerPage: React.FC = () => {
               allowFullScreen
               referrerPolicy="no-referrer"
               className="game-theater__frame"
+              onLoad={handleIframeLoad}
+              onError={handleIframeError}
             />
           )}
 

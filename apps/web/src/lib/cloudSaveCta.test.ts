@@ -5,6 +5,8 @@ import {
   suppressCta,
   markSignupIntent,
   consumeSignupIntent,
+  consumeGameAuthIntent,
+  markGameAuthIntent,
   canOfferCloudSaveSync,
   type CtaStorage,
 } from './cloudSaveCta';
@@ -58,5 +60,12 @@ describe('signup intent', () => {
     expect(consumeSignupIntent('game-1', store)).toBe(true);
     expect(consumeSignupIntent('game-1', store)).toBe(false); // already consumed
     expect(consumeSignupIntent('other-game', store)).toBe(false);
+  });
+
+  it('preserves whether the player chose registration or login', () => {
+    const store = fakeStore();
+    markGameAuthIntent('game-1', 'login', store);
+    expect(consumeGameAuthIntent('game-1', store)).toBe('login');
+    expect(consumeGameAuthIntent('game-1', store)).toBeNull();
   });
 });

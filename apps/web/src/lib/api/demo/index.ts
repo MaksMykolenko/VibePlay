@@ -642,6 +642,8 @@ export function createDemoClient(): ApiClient {
       notInDemo('Real game launch');
     },
     async endPlaySession() {},
+    async trackAnalyticsEvent() {},
+    async trackAnalyticsBatch() {},
 
     // ----- cloud saves (browser-local demo data; no real backend) -----
     async getGameSave(gameId: string) {

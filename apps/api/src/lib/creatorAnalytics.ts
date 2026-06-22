@@ -1,6 +1,11 @@
 import type { ApiEnv } from '@vibeplay/config';
 import type { PrismaClient } from '@vibeplay/database';
-import type { CreatorAnalyticsDto, CreatorAnalyticsRange } from '@vibeplay/shared';
+import {
+  ANALYTICS_EVENT_TYPES,
+  type AnalyticsEventType,
+  type CreatorAnalyticsDto,
+  type CreatorAnalyticsRange,
+} from '@vibeplay/shared';
 import { getCreatorAccess } from './entitlements.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -52,34 +57,61 @@ export async function getCreatorAnalytics(
     access.billing.entitlements.advancedAnalytics || access.bypassBillingLimits;
   const currentPeriod = { gte: start, lt: endExclusive };
 
-  const [totalPlays, sessions, likesInRange, commentsInRange, latestLike, latestComment] =
-    await Promise.all([
-      prisma.playSession.count({ where: creatorGames }),
-      prisma.playSession.findMany({
-        where: { ...creatorGames, startedAt: currentPeriod },
-        select: {
-          gameId: true,
-          gameVersionId: true,
-          userId: true,
-          startedAt: true,
-          durationSeconds: true,
-        },
-      }),
-      prisma.like.count({ where: { ...creatorGames, createdAt: currentPeriod } }),
-      prisma.comment.count({
-        where: { ...creatorGames, status: 'VISIBLE', createdAt: currentPeriod },
-      }),
-      prisma.like.findFirst({
-        where: { ...creatorGames, createdAt: currentPeriod },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      }),
-      prisma.comment.findFirst({
-        where: { ...creatorGames, status: 'VISIBLE', createdAt: currentPeriod },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      }),
-    ]);
+  const [
+    totalPlays,
+    sessions,
+    likesInRange,
+    commentsInRange,
+    latestLike,
+    latestComment,
+    analyticsEvents,
+  ] = await Promise.all([
+    prisma.playSession.count({ where: creatorGames }),
+    prisma.playSession.findMany({
+      where: { ...creatorGames, startedAt: currentPeriod },
+      select: {
+        gameId: true,
+        gameVersionId: true,
+        userId: true,
+        startedAt: true,
+        durationSeconds: true,
+      },
+    }),
+    prisma.like.count({ where: { ...creatorGames, createdAt: currentPeriod } }),
+    prisma.comment.count({
+      where: { ...creatorGames, status: 'VISIBLE', createdAt: currentPeriod },
+    }),
+    prisma.like.findFirst({
+      where: { ...creatorGames, createdAt: currentPeriod },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }),
+    prisma.comment.findFirst({
+      where: { ...creatorGames, status: 'VISIBLE', createdAt: currentPeriod },
+      orderBy: { createdAt: 'desc' },
+      select: { createdAt: true },
+    }),
+    prisma.analyticsEvent.findMany({
+      where: { ...creatorGames, createdAt: currentPeriod },
+      select: { type: true, gameId: true, versionId: true, metadata: true },
+    }),
+  ]);
+
+  const allowedEventTypes = new Set<string>(ANALYTICS_EVENT_TYPES);
+  const safeEvents = analyticsEvents.filter((event) => allowedEventTypes.has(event.type));
+  const eventCount = (type: AnalyticsEventType): number =>
+    safeEvents.filter((event) => event.type === type).length;
+  const eventCounts = new Map<AnalyticsEventType, number>();
+  for (const event of safeEvents) {
+    const type = event.type as AnalyticsEventType;
+    eventCounts.set(type, (eventCounts.get(type) ?? 0) + 1);
+  }
+  const launchesByGame = new Map<string, number>();
+  for (const event of safeEvents) {
+    if (event.type === 'game_launch_success') {
+      launchesByGame.set(event.gameId, (launchesByGame.get(event.gameId) ?? 0) + 1);
+    }
+  }
 
   const daily = new Map<string, number>();
   for (let offset = 0; offset < days; offset += 1) {
@@ -126,6 +158,25 @@ export async function getCreatorAnalytics(
     .filter((game) => game.plays > 0)
     .sort((a, b) => b.plays - a.plays || a.title.localeCompare(b.title))
     .slice(0, 10);
+  const eventMetrics: CreatorAnalyticsDto['eventMetrics'] = {
+    launchSuccesses: eventCount('game_launch_success'),
+    launchFailures: eventCount('game_launch_failed'),
+    playsStarted: eventCount('play_session_started'),
+    recent: [...eventCounts]
+      .map(([type, count]) => ({ type, count }))
+      .sort((a, b) => b.count - a.count || a.type.localeCompare(b.type))
+      .slice(0, 10),
+    topGamesByLaunch: games
+      .map((game) => ({
+        gameId: game.id,
+        slug: game.slug,
+        title: game.title,
+        launches: launchesByGame.get(game.id) ?? 0,
+      }))
+      .filter((game) => game.launches > 0)
+      .sort((a, b) => b.launches - a.launches || a.title.localeCompare(b.title))
+      .slice(0, 10),
+  };
 
   let advanced: CreatorAnalyticsDto['advanced'] = null;
   if (advancedEnabled) {
@@ -198,6 +249,53 @@ export async function getCreatorAnalytics(
     const saveUserIds = new Set(saveUsers.map((row) => row.userId));
     const adopters = [...saveUserIds].filter((id) => allPlayerIds.has(id)).length;
     const previousPeriodPlays = previousSessions.length;
+    const metadataValue = (metadata: unknown, key: string): string | null => {
+      if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+      const value = (metadata as Record<string, unknown>)[key];
+      return typeof value === 'string' ? value : null;
+    };
+    const countByMetadata = (
+      type: AnalyticsEventType,
+      key: string,
+    ): { code: string; count: number }[] => {
+      const counts = new Map<string, number>();
+      for (const event of safeEvents) {
+        if (event.type !== type) continue;
+        const value = metadataValue(event.metadata, key);
+        if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+      }
+      return [...counts]
+        .map(([code, count]) => ({ code, count }))
+        .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+    };
+    const versionInfo = new Map(
+      games.flatMap((game) =>
+        game.versions.map(
+          (version) =>
+            [
+              version.id,
+              { gameId: game.id, gameTitle: game.title, version: version.version },
+            ] as const,
+        ),
+      ),
+    );
+    const versionEventCounts = new Map<
+      string,
+      { events: number; launchSuccesses: number; launchFailures: number }
+    >();
+    for (const event of safeEvents) {
+      if (!event.versionId || !versionInfo.has(event.versionId)) continue;
+      const count = versionEventCounts.get(event.versionId) ?? {
+        events: 0,
+        launchSuccesses: 0,
+        launchFailures: 0,
+      };
+      count.events += 1;
+      if (event.type === 'game_launch_success') count.launchSuccesses += 1;
+      if (event.type === 'game_launch_failed') count.launchFailures += 1;
+      versionEventCounts.set(event.versionId, count);
+    }
+    const launchAttempts = eventMetrics.launchSuccesses + eventMetrics.launchFailures;
 
     advanced = {
       uniquePlayers: currentUserIds.length,
@@ -255,7 +353,50 @@ export async function getCreatorAnalytics(
         })
         .filter((game) => game.plays > 0)
         .sort((a, b) => b.plays - a.plays || a.title.localeCompare(b.title)),
-      conversion: { registrationCta: 'NOT_ENOUGH_INTERNAL_DATA' },
+      conversion: {
+        registrationCta:
+          eventCount('register_from_game_clicked') > 0 ? 'AVAILABLE' : 'NOT_ENOUGH_INTERNAL_DATA',
+        registrationClicks: eventCount('register_from_game_clicked'),
+        registrationCompletions: eventCount('registration_completed_from_game'),
+        loginClicks: eventCount('login_from_game_clicked'),
+        loginCompletions: eventCount('login_completed_from_game'),
+      },
+      eventInsights: {
+        launchSuccessRate:
+          launchAttempts > 0
+            ? Math.round((eventMetrics.launchSuccesses / launchAttempts) * 1000) / 10
+            : null,
+        launchFailureReasons: countByMetadata('game_launch_failed', 'code'),
+        cloudSaveFunnel: {
+          ctaShown: eventCount('cloud_save_cta_shown'),
+          signupClicks: eventCount('cloud_save_cta_signup_clicked'),
+          loginClicks: eventCount('cloud_save_cta_login_clicked'),
+          syncPrompts: eventCount('cloud_save_sync_prompt_shown'),
+          syncAccepted: eventCount('cloud_save_sync_accepted'),
+        },
+        guestExitActions: (
+          [
+            'guest_exit_warning_shown',
+            'guest_exit_warning_keep_playing',
+            'guest_exit_warning_leave_anyway',
+            'guest_exit_warning_signup_clicked',
+            'guest_exit_warning_login_clicked',
+          ] as const
+        )
+          .map((type) => ({ type, count: eventCount(type) }))
+          .filter((event) => event.count > 0),
+        customEvents: countByMetadata('game_custom_event', 'name').map(({ code, count }) => ({
+          name: code,
+          count,
+        })),
+        versions: [...versionEventCounts]
+          .map(([versionId, counts]) => ({
+            versionId,
+            ...versionInfo.get(versionId)!,
+            ...counts,
+          }))
+          .sort((a, b) => b.events - a.events),
+      },
     };
   }
 
@@ -274,6 +415,7 @@ export async function getCreatorAnalytics(
         latestAt: latestComment?.createdAt.toISOString() ?? null,
       },
     ],
+    eventMetrics,
     entitlements: {
       creatorPlus: access.billing.plan === 'CREATOR_PLUS',
       advancedAnalytics: advancedEnabled,

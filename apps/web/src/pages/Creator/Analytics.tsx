@@ -240,6 +240,51 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
             </div>
           </section>
 
+          <section style={chartCardStyle} className="bg-glass">
+            <h2 style={sectionTitleStyle}>{t('analytics.internalEventsTitle')}</h2>
+            <p style={descriptionStyle}>{t('analytics.internalEventsBody')}</p>
+            <div style={{ ...summaryGridStyle, marginTop: '1rem' }}>
+              {[
+                [t('analytics.launchSuccesses'), analytics.eventMetrics.launchSuccesses],
+                [t('analytics.launchFailures'), analytics.eventMetrics.launchFailures],
+                [t('analytics.playsStarted'), analytics.eventMetrics.playsStarted],
+              ].map(([label, value]) => (
+                <div key={label} style={summaryCardStyle}>
+                  <span>{label}</span>
+                  <strong>{formatNumber(Number(value), locale)}</strong>
+                </div>
+              ))}
+            </div>
+            {analytics.eventMetrics.recent.length === 0 ? (
+              <p style={descriptionStyle}>{t('analytics.noInternalEvents')}</p>
+            ) : (
+              <div style={activityGridStyle}>
+                {analytics.eventMetrics.recent.map((event) => (
+                  <div key={event.type} style={activityCardStyle}>
+                    <strong>{t(`analytics.event.${event.type}`)}</strong>
+                    <span>{formatNumber(event.count, locale)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {analytics.eventMetrics.topGamesByLaunch.length > 0 ? (
+              <div style={gameListStyle}>
+                {analytics.eventMetrics.topGamesByLaunch.map((game) => (
+                  <div key={game.gameId} style={gameRowStyle}>
+                    <Link to={`/game/${game.slug}`}>
+                      <strong>{game.title}</strong>
+                    </Link>
+                    <span>
+                      {t('analytics.launchCount', {
+                        count: formatNumber(game.launches, locale),
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+
           {!analytics.entitlements.advancedAnalytics || !analytics.advanced ? (
             <div style={lockedStyle} className="bg-glass">
               <LockKeyhole size={30} color="var(--secondary)" />
@@ -375,8 +420,63 @@ const AdvancedAnalytics: React.FC<{
       </section>
 
       <section style={chartCardStyle} className="bg-glass">
+        <h3>{t('analytics.eventInsightsTitle')}</h3>
+        <div style={activityGridStyle}>
+          <div style={activityCardStyle}>
+            <strong>{t('analytics.launchSuccessRate')}</strong>
+            <span>
+              {advanced.eventInsights.launchSuccessRate === null
+                ? t('analytics.notEnoughInternalData')
+                : t('analytics.percent', {
+                    count: advanced.eventInsights.launchSuccessRate,
+                  })}
+            </span>
+          </div>
+          <div style={activityCardStyle}>
+            <strong>{t('analytics.cloudSaveFunnel')}</strong>
+            <span>
+              {t('analytics.cloudSaveFunnelValues', {
+                shown: advanced.eventInsights.cloudSaveFunnel.ctaShown,
+                clicked:
+                  advanced.eventInsights.cloudSaveFunnel.signupClicks +
+                  advanced.eventInsights.cloudSaveFunnel.loginClicks,
+                synced: advanced.eventInsights.cloudSaveFunnel.syncAccepted,
+              })}
+            </span>
+          </div>
+        </div>
+        {advanced.eventInsights.launchFailureReasons.length > 0 ? (
+          <p style={descriptionStyle}>
+            {t('analytics.failureReasons', {
+              reasons: advanced.eventInsights.launchFailureReasons
+                .map((reason) => `${reason.code}: ${reason.count}`)
+                .join(', '),
+            })}
+          </p>
+        ) : null}
+        {advanced.eventInsights.customEvents.length > 0 ? (
+          <p style={descriptionStyle}>
+            {t('analytics.customEvents', {
+              events: advanced.eventInsights.customEvents
+                .map((event) => `${event.name}: ${event.count}`)
+                .join(', '),
+            })}
+          </p>
+        ) : null}
+      </section>
+
+      <section style={chartCardStyle} className="bg-glass">
         <h3>{t('analytics.conversionTitle')}</h3>
-        <p style={descriptionStyle}>{t('analytics.conversionUnavailable')}</p>
+        <p style={descriptionStyle}>
+          {advanced.conversion.registrationCta === 'NOT_ENOUGH_INTERNAL_DATA'
+            ? t('analytics.notEnoughInternalData')
+            : t('analytics.conversionValues', {
+                registrationClicks: advanced.conversion.registrationClicks,
+                registrationCompletions: advanced.conversion.registrationCompletions,
+                loginClicks: advanced.conversion.loginClicks,
+                loginCompletions: advanced.conversion.loginCompletions,
+              })}
+        </p>
       </section>
     </section>
   );

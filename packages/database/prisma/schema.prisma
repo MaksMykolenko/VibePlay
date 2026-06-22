@@ -70,6 +70,7 @@ model User {
   feedbackResolved        Feedback[]               @relation("FeedbackResolvedBy")
   subscription            Subscription?
   gameSaves               GameSave[]
+  analyticsEvents         AnalyticsEvent[]
 
   @@index([status])
   @@index([role])
@@ -259,13 +260,14 @@ model Game {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  versions     GameVersion[]    @relation("GameVersions")
-  screenshots  GameScreenshot[]
-  likes        Like[]
-  favorites    Favorite[]
-  playSessions PlaySession[]
-  comments     Comment[]
-  gameSaves    GameSave[]
+  versions        GameVersion[]    @relation("GameVersions")
+  screenshots     GameScreenshot[]
+  likes           Like[]
+  favorites       Favorite[]
+  playSessions    PlaySession[]
+  comments        Comment[]
+  gameSaves       GameSave[]
+  analyticsEvents AnalyticsEvent[]
 
   @@index([status, category])
   @@index([creatorId])
@@ -302,6 +304,7 @@ model GameVersion {
   moderationDecisions ModerationDecision[]
   playSessions        PlaySession[]
   upload              Upload?
+  analyticsEvents     AnalyticsEvent[]
 
   @@unique([gameId, version])
   @@index([status, submittedAt])
@@ -396,6 +399,28 @@ model PlaySession {
 
   @@index([gameId, startedAt])
   @@index([userId, startedAt])
+}
+
+/// Privacy-safe, allowlisted first-party analytics. The API derives actor/source/time,
+/// verifies launch context, and stores only bounded metadata defined in shared schemas.
+model AnalyticsEvent {
+  id        String       @id @default(cuid())
+  type      String
+  gameId    String
+  game      Game         @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  versionId String?
+  version   GameVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actorType String
+  source    String
+  metadata  Json         @default("{}")
+  createdAt DateTime     @default(now())
+
+  @@index([gameId, createdAt])
+  @@index([versionId, createdAt])
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
 }
 
 enum CommentStatus {

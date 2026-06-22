@@ -16,4 +16,12 @@ export async function registerTestSupportRoutes(app: FastifyInstance): Promise<v
       .map((message) => ({ to: message.to, subject: message.subject, text: message.text }));
     return { messages };
   });
+
+  app.get<{ Querystring: { gameId?: string; type?: string } }>('/analytics/count', async (req) => {
+    const gameId = req.query.gameId;
+    const type = req.query.type;
+    if (!gameId || !type) return { count: 0 };
+    const count = await app.prisma.analyticsEvent.count({ where: { gameId, type } });
+    return { count };
+  });
 }

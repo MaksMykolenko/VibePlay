@@ -10,6 +10,7 @@ import { CreatorPlusBadge } from '../components/CreatorPlusBadge';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
 import { trackEvent } from '../lib/analytics';
+import { trackInternalEvent } from '../lib/internalAnalytics';
 import { canShowCta, suppressCta } from '../lib/cloudSaveCta';
 import { withReturnTo } from '../lib/returnTo';
 import { formatDate, formatNumber } from '../lib/formatTime';
@@ -51,6 +52,7 @@ export const GameDetailPage: React.FC = () => {
       source: 'game_detail',
       logged_in: Boolean(currentUser),
     });
+    trackInternalEvent('game_page_view', { gameId: game.id });
   }, [currentUser, game]);
 
   useEffect(() => {

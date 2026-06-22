@@ -180,6 +180,43 @@ describe('GameBridge', () => {
     bridge.destroy();
   });
 
+  it('relays validated analytics events and ignores wrong-origin or nested metadata', async () => {
+    const onAnalyticsReady = vi.fn();
+    const onAnalyticsError = vi.fn();
+    const onAnalyticsCustomEvent = vi.fn();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      events: { onAnalyticsReady, onAnalyticsError, onAnalyticsCustomEvent },
+    });
+
+    send('https://evil.example', makeEnvelope('analyticsReady'));
+    send(
+      'https://games.example.com',
+      makeEnvelope('analyticsCustomEvent', {
+        name: 'level_started',
+        nested: { token: 'private' },
+      }),
+    );
+    send('https://games.example.com', makeEnvelope('analyticsReady'));
+    send(
+      'https://games.example.com',
+      makeEnvelope('analyticsError', { code: 'sdk_timeout', label: 'startup' }),
+    );
+    send(
+      'https://games.example.com',
+      makeEnvelope('analyticsCustomEvent', { name: 'level_started', value: 2 }),
+    );
+    await flush();
+
+    expect(onAnalyticsReady).toHaveBeenCalledOnce();
+    expect(onAnalyticsError).toHaveBeenCalledWith({ code: 'sdk_timeout', label: 'startup' });
+    expect(onAnalyticsCustomEvent).toHaveBeenCalledOnce();
+    expect(onAnalyticsCustomEvent).toHaveBeenCalledWith({ name: 'level_started', value: 2 });
+    bridge.destroy();
+  });
+
   it('round-trips a local-save request (guest-save transfer)', async () => {
     const onLocalSaveAvailable = vi.fn();
     const bridge = new GameBridge({
