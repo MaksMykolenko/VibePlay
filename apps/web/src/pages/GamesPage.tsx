@@ -121,9 +121,7 @@ export const GamesPage: React.FC = () => {
       <div style={headerBlockStyle}>
         <div>
           <h1 style={titleStyle}>{t('games.title')}</h1>
-          <p style={subtitleStyle}>
-            Discover and launch browser creations instantly. No client required.
-          </p>
+          <p style={subtitleStyle}>{t('games.subtitle')}</p>
         </div>
 
         {/* Local Search and Sort dropdown */}
@@ -141,7 +139,7 @@ export const GamesPage: React.FC = () => {
               <button
                 onClick={() => setSearchTerm('')}
                 style={clearSearchBtnStyle}
-                aria-label="Clear search"
+                aria-label={t('games.clearSearch')}
               >
                 <X size={14} />
               </button>
@@ -201,9 +199,9 @@ export const GamesPage: React.FC = () => {
             className="form-input form-select"
             style={filterSelectStyle}
           >
-            <option value="all">AI Usage: All</option>
-            <option value="no">Human-Made Only</option>
-            <option value="assisted">AI-Assisted</option>
+            <option value="all">{t('games.aiUsageAll')}</option>
+            <option value="no">{t('games.aiHumanOnly')}</option>
+            <option value="assisted">{t('games.aiAssisted')}</option>
           </select>
 
           {/* Multiplayer Toggle */}
@@ -235,7 +233,7 @@ export const GamesPage: React.FC = () => {
               <div style={popoverStyle} className="bg-glass">
                 <div style={popoverItemStyle}>
                   <label className="form-label" style={{ fontWeight: 600 }}>
-                    Sort By
+                    {t('games.sortBy')}
                   </label>
                   <select
                     value={sortBy}
@@ -243,16 +241,16 @@ export const GamesPage: React.FC = () => {
                     className="form-input form-select"
                     style={{ fontSize: '0.8rem', padding: '0.4rem 2rem 0.4rem 0.8rem' }}
                   >
-                    <option value="trending">Trending Now</option>
-                    <option value="plays">Most Played</option>
-                    <option value="newest">New Releases</option>
-                    <option value="rating">Top Rated</option>
+                    <option value="trending">{t('games.sortTrending')}</option>
+                    <option value="plays">{t('games.sortMostPlayed')}</option>
+                    <option value="newest">{t('games.sortNewest')}</option>
+                    <option value="rating">{t('games.sortTopRated')}</option>
                   </select>
                 </div>
 
                 <div style={popoverItemStyle}>
                   <label className="form-label" style={{ fontWeight: 600 }}>
-                    AI Strictness
+                    {t('games.aiStrictness')}
                   </label>
                   <select
                     value={selectedAi}
@@ -260,9 +258,9 @@ export const GamesPage: React.FC = () => {
                     className="form-input form-select"
                     style={{ fontSize: '0.8rem', padding: '0.4rem 2rem 0.4rem 0.8rem' }}
                   >
-                    <option value="all">Allow All</option>
-                    <option value="no">Strictly Human-Made</option>
-                    <option value="assisted">AI Assisted/Generated</option>
+                    <option value="all">{t('games.aiAllowAll')}</option>
+                    <option value="no">{t('games.aiStrictlyHuman')}</option>
+                    <option value="assisted">{t('games.aiAssistedGenerated')}</option>
                   </select>
                 </div>
               </div>
@@ -273,7 +271,7 @@ export const GamesPage: React.FC = () => {
         {/* Reset Active Filters Button */}
         {isAnyFilterActive && (
           <button onClick={handleResetFilters} style={resetBtnStyle}>
-            Reset Filters
+            {t('games.resetFilters')}
           </button>
         )}
       </div>
@@ -297,11 +295,10 @@ export const GamesPage: React.FC = () => {
                 lineHeight: 1.5,
               }}
             >
-              Try removing category filters, checking other compatibility modes, or search for
-              another keyword.
+              {t('games.noMatchHint')}
             </p>
             <button onClick={handleResetFilters} className="btn btn-primary btn-sm">
-              Clear Active Filters
+              {t('games.clearActiveFilters')}
             </button>
           </div>
         ) : (

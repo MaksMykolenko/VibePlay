@@ -6,12 +6,13 @@ import { GameCard } from '../components/GameCard';
 import { Calendar, UserCheck, Edit3, ShieldAlert, Sparkles } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
+import { formatNumber } from '../lib/formatTime';
 import { api } from '../lib/api';
 import type { User } from '../types';
 import { CreatorPlusBadge } from '../components/CreatorPlusBadge';
 
 export const ProfilePage: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { username } = useParams<{ username: string }>();
   const { currentUser, becomeCreator } = useAuth();
   const { games, library } = useGames();
@@ -69,11 +70,9 @@ export const ProfilePage: React.FC = () => {
       <div style={notFoundContainerStyle}>
         <ShieldAlert size={48} color="var(--danger)" />
         <h2 style={{ marginTop: '1rem' }}>{t('profile.notFound')}</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          The profile you are looking for does not exist or has been suspended.
-        </p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('profile.notFoundBody')}</p>
         <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-          Back to Home
+          {t('game.backHome')}
         </Link>
       </div>
     );
@@ -119,7 +118,7 @@ export const ProfilePage: React.FC = () => {
       toast.info(notice);
       return;
     }
-    toast.success('Congratulations! You are now a Creator. Open Creator Hub to upload games.');
+    toast.success(t('app.creatorSuccess'));
     setActiveTab('games');
     navigate('/creator');
   };
@@ -137,7 +136,7 @@ export const ProfilePage: React.FC = () => {
               <span
                 className={`badge ${profileUser.role === 'owner' ? 'badge-danger' : profileUser.role === 'admin' ? 'badge-danger' : profileUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
               >
-                {profileUser.role}
+                {t(`role.${profileUser.role}`)}
               </span>
               {profileUser.creatorPlus && <CreatorPlusBadge />}
             </div>
@@ -146,10 +145,11 @@ export const ProfilePage: React.FC = () => {
 
             <div style={joinDateStyle}>
               <Calendar size={14} style={{ marginRight: '6px' }} />
-              Joined{' '}
-              {new Date(profileUser.joinDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
+              {t('profile.joined', {
+                date: new Date(profileUser.joinDate).toLocaleDateString(locale, {
+                  year: 'numeric',
+                  month: 'long',
+                }),
               })}
             </div>
 
@@ -170,7 +170,7 @@ export const ProfilePage: React.FC = () => {
                   </div>
                   <div style={statDividerStyle}></div>
                   <div style={statItemStyle}>
-                    <strong>{totalPlays.toLocaleString()}</strong>
+                    <strong>{formatNumber(totalPlays, locale)}</strong>
                     <span>{t('profile.plays')}</span>
                   </div>
                 </>
@@ -184,7 +184,7 @@ export const ProfilePage: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
                 <Link to="/settings" className="btn btn-secondary btn-sm" style={{ gap: '6px' }}>
                   <Edit3 size={14} />
-                  Edit Profile
+                  {t('profile.editProfile')}
                 </Link>
                 {profileUser.role === 'player' && (
                   <button
@@ -193,7 +193,7 @@ export const ProfilePage: React.FC = () => {
                     style={{ gap: '6px' }}
                   >
                     <Sparkles size={14} />
-                    Become a Creator
+                    {t('home.becomeCreator')}
                   </button>
                 )}
               </div>
@@ -202,10 +202,10 @@ export const ProfilePage: React.FC = () => {
                 className="btn btn-secondary btn-sm"
                 style={{ gap: '6px', width: '120px' }}
                 disabled
-                title="Following is not available in the private beta."
+                title={t('profile.followUnavailableTitle')}
               >
                 <UserCheck size={14} />
-                Follow unavailable
+                {t('profile.followUnavailable')}
               </button>
             )}
           </div>
@@ -225,7 +225,7 @@ export const ProfilePage: React.FC = () => {
               color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}
           >
-            Games
+            {t('profile.games')}
           </button>
         )}
         <button
@@ -236,7 +236,7 @@ export const ProfilePage: React.FC = () => {
             color: activeTab === 'favorites' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          Favorites
+          {t('profile.favorites')}
         </button>
         <button
           onClick={() => setActiveTab('recently')}
@@ -246,7 +246,7 @@ export const ProfilePage: React.FC = () => {
             color: activeTab === 'recently' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          Recently Played
+          {t('profile.recentlyPlayed')}
         </button>
         <button
           onClick={() => setActiveTab('about')}
@@ -256,7 +256,7 @@ export const ProfilePage: React.FC = () => {
             color: activeTab === 'about' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          About
+          {t('profile.about')}
         </button>
       </div>
 
@@ -279,7 +279,7 @@ export const ProfilePage: React.FC = () => {
             {isOwnProfile && creatorPrivateGames.length > 0 && (
               <div style={{ marginTop: '3rem' }}>
                 <h2 style={{ ...panelTitleStyle, color: 'var(--warning)' }}>
-                  My Drafts & Moderation Queue
+                  {t('profile.draftsQueue')}
                 </h2>
                 <div className="games-grid">
                   {creatorPrivateGames.map((game) => (
@@ -297,16 +297,14 @@ export const ProfilePage: React.FC = () => {
             <h2 style={panelTitleStyle}>{t('profile.favoriteGames')}</h2>
             {favoriteGames.length === 0 ? (
               <div style={emptyPanelStyle}>
-                {isOwnProfile
-                  ? "You haven't added any games to your favorites yet."
-                  : "This user doesn't have any favorite games."}
+                {isOwnProfile ? t('profile.emptyFavoritesOwn') : t('profile.emptyFavoritesOther')}
                 {isOwnProfile && (
                   <Link
                     to="/games"
                     className="btn btn-secondary btn-sm"
                     style={{ marginTop: '1rem' }}
                   >
-                    Browse games
+                    {t('profile.browseGames')}
                   </Link>
                 )}
               </div>
@@ -326,16 +324,14 @@ export const ProfilePage: React.FC = () => {
             <h2 style={panelTitleStyle}>{t('profile.recentlyPlayed')}</h2>
             {recentlyPlayed.length === 0 ? (
               <div style={emptyPanelStyle}>
-                {isOwnProfile
-                  ? "You haven't played any games recently."
-                  : "This user hasn't played recently."}
+                {isOwnProfile ? t('profile.emptyRecentOwn') : t('profile.emptyRecentOther')}
                 {isOwnProfile && (
                   <Link
                     to="/games"
                     className="btn btn-secondary btn-sm"
                     style={{ marginTop: '1rem' }}
                   >
-                    Play some games
+                    {t('profile.playSomeGames')}
                   </Link>
                 )}
               </div>
@@ -353,7 +349,7 @@ export const ProfilePage: React.FC = () => {
         {activeTab === 'about' && (
           <div style={aboutCardStyle} className="animate-fade">
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem' }}>{t('profile.biography')}</h2>
-            <p style={bioTextStyle}>{profileUser.bio || 'No biography provided yet.'}</p>
+            <p style={bioTextStyle}>{profileUser.bio || t('profile.noBio')}</p>
 
             <hr
               style={{
@@ -366,11 +362,11 @@ export const ProfilePage: React.FC = () => {
             <h3
               style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}
             >
-              Platform Stats
+              {t('profile.platformStats')}
             </h3>
             <div style={aboutStatsGridStyle}>
               <div style={aboutStatBoxStyle}>
-                <div style={aboutStatValStyle}>{profileUser.role.toUpperCase()}</div>
+                <div style={aboutStatValStyle}>{t(`role.${profileUser.role}`)}</div>
                 <div style={aboutStatLblStyle}>{t('profile.accountRole')}</div>
               </div>
               <div style={aboutStatBoxStyle}>

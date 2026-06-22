@@ -35,7 +35,7 @@ export const SettingsPage: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<
@@ -87,10 +87,10 @@ export const SettingsPage: React.FC = () => {
       <div style={unauthStyle}>
         <h2>{t('settings.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
-          You must be authenticated to view account settings.
+          {t('settings.authRequired')}
         </p>
         <button onClick={() => navigate('/login')} className="btn btn-primary">
-          Go to Login
+          {t('settings.goToLogin')}
         </button>
       </div>
     );
@@ -111,7 +111,7 @@ export const SettingsPage: React.FC = () => {
       setDisplayName(undefined);
       setBio(undefined);
       setAvatar(undefined);
-      toast.success('Profile settings updated successfully!');
+      toast.success(t('settings.profileUpdated'));
     }
   };
 
@@ -162,31 +162,27 @@ export const SettingsPage: React.FC = () => {
 
   const handleAccountSave = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.warning('Email changes are not available in the private beta.');
+    toast.warning(t('settings.emailUnavailable'));
   };
 
   const handleRevokeSession = async (id: string) => {
     try {
       await api.revokeSession(id);
       setSessions((rows) => rows.filter((row) => row.id !== id));
-      toast.success('Session revoked.');
+      toast.success(t('settings.sessionRevoked'));
     } catch (error) {
       toast.danger(errorMessage(error));
     }
   };
 
   const handleLogoutAll = async () => {
-    if (!window.confirm('Log out of ALL sessions, including this one?')) return;
+    if (!window.confirm(t('settings.logoutAllConfirm'))) return;
     await logoutAll();
     navigate('/login');
   };
 
   const handleDeletionRequest = async () => {
-    if (
-      !window.confirm(
-        'Request deletion of your VibePlay account? An administrator will process the request within 30 days. This cannot be undone once processed.',
-      )
-    ) {
+    if (!window.confirm(t('settings.deleteConfirm'))) {
       return;
     }
     setDangerBusy(true);
@@ -215,7 +211,7 @@ export const SettingsPage: React.FC = () => {
       link.download = `vibeplay-data-export-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
-      toast.success('Your data export was downloaded.');
+      toast.success(t('settings.exportDownloaded'));
     } catch (error) {
       toast.danger(errorMessage(error));
     } finally {
@@ -226,16 +222,16 @@ export const SettingsPage: React.FC = () => {
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      toast.danger('New passwords do not match!');
+      toast.danger(t('settings.passwordMismatch'));
       return;
     }
     if (newPassword.length < 10) {
-      toast.warning('New password must be at least 10 characters.');
+      toast.warning(t('settings.passwordMinimum'));
       return;
     }
     try {
       await api.changePassword(currentPassword, newPassword);
-      toast.success('Password updated successfully.');
+      toast.success(t('settings.passwordUpdated'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -256,7 +252,7 @@ export const SettingsPage: React.FC = () => {
       setNotifApprovals(undefined);
       setNotifComments(undefined);
       setNotifPlatform(undefined);
-      toast.success('Notification preferences saved.');
+      toast.success(t('settings.notificationsSaved'));
     } catch (error) {
       toast.danger(errorMessage(error));
     }
@@ -264,7 +260,7 @@ export const SettingsPage: React.FC = () => {
 
   const handlePrivacySave = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.warning('Privacy preference controls are not available in the private beta.');
+    toast.warning(t('settings.privacyUnavailable'));
   };
 
   return (
@@ -370,13 +366,13 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSave} className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.profileTitle')}</h2>
-              <p style={tabDescStyle}>Customize how your name and avatar appear across VibePlay.</p>
+              <p style={tabDescStyle}>{t('settings.profileDescription')}</p>
 
               <div style={avatarPreviewRowStyle}>
                 {currentUser.avatar ? (
                   <img
                     src={avatar ?? currentUser.avatar}
-                    alt="Preview"
+                    alt={t('settings.avatarPreviewAlt')}
                     style={avatarPreviewStyle}
                   />
                 ) : (
@@ -438,14 +434,14 @@ export const SettingsPage: React.FC = () => {
                   type="text"
                   value={avatar ?? currentUser.avatar}
                   onChange={(e) => setAvatar(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
+                  placeholder={t('settings.avatarUrlPlaceholder')}
                   className="form-input"
                 />
                 <span style={helperStyle}>{t('avatar.urlHint')}</span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Display Name</label>
+                <label className="form-label">{t('settings.displayName')}</label>
                 <input
                   type="text"
                   value={displayName ?? currentUser.displayName}
@@ -456,18 +452,18 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Biography</label>
+                <label className="form-label">{t('settings.biography')}</label>
                 <textarea
                   value={bio ?? currentUser.bio}
                   onChange={(e) => setBio(e.target.value)}
                   className="form-input"
                   style={{ minHeight: '120px', resize: 'vertical' }}
-                  placeholder="Tell players and creators about yourself..."
+                  placeholder={t('settings.biographyPlaceholder')}
                 />
               </div>
 
               <button type="submit" className="btn btn-primary">
-                Save Changes
+                {t('settings.save')}
               </button>
             </form>
           )}
@@ -476,10 +472,10 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'account' && (
             <form onSubmit={handleAccountSave} className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.accountTitle')}</h2>
-              <p style={tabDescStyle}>Manage your platform credentials and contact details.</p>
+              <p style={tabDescStyle}>{t('settings.accountDescription')}</p>
 
               <div className="form-group">
-                <label className="form-label">Registered Username</label>
+                <label className="form-label">{t('settings.registeredUsername')}</label>
                 <input
                   type="text"
                   value={currentUser.username}
@@ -487,11 +483,11 @@ export const SettingsPage: React.FC = () => {
                   disabled
                   style={{ opacity: 0.6, cursor: 'not-allowed' }}
                 />
-                <span style={helperStyle}>Usernames cannot be changed once registered.</span>
+                <span style={helperStyle}>{t('settings.usernameImmutable')}</span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Email Address</label>
+                <label className="form-label">{t('settings.emailAddress')}</label>
                 <input
                   type="email"
                   value={currentUser.email}
@@ -499,29 +495,30 @@ export const SettingsPage: React.FC = () => {
                   disabled
                   required
                 />
-                <span style={helperStyle}>Contact support to change the registered email.</span>
+                <span style={helperStyle}>{t('settings.emailSupport')}</span>
               </div>
 
               <button type="submit" className="btn btn-primary">
-                Save Account Settings
+                {t('settings.saveAccount')}
               </button>
 
               {/* Active sessions */}
-              <h3 style={sectionTitleStyle}>Active sessions</h3>
-              <p style={tabDescStyle}>
-                Sessions where this account is currently logged in. Revoke anything you don't
-                recognize.
-              </p>
+              <h3 style={sectionTitleStyle}>{t('settings.activeSessions')}</h3>
+              <p style={tabDescStyle}>{t('settings.activeSessionsDescription')}</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {sessions.map((session) => (
                   <div key={session.id} style={sessionRowStyle}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>
-                        {session.current ? 'This device' : (session.userAgent ?? 'Unknown device')}
+                        {session.current
+                          ? t('settings.thisDevice')
+                          : (session.userAgent ?? t('settings.unknownDevice'))}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        Started {new Date(session.createdAt).toLocaleString()} · expires{' '}
-                        {new Date(session.expiresAt).toLocaleDateString()}
+                        {t('settings.sessionDates', {
+                          started: new Date(session.createdAt).toLocaleString(locale),
+                          expires: new Date(session.expiresAt).toLocaleDateString(locale),
+                        })}
                       </div>
                     </div>
                     {!session.current && (
@@ -531,13 +528,13 @@ export const SettingsPage: React.FC = () => {
                         style={dangerGhostBtnStyle}
                         onClick={() => void handleRevokeSession(session.id)}
                       >
-                        Revoke
+                        {t('settings.revoke')}
                       </button>
                     )}
                   </div>
                 ))}
                 {sessionsLoaded && sessions.length === 0 && (
-                  <p style={helperStyle}>No active sessions found.</p>
+                  <p style={helperStyle}>{t('settings.noSessions')}</p>
                 )}
               </div>
               <button
@@ -546,18 +543,17 @@ export const SettingsPage: React.FC = () => {
                 style={{ ...dangerGhostBtnStyle, marginTop: '0.75rem' }}
                 onClick={() => void handleLogoutAll()}
               >
-                Log out of all sessions
+                {t('settings.logoutAll')}
               </button>
 
               {/* Danger zone */}
-              <h3 style={sectionTitleStyle}>Your data</h3>
+              <h3 style={sectionTitleStyle}>{t('settings.yourData')}</h3>
               <p style={tabDescStyle}>
-                Export or delete your account data as described in the{' '}
+                {t('settings.dataDescriptionPrefix')}{' '}
                 <a href="/privacy" style={{ color: 'var(--secondary)' }}>
-                  Privacy Policy
+                  {t('footer.privacy')}
                 </a>
-                . Data exports download immediately. Deletion requests are processed by an
-                administrator within 30 days.
+                {t('settings.dataDescriptionSuffix')}
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button
@@ -567,7 +563,7 @@ export const SettingsPage: React.FC = () => {
                   style={dangerGhostBtnStyle}
                   onClick={() => void handleExportRequest()}
                 >
-                  Download data export
+                  {t('settings.downloadExport')}
                 </button>
                 <button
                   type="button"
@@ -576,7 +572,7 @@ export const SettingsPage: React.FC = () => {
                   style={dangerSolidBtnStyle}
                   onClick={() => void handleDeletionRequest()}
                 >
-                  Request account deletion
+                  {t('settings.requestDeletion')}
                 </button>
               </div>
             </form>
@@ -586,12 +582,10 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'password' && (
             <form onSubmit={handlePasswordSave} className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.passwordTitle')}</h2>
-              <p style={tabDescStyle}>
-                Maintain your account security by updating passwords regularly.
-              </p>
+              <p style={tabDescStyle}>{t('settings.passwordDescription')}</p>
 
               <div className="form-group">
-                <label className="form-label">Current Password</label>
+                <label className="form-label">{t('settings.currentPassword')}</label>
                 <input
                   type="password"
                   value={currentPassword}
@@ -603,7 +597,7 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <div className="form-group" style={{ position: 'relative' }}>
-                <label className="form-label">New Password</label>
+                <label className="form-label">{t('settings.newPassword')}</label>
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={newPassword}
@@ -612,13 +606,18 @@ export const SettingsPage: React.FC = () => {
                   required
                   placeholder="••••••••"
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} style={eyeStyle}>
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  style={eyeStyle}
+                  aria-label={t(showPass ? 'auth.hidePassword' : 'auth.showPassword')}
+                >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Confirm New Password</label>
+                <label className="form-label">{t('settings.confirmNewPassword')}</label>
                 <input
                   type="password"
                   value={confirmPassword}
@@ -630,7 +629,7 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <button type="submit" className="btn btn-primary">
-                Change Password
+                {t('settings.changePassword')}
               </button>
             </form>
           )}
@@ -639,9 +638,7 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'notifications' && (
             <form onSubmit={handleNotificationsSave} className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.notificationsTitle')}</h2>
-              <p style={tabDescStyle}>
-                Decide which triggers deliver alerts to your dashboard and email inbox.
-              </p>
+              <p style={tabDescStyle}>{t('settings.notificationsDescription')}</p>
 
               <div style={checkboxStackStyle}>
                 <label className="checkbox-group">
@@ -652,9 +649,9 @@ export const SettingsPage: React.FC = () => {
                     className="checkbox-input"
                   />
                   <div>
-                    <div style={chkLabelStyle}>Game Submissions & Moderation Updates</div>
+                    <div style={chkLabelStyle}>{t('settings.moderationNotifications')}</div>
                     <div style={chkDescStyle}>
-                      Notify me when my uploaded games are approved, rejected, or featured.
+                      {t('settings.moderationNotificationsDescription')}
                     </div>
                   </div>
                 </label>
@@ -667,10 +664,8 @@ export const SettingsPage: React.FC = () => {
                     className="checkbox-input"
                   />
                   <div>
-                    <div style={chkLabelStyle}>Social & Interactions</div>
-                    <div style={chkDescStyle}>
-                      Notify me when users leave comments or likes on my profile or games.
-                    </div>
+                    <div style={chkLabelStyle}>{t('settings.socialNotifications')}</div>
+                    <div style={chkDescStyle}>{t('settings.socialNotificationsDescription')}</div>
                   </div>
                 </label>
 
@@ -682,16 +677,14 @@ export const SettingsPage: React.FC = () => {
                     className="checkbox-input"
                   />
                   <div>
-                    <div style={chkLabelStyle}>News and Platform Updates</div>
-                    <div style={chkDescStyle}>
-                      Receive newsletters, feature announcements, and developer highlights.
-                    </div>
+                    <div style={chkLabelStyle}>{t('settings.platformNotifications')}</div>
+                    <div style={chkDescStyle}>{t('settings.platformNotificationsDescription')}</div>
                   </div>
                 </label>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-                Save Preferences
+                {t('settings.savePreferences')}
               </button>
             </form>
           )}
@@ -700,9 +693,7 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'privacy' && (
             <form onSubmit={handlePrivacySave} className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.privacyTitle')}</h2>
-              <p style={tabDescStyle}>
-                Control who can discover your VibePlay account and gameplay history.
-              </p>
+              <p style={tabDescStyle}>{t('settings.privacyDescription')}</p>
 
               <div style={checkboxStackStyle}>
                 <label className="checkbox-group">
@@ -713,10 +704,8 @@ export const SettingsPage: React.FC = () => {
                     className="checkbox-input"
                   />
                   <div>
-                    <div style={chkLabelStyle}>Public Discoverability</div>
-                    <div style={chkDescStyle}>
-                      Allow search engines indexing and appearing in platform-wide Search results.
-                    </div>
+                    <div style={chkLabelStyle}>{t('settings.publicDiscoverability')}</div>
+                    <div style={chkDescStyle}>{t('settings.publicDiscoverabilityDescription')}</div>
                   </div>
                 </label>
 
@@ -728,16 +717,14 @@ export const SettingsPage: React.FC = () => {
                     className="checkbox-input"
                   />
                   <div>
-                    <div style={chkLabelStyle}>Activity Feed Visbility</div>
-                    <div style={chkDescStyle}>
-                      Show your "Recently Played" and "Liked" lists publicly on your Profile Page.
-                    </div>
+                    <div style={chkLabelStyle}>{t('settings.activityVisibility')}</div>
+                    <div style={chkDescStyle}>{t('settings.activityVisibilityDescription')}</div>
                   </div>
                 </label>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-                Save Privacy Settings
+                {t('settings.savePrivacy')}
               </button>
             </form>
           )}
@@ -746,9 +733,7 @@ export const SettingsPage: React.FC = () => {
           {activeTab === 'appearance' && (
             <div className="animate-fade">
               <h2 style={tabTitleStyle}>{t('settings.appearanceTitle')}</h2>
-              <p style={tabDescStyle}>
-                Customize the visual theme and styling of your VibePlay experience.
-              </p>
+              <p style={tabDescStyle}>{t('settings.appearanceDescription')}</p>
 
               <div className="settings-language-panel">
                 <div>

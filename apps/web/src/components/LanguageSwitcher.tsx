@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Globe, ChevronDown, Check } from 'lucide-react';
 import { useI18n } from '../i18n/useI18n';
+import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from '../i18n/context';
 
 export const LanguageSwitcher: React.FC<{
   compact?: boolean;
@@ -45,7 +46,7 @@ export const LanguageSwitcher: React.FC<{
     setIsOpen((prev) => !prev);
   };
 
-  const handleSelect = (nextLocale: 'en' | 'uk') => {
+  const handleSelect = (nextLocale: Locale) => {
     setLocale(nextLocale);
     setIsOpen(false);
   };
@@ -80,30 +81,21 @@ export const LanguageSwitcher: React.FC<{
             role="listbox"
             aria-label={t('language.label')}
           >
-            <li role="none">
-              <button
-                type="button"
-                role="option"
-                aria-selected={locale === 'en'}
-                onClick={() => handleSelect('en')}
-                className={`dropdown-option-btn ${locale === 'en' ? 'active' : ''}`}
-              >
-                <span>English</span>
-                {locale === 'en' && <Check size={14} className="check-icon" />}
-              </button>
-            </li>
-            <li role="none">
-              <button
-                type="button"
-                role="option"
-                aria-selected={locale === 'uk'}
-                onClick={() => handleSelect('uk')}
-                className={`dropdown-option-btn ${locale === 'uk' ? 'active' : ''}`}
-              >
-                <span>Українська</span>
-                {locale === 'uk' && <Check size={14} className="check-icon" />}
-              </button>
-            </li>
+            {SUPPORTED_LOCALES.map((code) => (
+              <li role="none" key={code}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={locale === code}
+                  onClick={() => handleSelect(code)}
+                  className={`dropdown-option-btn ${locale === code ? 'active' : ''}`}
+                >
+                  {/* Autonym — language name in its own language, not translated. */}
+                  <span>{LOCALE_LABELS[code]}</span>
+                  {locale === code && <Check size={14} className="check-icon" />}
+                </button>
+              </li>
+            ))}
           </ul>
         )}
       </div>
@@ -115,22 +107,18 @@ export const LanguageSwitcher: React.FC<{
     <div className={`language-switcher-full ${className ?? ''}`}>
       <span className="language-switcher-label">{t('language.label')}</span>
       <div className="language-switcher-segmented">
-        <button
-          type="button"
-          onClick={() => setLocale('en')}
-          className={`segmented-option-btn ${locale === 'en' ? 'active' : ''}`}
-          aria-pressed={locale === 'en'}
-        >
-          English
-        </button>
-        <button
-          type="button"
-          onClick={() => setLocale('uk')}
-          className={`segmented-option-btn ${locale === 'uk' ? 'active' : ''}`}
-          aria-pressed={locale === 'uk'}
-        >
-          Українська
-        </button>
+        {SUPPORTED_LOCALES.map((code) => (
+          <button
+            key={code}
+            type="button"
+            onClick={() => setLocale(code)}
+            className={`segmented-option-btn ${locale === code ? 'active' : ''}`}
+            aria-pressed={locale === code}
+          >
+            {/* Autonym — language name in its own language, not translated. */}
+            {LOCALE_LABELS[code]}
+          </button>
+        ))}
       </div>
     </div>
   );

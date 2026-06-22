@@ -41,11 +41,11 @@ export const AdminUsers: React.FC = () => {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadUsers().catch((error) => {
-        toast.danger(error instanceof Error ? error.message : 'Failed to load users');
+        toast.danger(error instanceof Error ? error.message : t('admin.users.loadFailed'));
       });
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [loadUsers]);
+  }, [loadUsers, t]);
 
   const getGamesCount = (userId: string) => {
     return games.filter((g) => g.creatorId === userId).length;
@@ -53,27 +53,30 @@ export const AdminUsers: React.FC = () => {
 
   const handleRoleChange = (userId: string, newRole: UserRole) => {
     if (userId === currentUser?.id) {
-      toast.danger('You cannot alter your own admin privileges.');
+      toast.danger(t('admin.users.cannotAlterSelf'));
       return;
     }
 
     if (newRole !== 'creator') {
-      toast.warning('The beta API only supports promotion to Creator.');
+      toast.warning(t('admin.users.onlyCreatorPromotion'));
       return;
     }
     void api
       .adminPromoteCreator(userId)
       .then(loadUsers)
-      .then(() => toast.success('User promoted to Creator.'))
-      .catch((error) => toast.danger(error instanceof Error ? error.message : 'Update failed'));
+      .then(() => toast.success(t('admin.users.promoted')))
+      .catch((error) =>
+        toast.danger(error instanceof Error ? error.message : t('admin.users.updateFailed')),
+      );
   };
 
   const handleStatusChange = (userId: string, isSuspended: boolean) => {
     if (userId === currentUser?.id) {
-      toast.danger('You cannot suspend your own admin account.');
+      toast.danger(t('admin.users.cannotSuspendSelf'));
       return;
     }
 
+    // Audit reason recorded server-side (kept in English for the audit trail).
     const operation = isSuspended
       ? api.adminSuspendUser(userId, 'Suspended from the admin user directory')
       : api.adminRestoreUser(userId);
@@ -82,13 +85,17 @@ export const AdminUsers: React.FC = () => {
       .then(() => {
         if (isSuspended) {
           suspendUserGames(userId);
-          toast.danger('User suspended and their builds were hidden.');
+          toast.danger(t('admin.users.suspended'));
         } else {
-          toast.success('User account restored successfully.');
+          toast.success(t('admin.users.restored'));
         }
       })
-      .catch((error) => toast.danger(error instanceof Error ? error.message : 'Update failed'));
+      .catch((error) =>
+        toast.danger(error instanceof Error ? error.message : t('admin.users.updateFailed')),
+      );
   };
+
+  const roleLabel = (role: string): string => t(`role.${role}`);
 
   const filteredUsers = users.filter((u) => {
     if (filterRole === 'all') return true;
@@ -102,7 +109,7 @@ export const AdminUsers: React.FC = () => {
         <div>
           <h1>{t('admin.userDirectory')}</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-            Auditing and managing roles, privileges, and platform bans.
+            {t('admin.users.subtitle')}
           </p>
         </div>
 
@@ -112,10 +119,10 @@ export const AdminUsers: React.FC = () => {
           className="form-input form-select"
           style={filterSelectStyle}
         >
-          <option value="all">All Roles</option>
-          <option value="player">Players Only</option>
-          <option value="creator">Creators Only</option>
-          <option value="admin">Administrators Only</option>
+          <option value="all">{t('admin.users.allRoles')}</option>
+          <option value="player">{t('admin.users.playersOnly')}</option>
+          <option value="creator">{t('admin.users.creatorsOnly')}</option>
+          <option value="admin">{t('admin.users.adminsOnly')}</option>
         </select>
       </div>
 
@@ -126,12 +133,12 @@ export const AdminUsers: React.FC = () => {
         <table style={tableStyle}>
           <thead>
             <tr style={tableHeaderRowStyle}>
-              <th style={thStyle}>User</th>
-              <th style={thStyle}>Email</th>
-              <th style={thStyle}>Role</th>
-              <th style={thStyle}>Created Games</th>
-              <th style={thStyle}>Account Status</th>
-              <th style={{ ...thStyle, textAlign: 'right' }}>Actions</th>
+              <th style={thStyle}>{t('common.user')}</th>
+              <th style={thStyle}>{t('common.email')}</th>
+              <th style={thStyle}>{t('common.role')}</th>
+              <th style={thStyle}>{t('admin.users.colGames')}</th>
+              <th style={thStyle}>{t('admin.users.colStatus')}</th>
+              <th style={{ ...thStyle, textAlign: 'right' }}>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -161,19 +168,19 @@ export const AdminUsers: React.FC = () => {
                     <span
                       className={`badge ${user.role === 'owner' ? 'badge-danger' : user.role === 'admin' ? 'badge-danger' : user.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                     >
-                      {user.role}
+                      {roleLabel(user.role)}
                     </span>
                   </td>
 
                   {/* Games Count */}
-                  <td style={tdStyle}>{getGamesCount(user.id)} games</td>
+                  <td style={tdStyle}>{t('home.gamesCount', { count: getGamesCount(user.id) })}</td>
 
                   {/* Account Status */}
                   <td style={tdStyle}>
                     {isSuspended ? (
-                      <span className="badge badge-danger">Suspended</span>
+                      <span className="badge badge-danger">{t('admin.users.statusSuspended')}</span>
                     ) : (
-                      <span className="badge badge-success">Active</span>
+                      <span className="badge badge-success">{t('admin.users.statusActive')}</span>
                     )}
                   </td>
 
@@ -186,7 +193,7 @@ export const AdminUsers: React.FC = () => {
                           onClick={() => handleRoleChange(user.id, 'creator')}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
-                          title="Promote to Creator"
+                          title={t('admin.users.promoteToCreator')}
                         >
                           <Award size={14} />
                         </button>
@@ -198,7 +205,7 @@ export const AdminUsers: React.FC = () => {
                           onClick={() => handleRoleChange(user.id, 'player')}
                           className="btn btn-secondary btn-sm"
                           style={actionBtnStyle}
-                          title="Demote to Player"
+                          title={t('admin.users.demoteToPlayer')}
                         >
                           <UserMinus size={14} />
                         </button>
@@ -210,7 +217,7 @@ export const AdminUsers: React.FC = () => {
                           onClick={() => handleStatusChange(user.id, false)}
                           className="btn btn-secondary btn-sm"
                           style={{ ...actionBtnStyle, color: 'var(--success)' }}
-                          title="Restore User Account"
+                          title={t('admin.users.restoreAccount')}
                         >
                           <UserCheck size={14} />
                         </button>
@@ -219,7 +226,7 @@ export const AdminUsers: React.FC = () => {
                           onClick={() => handleStatusChange(user.id, true)}
                           className="btn btn-danger btn-sm"
                           style={actionBtnStyle}
-                          title="Suspend User Account"
+                          title={t('admin.users.suspendAccount')}
                         >
                           <ShieldAlert size={14} />
                         </button>

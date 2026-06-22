@@ -225,7 +225,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
           onClickCapture={handleClickCapture}
           tabIndex={0}
           role="region"
-          aria-label={`${title} carousel`}
+          aria-label={t('carousel.region', { title })}
           style={{ cursor: showArrows ? 'grab' : 'default' }}
         >
           <div className="game-carousel__track">

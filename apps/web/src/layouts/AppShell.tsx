@@ -366,7 +366,7 @@ export const AppShell: React.FC = () => {
 
   const handleDemoSwitch = (role: 'player' | 'creator' | 'admin') => {
     switchDemoRole(role);
-    toast.success(t('app.demoSwitched', { role }));
+    toast.success(t('app.demoSwitched', { role: t(`role.${role}`) }));
     setShowDemoDropdown(false);
     if (role === 'creator') navigate('/creator');
     else if (role === 'admin') navigate('/admin');
@@ -726,7 +726,7 @@ export const AppShell: React.FC = () => {
                   marginBottom: '8px',
                 }}
               >
-                Quick Role Switch
+                {t('shell.quickRoleSwitch')}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
                 <button
@@ -752,7 +752,7 @@ export const AppShell: React.FC = () => {
                     textAlign: 'center',
                   }}
                 >
-                  Player
+                  {t('role.player')}
                 </button>
                 <button
                   onClick={() => {
@@ -777,7 +777,7 @@ export const AppShell: React.FC = () => {
                     textAlign: 'center',
                   }}
                 >
-                  Creator
+                  {t('role.creator')}
                 </button>
                 <button
                   onClick={() => {
@@ -802,7 +802,7 @@ export const AppShell: React.FC = () => {
                     textAlign: 'center',
                   }}
                 >
-                  Admin
+                  {t('role.admin')}
                 </button>
               </div>
             </div>
@@ -863,7 +863,7 @@ export const AppShell: React.FC = () => {
                     fontWeight: 700,
                     marginLeft: 'auto',
                   }}
-                  aria-label={`${unreadCount} unread notifications`}
+                  aria-label={t('shell.unreadNotifications', { count: unreadCount })}
                 >
                   {unreadCount}
                 </span>
@@ -963,7 +963,7 @@ export const AppShell: React.FC = () => {
                       className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                       style={{ marginTop: '6px', fontSize: '0.65rem' }}
                     >
-                      {currentUser.role}
+                      {t(`role.${currentUser.role}`)}
                     </span>
                   </div>
                   <hr style={hrStyle} />
@@ -1139,9 +1139,9 @@ export const AppShell: React.FC = () => {
                   gap: '10px',
                 }}
                 data-tooltip={
-                  isSidebarCollapsed && !isMobileOrDrawer ? 'Profile Options' : undefined
+                  isSidebarCollapsed && !isMobileOrDrawer ? t('shell.profileOptions') : undefined
                 }
-                aria-label="User Profile Options"
+                aria-label={t('shell.userProfileOptions')}
                 aria-expanded={showSidebarProfileDropdown}
               >
                 <img
@@ -1184,7 +1184,7 @@ export const AppShell: React.FC = () => {
                         textTransform: 'capitalize',
                       }}
                     >
-                      {currentUser.role}
+                      {t(`role.${currentUser.role}`)}
                     </span>
                   </div>
                 )}
@@ -1239,7 +1239,7 @@ export const AppShell: React.FC = () => {
                             borderRadius: '50%',
                             margin: '4px auto',
                           }}
-                          data-tooltip="Become a Creator"
+                          data-tooltip={t('home.becomeCreator')}
                           aria-label={t('home.becomeCreator')}
                         >
                           <PlusCircle size={20} />
@@ -1293,10 +1293,11 @@ export const AppShell: React.FC = () => {
               <div style={logoPlayStyle}></div>
             </div>
             <span style={logoTextStyle} className="mobile-header__wordmark">
-              Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+              {t('branding.vibe')}
+              <span style={{ color: 'var(--primary)' }}>{t('branding.play')}</span>
             </span>
-            <span style={betaBadgeStyle} title="VibePlay is an invite-only private beta">
-              Beta
+            <span style={betaBadgeStyle} title={t('shell.betaTitle')}>
+              {t('common.beta')}
             </span>
           </Link>
 
@@ -1345,7 +1346,7 @@ export const AppShell: React.FC = () => {
                 onClick={() => setShowDemoDropdown(!showDemoDropdown)}
                 style={demoBtnStyle}
                 className="roles-button"
-                aria-label="Switch Demo User Role"
+                aria-label={t('shell.switchDemoRole')}
               >
                 <span
                   style={{
@@ -1355,25 +1356,25 @@ export const AppShell: React.FC = () => {
                     backgroundColor: 'var(--primary)',
                   }}
                 ></span>
-                <span>Roles</span>
+                <span>{t('shell.roles')}</span>
               </button>
               {showDemoDropdown && (
                 <div style={demoDropdownContentStyle} className="animate-fade">
-                  <div style={dropdownTitleStyle}>Quick Role Switch (demo)</div>
+                  <div style={dropdownTitleStyle}>{t('shell.quickRoleSwitchDemo')}</div>
                   <button onClick={() => handleDemoSwitch('player')} style={dropdownItemBtnStyle}>
-                    Player{' '}
+                    {t('role.player')}{' '}
                     {currentUser?.role === 'player' && (
                       <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
                     )}
                   </button>
                   <button onClick={() => handleDemoSwitch('creator')} style={dropdownItemBtnStyle}>
-                    Creator{' '}
+                    {t('role.creator')}{' '}
                     {currentUser?.role === 'creator' && (
                       <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
                     )}
                   </button>
                   <button onClick={() => handleDemoSwitch('admin')} style={dropdownItemBtnStyle}>
-                    Admin{' '}
+                    {t('role.admin')}{' '}
                     {currentUser?.role === 'admin' && (
                       <Check size={14} style={{ marginLeft: 'auto', color: 'var(--success)' }} />
                     )}
@@ -1399,7 +1400,7 @@ export const AppShell: React.FC = () => {
               <button
                 onClick={() => setShowNotifDropdown(!showNotifDropdown)}
                 style={iconBtnStyle}
-                aria-label={`${unreadCount} notifications`}
+                aria-label={t('shell.notificationsCount', { count: unreadCount })}
                 aria-expanded={showNotifDropdown}
               >
                 <Bell size={20} color="var(--text-primary)" />
@@ -1498,7 +1499,7 @@ export const AppShell: React.FC = () => {
                       className={`badge ${currentUser.role === 'owner' ? 'badge-danger' : currentUser.role === 'admin' ? 'badge-danger' : currentUser.role === 'creator' ? 'badge-success' : 'badge-primary'}`}
                       style={{ marginTop: '6px', fontSize: '0.65rem' }}
                     >
-                      {currentUser.role}
+                      {t(`role.${currentUser.role}`)}
                     </span>
                   </div>
 
@@ -1704,7 +1705,7 @@ export const AppShell: React.FC = () => {
         <aside
           id="desktop-sidebar"
           className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}
-          aria-label="Main navigation"
+          aria-label={t('shell.mainNavigation')}
         >
           {renderSidebarContent(false)}
         </aside>
@@ -1724,18 +1725,19 @@ export const AppShell: React.FC = () => {
             ref={drawerRef}
             id="mobile-navigation-drawer"
             className={`mobile-drawer ${isMobileDrawerOpen ? 'open' : ''}`}
-            aria-label="Mobile navigation"
+            aria-label={t('shell.mobileNavigation')}
             role="dialog"
             aria-modal="true"
           >
             <div style={drawerHeaderStyle}>
               <span style={logoTextStyle}>
-                Vibe<span style={{ color: 'var(--primary)' }}>Play</span>
+                {t('branding.vibe')}
+                <span style={{ color: 'var(--primary)' }}>{t('branding.play')}</span>
               </span>
               <button
                 onClick={() => setMobileDrawerOpen(false)}
                 style={closeDrawerBtnStyle}
-                aria-label="Close menu"
+                aria-label={t('shell.closeMenu')}
               >
                 <X size={20} />
               </button>
@@ -1764,8 +1766,7 @@ export const AppShell: React.FC = () => {
               textAlign: 'center',
             }}
           >
-            Frontend Demo — data is stored only in this browser. Uploads, emails and moderation need
-            the real VibePlay backend.
+            {t('shell.demoBanner')}
           </div>
         )}
 
@@ -1773,7 +1774,7 @@ export const AppShell: React.FC = () => {
         {isCreatorPath && !hasCreatorAccess && (
           <div style={accessDeniedContainerStyle} className="bg-glass">
             <ShieldAlertStyle />
-            <h2>Access Denied</h2>
+            <h2>{t('shell.accessDenied')}</h2>
             <p
               style={{
                 color: 'var(--text-secondary)',
@@ -1781,10 +1782,10 @@ export const AppShell: React.FC = () => {
                 textAlign: 'center',
               }}
             >
-              You must be registered as a Creator to access this dashboard.
+              {t('shell.creatorRequired')}
             </p>
             <button onClick={handleBecomeCreatorClick} className="btn btn-primary">
-              Become a Creator
+              {t('home.becomeCreator')}
             </button>
           </div>
         )}
@@ -1833,7 +1834,7 @@ export const AppShell: React.FC = () => {
         {isAdminPath && !hasAdminAccess && (
           <div style={accessDeniedContainerStyle} className="bg-glass">
             <ShieldAlertStyle />
-            <h2>Restricted Area</h2>
+            <h2>{t('shell.restrictedArea')}</h2>
             <p
               style={{
                 color: 'var(--text-secondary)',
@@ -1841,10 +1842,10 @@ export const AppShell: React.FC = () => {
                 textAlign: 'center',
               }}
             >
-              This section is restricted to VibePlay Platform Administrators only.
+              {t('shell.adminOnly')}
             </p>
             <button onClick={() => navigate('/')} className="btn btn-secondary">
-              Go Home
+              {t('common.goHome')}
             </button>
           </div>
         )}

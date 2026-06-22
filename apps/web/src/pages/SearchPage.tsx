@@ -54,7 +54,8 @@ export const SearchPage: React.FC = () => {
         <h1 style={titleStyle}>{t('search.results')}</h1>
       </div>
       <p style={subtitleStyle}>
-        Showing results for "<strong>{query}</strong>" ({totalResults} matches found)
+        {t('search.showingForPrefix')} "<strong>{query}</strong>" (
+        {t('search.matchesFound', { count: totalResults })})
       </p>
 
       {/* Tabs */}
@@ -67,7 +68,7 @@ export const SearchPage: React.FC = () => {
             color: activeTab === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          All Results ({totalResults})
+          {t('search.allResults', { count: totalResults })}
         </button>
 
         <button
@@ -78,7 +79,7 @@ export const SearchPage: React.FC = () => {
             color: activeTab === 'games' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          Games ({matchedGames.length})
+          {t('search.games', { count: matchedGames.length })}
         </button>
 
         <button
@@ -89,7 +90,7 @@ export const SearchPage: React.FC = () => {
             color: activeTab === 'creators' ? 'var(--text-primary)' : 'var(--text-secondary)',
           }}
         >
-          Creators ({matchedCreators.length})
+          {t('search.creators', { count: matchedCreators.length })}
         </button>
       </div>
 
@@ -107,10 +108,10 @@ export const SearchPage: React.FC = () => {
                 marginBottom: '1.5rem',
               }}
             >
-              We couldn't find any games or creators matching "{query}".
+              {t('search.noResultsHint', { query })}
             </p>
             <Link to="/games" className="btn btn-primary btn-sm">
-              Explore All Games
+              {t('search.exploreAll')}
             </Link>
           </div>
         ) : (
@@ -160,7 +161,7 @@ export const SearchPage: React.FC = () => {
                         className="btn btn-secondary btn-sm"
                         style={{ alignSelf: 'center' }}
                       >
-                        View Profile
+                        {t('search.viewProfile')}
                       </Link>
                     </div>
                   ))}

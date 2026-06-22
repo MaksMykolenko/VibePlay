@@ -21,24 +21,23 @@ import {
 } from 'lucide-react';
 
 /** Turn upload/publish errors into a clear, actionable message for the creator. */
-function uploadErrorMessage(error: unknown): string {
+function uploadErrorMessage(error: unknown, t: (key: string) => string): string {
   if (error instanceof ApiClientError) {
-    if (error.code === 'NETWORK_ERROR') return 'Upload endpoint is unreachable. Please try again.';
-    if (error.status === 413) return 'Upload failed: the ZIP exceeds the size limit.';
-    if (error.status === 401 || error.status === 403)
-      return 'Upload failed: your session expired. Please sign in again and retry.';
-    if (error.status === 409) return error.message || 'This build was already submitted.';
-    return error.message || 'Upload failed. Please try again.';
+    if (error.code === 'NETWORK_ERROR') return t('publish.uploadUnreachable');
+    if (error.status === 413) return t('publish.uploadTooLarge');
+    if (error.status === 401 || error.status === 403) return t('publish.uploadSessionExpired');
+    if (error.status === 409) return error.message || t('publish.alreadySubmitted');
+    return error.message || t('publish.uploadFailed');
   }
   if (error instanceof Error && error.message) return error.message;
-  return 'Upload failed. Please try again.';
+  return t('publish.uploadFailed');
 }
 
 export const PublishGame: React.FC = () => {
   const { currentUser } = useAuth();
   const { games, createGame, submitForReview } = useGames();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -76,8 +75,8 @@ export const PublishGame: React.FC = () => {
   const [deviceMobile, setDeviceMobile] = useState(false);
   const [deviceTablet, setDeviceTablet] = useState(false);
   const [multiplayer, setMultiplayer] = useState(false);
-  const [controlKeys, setControlKeys] = useState('W/A/S/D or Arrow keys to steer');
-  const [controlAction, setControlAction] = useState('Left click or Space to shoot');
+  const [controlKeys, setControlKeys] = useState(() => t('publish.defaultMoveControl'));
+  const [controlAction, setControlAction] = useState(() => t('publish.defaultActionControl'));
 
   // --- Step 5: AI Disclosure ---
   const [aiDisclosure, setAiDisclosure] = useState<'no' | 'assisted' | 'generated'>('no');
@@ -112,13 +111,19 @@ export const PublishGame: React.FC = () => {
 
     setZipFile(file);
     setZipFileName(file.name);
-    setZipFileSize(`${(file.size / (1024 * 1024)).toFixed(1)} MB`);
+    setZipFileSize(
+      t('publish.fileSizeMb', {
+        count: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
+          file.size / (1024 * 1024),
+        ),
+      }),
+    );
     setUploadProgress(0);
     setUploadLog([]);
     setIsUploaded(false);
 
     if (!IS_DEMO) {
-      setUploadLog(['ZIP selected. It will upload to quarantine when you submit the game.']);
+      setUploadLog([t('publish.logZipSelected')]);
       setIsUploaded(true);
       return;
     }
@@ -130,19 +135,13 @@ export const PublishGame: React.FC = () => {
       setUploadProgress(prog);
 
       if (prog === 20) {
-        setUploadLog((prev) => [...prev, 'Reading the ZIP in this browser-only demo...']);
+        setUploadLog((prev) => [...prev, t('publish.logReadingDemo')]);
       } else if (prog === 60) {
-        setUploadLog((prev) => [
-          ...prev,
-          'No server or malware scanner is connected in demo mode.',
-        ]);
+        setUploadLog((prev) => [...prev, t('publish.logNoScannerDemo')]);
       } else if (prog === 80) {
-        setUploadLog((prev) => [...prev, 'Demo mode stores game metadata only in this browser.']);
+        setUploadLog((prev) => [...prev, t('publish.logMetadataDemo')]);
       } else if (prog === 100) {
-        setUploadLog((prev) => [
-          ...prev,
-          'Demo upload complete. No real validation or malware scan was performed.',
-        ]);
+        setUploadLog((prev) => [...prev, t('publish.logCompleteDemo')]);
         setIsUploaded(true);
         clearInterval(interval);
       }
@@ -158,11 +157,7 @@ export const PublishGame: React.FC = () => {
     }
     if (step === 2) {
       if (!isUploaded) {
-        toast.warning(
-          IS_DEMO
-            ? 'Please select a game ZIP and wait for the demo progress to finish.'
-            : 'Please select the game build ZIP that will be uploaded on submission.',
-        );
+        toast.warning(t(IS_DEMO ? 'publish.waitForDemoZip' : 'publish.selectSubmissionZip'));
         return;
       }
     }
@@ -206,8 +201,8 @@ export const PublishGame: React.FC = () => {
     if (deviceTablet) devices.push('tablet');
 
     const controls = [
-      { action: 'Movement', keys: controlKeys.trim() },
-      { action: 'Action', keys: controlAction.trim() },
+      { action: t('publish.controlMovement'), keys: controlKeys.trim() },
+      { action: t('publish.controlAction'), keys: controlAction.trim() },
     ].filter(({ keys }) => keys.length > 0);
 
     try {
@@ -269,7 +264,7 @@ export const PublishGame: React.FC = () => {
           draftRef.current.versionId = versionId;
         }
         setUploadProgress(20);
-        setUploadLog(['Game draft created.', 'Version record created.']);
+        setUploadLog([t('publish.logDraftCreated'), t('publish.logVersionCreated')]);
 
         // 3. Create the upload intent once (reused on retry). We only hash the
         //    ZIP when we actually need a fresh intent.
@@ -292,7 +287,7 @@ export const PublishGame: React.FC = () => {
         }
 
         setUploadProgress(45);
-        setUploadLog((lines) => [...lines, 'Uploading ZIP to quarantine storage...']);
+        setUploadLog((lines) => [...lines, t('publish.logUploadingQuarantine')]);
         // 4. Upload through the SAME-ORIGIN API (never directly to MinIO). The
         //    API stores the bytes internally, marks the upload complete, and
         //    enqueues the validation worker — all in this one request.
@@ -300,7 +295,9 @@ export const PublishGame: React.FC = () => {
         setUploadProgress(100);
         setUploadLog((lines) => [
           ...lines,
-          `Status: ${versionStatusLabel(status.versionStatus)}. Validation continues asynchronously.`,
+          t('publish.logValidationContinues', {
+            status: versionStatusLabel(status.versionStatus, t),
+          }),
         ]);
       }
 
@@ -308,16 +305,12 @@ export const PublishGame: React.FC = () => {
       draftRef.current = {};
       setLoading(false);
       setSuccess(true);
-      toast.success(
-        IS_DEMO
-          ? 'Demo submission stored in this browser.'
-          : 'Build uploaded to quarantine and queued for validation.',
-      );
+      toast.success(IS_DEMO ? t('publish.demoSubmitted') : t('publish.buildQueued'));
     } catch (error) {
       // Keep draftRef populated so the next click retries the SAME draft
       // (re-uploading) instead of creating duplicate games/versions.
       setLoading(false);
-      toast.danger(uploadErrorMessage(error));
+      toast.danger(uploadErrorMessage(error, t));
     }
   };
 
@@ -329,21 +322,17 @@ export const PublishGame: React.FC = () => {
         </div>
         <h1>{t('publish.successTitle')}</h1>
         <p style={successDescStyle}>
-          {IS_DEMO
-            ? 'This demo submission is stored only in this browser. No backend scan or moderation was performed.'
-            : 'Your game build was uploaded to quarantine and queued for structural validation and malware scanning.'}
+          {IS_DEMO ? t('publish.successDemoBody') : t('publish.successBody')}
         </p>
         <p style={{ ...successDescStyle, color: 'var(--text-secondary)' }}>
-          {IS_DEMO
-            ? 'Use the demo role switch to explore the rest of the prototype.'
-            : 'The creator dashboard will show the real validation result before the build can enter moderation.'}
+          {IS_DEMO ? t('publish.successDemoHint') : t('publish.successHint')}
         </p>
         <div style={successActionsStyle}>
           <button onClick={() => navigate('/creator/my-games')} className="btn btn-secondary">
-            Manage Builds
+            {t('publish.manageBuilds')}
           </button>
           <button onClick={() => navigate('/')} className="btn btn-primary">
-            Return Home
+            {t('publish.returnHome')}
           </button>
         </div>
       </div>
@@ -392,12 +381,12 @@ export const PublishGame: React.FC = () => {
                 color: step === num ? 'var(--text-primary)' : 'var(--text-secondary)',
               }}
             >
-              {num === 1 && 'Info'}
-              {num === 2 && 'Build'}
-              {num === 3 && 'Media'}
-              {num === 4 && 'Input'}
-              {num === 5 && 'AI'}
-              {num === 6 && 'Review'}
+              {num === 1 && t('publish.trackerInfo')}
+              {num === 2 && t('publish.trackerBuild')}
+              {num === 3 && t('publish.trackerMedia')}
+              {num === 4 && t('publish.trackerInput')}
+              {num === 5 && t('publish.trackerAi')}
+              {num === 6 && t('publish.trackerReview')}
             </span>
             {num < 6 && <div style={stepIndicatorLineStyle}></div>}
           </div>
@@ -410,16 +399,14 @@ export const PublishGame: React.FC = () => {
         {step === 1 && (
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepBasic')}</h2>
-            <p style={stepDescStyle}>
-              Provide a catchy title and clear descriptions to attract players.
-            </p>
+            <p style={stepDescStyle}>{t('publish.basicHint')}</p>
 
             <div className="form-group">
               <label className="form-label">{t('publish.gameTitle')}</label>
               <input
                 type="text"
                 required
-                placeholder="e.g. Synthwave Drift"
+                placeholder={t('publish.titlePlaceholder')}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="form-input"
@@ -448,7 +435,7 @@ export const PublishGame: React.FC = () => {
                   'Strategy',
                 ].map((cat) => (
                   <option key={cat} value={cat}>
-                    {cat}
+                    {t(`category.${cat}`)}
                   </option>
                 ))}
               </select>
@@ -460,19 +447,21 @@ export const PublishGame: React.FC = () => {
                 type="text"
                 required
                 maxLength={120}
-                placeholder="A brief punchy hook that displays on cards..."
+                placeholder={t('publish.shortPlaceholder')}
                 value={shortDesc}
                 onChange={(e) => setShortDesc(e.target.value)}
                 className="form-input"
               />
-              <span style={helperTextStyle}>{shortDesc.length}/120 characters</span>
+              <span style={helperTextStyle}>
+                {t('publish.characterCount', { count: shortDesc.length })}
+              </span>
             </div>
 
             <div className="form-group">
               <label className="form-label">{t('publish.fullDescription')}</label>
               <textarea
                 required
-                placeholder="Describe your gameplay mechanics, goals, features, and engine specifications..."
+                placeholder={t('publish.fullPlaceholder')}
                 value={fullDesc}
                 onChange={(e) => setFullDesc(e.target.value)}
                 className="form-input"
@@ -484,7 +473,7 @@ export const PublishGame: React.FC = () => {
               <label className="form-label">{t('publish.tags')}</label>
               <input
                 type="text"
-                placeholder="three.js, canvas, physics, synthwave, retro"
+                placeholder={t('publish.tagsPlaceholder')}
                 value={tagsInput}
                 onChange={(e) => setTagsInput(e.target.value)}
                 className="form-input"
@@ -498,10 +487,8 @@ export const PublishGame: React.FC = () => {
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepUpload')}</h2>
             <p style={stepDescStyle}>
-              {IS_DEMO
-                ? 'Select a `.zip` archive to demonstrate the publishing flow. The demo does not upload or scan it.'
-                : 'Select a `.zip` archive containing index.html. On submission it is uploaded to quarantine, validated by the worker, and only approved builds can run on the isolated game origin.'}{' '}
-              Server-side code is not supported.
+              {t(IS_DEMO ? 'publish.uploadDemoHint' : 'publish.uploadHint')}{' '}
+              {t('publish.noServerCode')}
             </p>
 
             <div style={uploadContainerStyle}>
@@ -570,7 +557,7 @@ export const PublishGame: React.FC = () => {
                       key={idx}
                       style={{
                         color:
-                          log.includes('passed') || log.includes('complete')
+                          uploadProgress === 100 && idx === uploadLog.length - 1
                             ? 'var(--success)'
                             : 'var(--text-secondary)',
                       }}
@@ -588,32 +575,30 @@ export const PublishGame: React.FC = () => {
         {step === 3 && (
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepMedia')}</h2>
-            <p style={stepDescStyle}>Upload eye-catching cover graphics and screenshot layouts.</p>
+            <p style={stepDescStyle}>{t('publish.mediaHint')}</p>
 
             <div className="form-group">
               <label className="form-label">{t('publish.coverUrl')}</label>
               <input
                 type="text"
-                placeholder="https://images.unsplash.com/photo-..."
+                placeholder={t('publish.imageUrlPlaceholder')}
                 value={coverUrl}
                 onChange={(e) => setCoverUrl(e.target.value)}
                 className="form-input"
               />
-              <span style={helperTextStyle}>
-                Enter an Unsplash or absolute image link (aspect ratio 16:10).
-              </span>
+              <span style={helperTextStyle}>{t('publish.coverHint')}</span>
             </div>
 
             <div className="form-group">
               <label className="form-label">{t('publish.screenshotUrl')}</label>
               <input
                 type="text"
-                placeholder="https://images.unsplash.com/photo-..."
+                placeholder={t('publish.imageUrlPlaceholder')}
                 value={screenshotUrl}
                 onChange={(e) => setScreenshotUrl(e.target.value)}
                 className="form-input"
               />
-              <span style={helperTextStyle}>Enter an absolute image link (aspect ratio 16:9).</span>
+              <span style={helperTextStyle}>{t('publish.screenshotHint')}</span>
             </div>
 
             <div style={previewBoxStyle} className="bg-glass">
@@ -625,11 +610,11 @@ export const PublishGame: React.FC = () => {
                   marginBottom: '8px',
                 }}
               >
-                Cover Preview:
+                {t('publish.coverPreview')}
               </div>
               <img
                 src={coverUrl}
-                alt="Cover Preview"
+                alt={t('publish.coverPreviewAlt')}
                 style={previewImgStyle}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src =
@@ -644,14 +629,12 @@ export const PublishGame: React.FC = () => {
         {step === 4 && (
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepCompatibility')}</h2>
-            <p style={stepDescStyle}>
-              Specify which systems and input controls are required for gameplay.
-            </p>
+            <p style={stepDescStyle}>{t('publish.compatibilityHint')}</p>
 
             <div style={flexGroupStyle}>
               <div style={{ flex: 1 }}>
                 <label className="form-label" style={{ fontWeight: 600 }}>
-                  Devices Compatibility
+                  {t('publish.devicesCompatibility')}
                 </label>
                 <div style={checkboxStackStyle}>
                   <label className="checkbox-group">
@@ -662,7 +645,8 @@ export const PublishGame: React.FC = () => {
                       className="checkbox-input"
                     />
                     <span style={{ fontSize: '0.9rem' }}>
-                      <Monitor size={14} style={{ marginRight: '6px' }} /> Desktop support
+                      <Monitor size={14} style={{ marginRight: '6px' }} />
+                      {t('publish.desktopSupport')}
                     </span>
                   </label>
 
@@ -674,7 +658,8 @@ export const PublishGame: React.FC = () => {
                       className="checkbox-input"
                     />
                     <span style={{ fontSize: '0.9rem' }}>
-                      <Smartphone size={14} style={{ marginRight: '6px' }} /> Mobile support
+                      <Smartphone size={14} style={{ marginRight: '6px' }} />
+                      {t('publish.mobileSupport')}
                     </span>
                   </label>
 
@@ -686,7 +671,8 @@ export const PublishGame: React.FC = () => {
                       className="checkbox-input"
                     />
                     <span style={{ fontSize: '0.9rem' }}>
-                      <Tablet size={14} style={{ marginRight: '6px' }} /> Tablet support
+                      <Tablet size={14} style={{ marginRight: '6px' }} />
+                      {t('publish.tabletSupport')}
                     </span>
                   </label>
                 </div>
@@ -694,24 +680,24 @@ export const PublishGame: React.FC = () => {
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Keyboard/Steering Controls</label>
+                  <label className="form-label">{t('publish.keyboardControls')}</label>
                   <input
                     type="text"
                     maxLength={120}
                     value={controlKeys}
                     onChange={(e) => setControlKeys(e.target.value)}
-                    placeholder="e.g. W/A/S/D to move"
+                    placeholder={t('publish.keyboardPlaceholder')}
                     className="form-input"
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Action / Clicks Controls</label>
+                  <label className="form-label">{t('publish.actionControls')}</label>
                   <input
                     type="text"
                     maxLength={120}
                     value={controlAction}
                     onChange={(e) => setControlAction(e.target.value)}
-                    placeholder="e.g. Left click to fire"
+                    placeholder={t('publish.actionPlaceholder')}
                     className="form-input"
                   />
                 </div>
@@ -734,10 +720,7 @@ export const PublishGame: React.FC = () => {
                   onChange={(e) => setMultiplayer(e.target.checked)}
                   className="checkbox-input"
                 />
-                <span style={{ fontSize: '0.9rem' }}>
-                  This game includes multiplayer features implemented by the game. VibePlay does not
-                  provide a multiplayer server.
-                </span>
+                <span style={{ fontSize: '0.9rem' }}>{t('publish.multiplayerHint')}</span>
               </label>
             </div>
           </div>
@@ -747,9 +730,7 @@ export const PublishGame: React.FC = () => {
         {step === 5 && (
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepAi')}</h2>
-            <p style={stepDescStyle}>
-              Honest disclosure helps players discover and understand your development tools.
-            </p>
+            <p style={stepDescStyle}>{t('publish.aiHint')}</p>
 
             <div className="form-group">
               <label className="form-label">{t('publish.aiQuestion')}</label>
@@ -777,7 +758,7 @@ export const PublishGame: React.FC = () => {
                         marginTop: '2px',
                       }}
                     >
-                      Built entirely by human programming.
+                      {t('publish.noAiHint')}
                     </div>
                   </div>
                 </label>
@@ -807,7 +788,7 @@ export const PublishGame: React.FC = () => {
                         marginTop: '2px',
                       }}
                     >
-                      Generative AI helped draft scripts, debug, or design templates.
+                      {t('publish.aiAssistedHint')}
                     </div>
                   </div>
                 </label>
@@ -837,7 +818,7 @@ export const PublishGame: React.FC = () => {
                         marginTop: '2px',
                       }}
                     >
-                      Core coding logic and textures were generated from prompts.
+                      {t('publish.aiGeneratedHint')}
                     </div>
                   </div>
                 </label>
@@ -877,9 +858,7 @@ export const PublishGame: React.FC = () => {
         {step === 6 && (
           <div className="animate-fade">
             <h2 style={stepTitleStyle}>{t('publish.stepReview')}</h2>
-            <p style={stepDescStyle}>
-              Review all details before committing build to the moderation queue.
-            </p>
+            <p style={stepDescStyle}>{t('publish.reviewHint')}</p>
 
             <div style={reviewGridStyle} className="bg-glass">
               <div style={reviewCoverWrapperStyle}>
@@ -889,7 +868,7 @@ export const PublishGame: React.FC = () => {
               <div style={reviewDetailsStyle}>
                 <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{title}</h3>
                 <span className="badge badge-success" style={{ alignSelf: 'flex-start' }}>
-                  {category}
+                  {t(`category.${category}`)}
                 </span>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '8px' }}>
                   {shortDesc}
@@ -905,21 +884,27 @@ export const PublishGame: React.FC = () => {
 
                 <div style={reviewMetaRowStyle}>
                   <div>
-                    <strong>Build Name:</strong> {zipFileName} ({zipFileSize})
+                    <strong>{t('publish.reviewBuildName')}</strong> {zipFileName} ({zipFileSize})
                   </div>
                   <div>
-                    <strong>AI Status:</strong>{' '}
+                    <strong>{t('publish.reviewAiStatus')}</strong>{' '}
                     {aiDisclosure === 'no'
-                      ? 'Human-made'
-                      : `AI ${aiDisclosure} (${aiTools.join(', ')})`}
+                      ? t('publish.humanMade')
+                      : t(`publish.aiStatus.${aiDisclosure}`, { tools: aiTools.join(', ') })}
                   </div>
                   <div>
-                    <strong>Compatibilities:</strong> {deviceDesktop ? 'Desktop ' : ''}
-                    {deviceMobile ? 'Mobile ' : ''}
-                    {deviceTablet ? 'Tablet ' : ''}
+                    <strong>{t('publish.reviewCompatibilities')}</strong>{' '}
+                    {[
+                      deviceDesktop && t('device.desktop'),
+                      deviceMobile && t('device.mobile'),
+                      deviceTablet && t('device.tablet'),
+                    ]
+                      .filter(Boolean)
+                      .join(', ')}
                   </div>
                   <div>
-                    <strong>Multiplayer:</strong> {multiplayer ? 'Yes' : 'No'}
+                    <strong>{t('publish.reviewMultiplayer')}</strong>{' '}
+                    {t(multiplayer ? 'admin.yes' : 'admin.no')}
                   </div>
                 </div>
               </div>
@@ -928,9 +913,7 @@ export const PublishGame: React.FC = () => {
             <div style={noticeBoxStyle}>
               <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                {IS_DEMO
-                  ? 'This demo stores metadata in your browser and does not perform moderation.'
-                  : 'Submission creates an administrator-visible validation report and locks executable publication until a moderator approves the build.'}
+                {IS_DEMO ? t('publish.reviewDemoNotice') : t('publish.reviewNotice')}
               </span>
             </div>
           </div>
@@ -940,7 +923,7 @@ export const PublishGame: React.FC = () => {
         <div style={wizardFooterStyle}>
           {step > 1 && (
             <button onClick={handleBack} className="btn btn-secondary">
-              Back
+              {t('common.back')}
             </button>
           )}
 
@@ -950,11 +933,11 @@ export const PublishGame: React.FC = () => {
               className="btn btn-secondary btn-sm"
               style={{ border: 'none' }}
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             {step < 6 ? (
               <button onClick={handleNext} className="btn btn-primary">
-                Next Step
+                {t('publish.nextStep')}
               </button>
             ) : (
               <button
@@ -964,7 +947,7 @@ export const PublishGame: React.FC = () => {
                 style={{ gap: '6px' }}
               >
                 <Sparkles size={16} />
-                <span>{loading ? 'Submitting build...' : 'Submit for Review'}</span>
+                <span>{t(loading ? 'publish.submitting' : 'publish.submitReview')}</span>
               </button>
             )}
           </div>

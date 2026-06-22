@@ -82,7 +82,7 @@ export default defineConfig([
   },
   // Plain JS scripts
   {
-    files: ['infra/**/*.mjs', 'fixtures/**/*.mjs'],
+    files: ['infra/**/*.mjs', 'fixtures/**/*.mjs', 'apps/web/scripts/**/*.mjs'],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,

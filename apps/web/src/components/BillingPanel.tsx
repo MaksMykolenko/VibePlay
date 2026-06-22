@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { errorMessage } from '../lib/api/errors';
 import { useI18n } from '../i18n/useI18n';
 import { toast } from './toastEvents';
+import { formatDate } from '../lib/formatTime';
 
 const BENEFIT_KEYS = [
   'billing.benefit.games',
@@ -38,7 +39,7 @@ function statusLabel(status: BillingStatus, t: ReturnType<typeof useI18n>['t']):
 }
 
 export function BillingPanel({ canUpgrade }: { canUpgrade: boolean }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [searchParams] = useSearchParams();
   const [billing, setBilling] = useState<BillingMeDto | null>(null);
   const [busy, setBusy] = useState<'checkout' | 'portal' | null>(null);
@@ -109,7 +110,7 @@ export function BillingPanel({ canUpgrade }: { canUpgrade: boolean }) {
       {billing.cancelAtPeriodEnd && billing.currentPeriodEnd && (
         <p className="billing-notice">
           {t('billing.canceling', {
-            date: new Date(billing.currentPeriodEnd).toLocaleDateString(),
+            date: formatDate(billing.currentPeriodEnd, locale),
           })}
         </p>
       )}

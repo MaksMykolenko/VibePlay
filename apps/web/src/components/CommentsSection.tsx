@@ -5,6 +5,8 @@ import type { Comment } from '../types';
 import { ThumbsUp, Trash2, AlertOctagon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from './toastEvents';
+import { useI18n } from '../i18n/useI18n';
+import { formatRelativeTime } from '../lib/formatTime';
 
 interface CommentsSectionProps {
   gameId: string;
@@ -13,6 +15,7 @@ interface CommentsSectionProps {
 export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
   const { currentUser } = useAuth();
   const { comments, addComment, likeComment, deleteComment, submitReport } = useGames();
+  const { t, locale } = useI18n();
   const [newCommentText, setNewCommentText] = useState('');
 
   // Filtering comments for this game only
@@ -23,15 +26,15 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
   const handleCommentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
-      toast.danger('You must be logged in to comment.');
+      toast.danger(t('comments.loginRequired'));
       return;
     }
     if (!newCommentText.trim()) {
-      toast.warning('Please enter a comment.');
+      toast.warning(t('comments.enterComment'));
       return;
     }
     if (newCommentText.length > 300) {
-      toast.warning('Comment is too long (max 300 characters).');
+      toast.warning(t('comments.tooLong'));
       return;
     }
 
@@ -44,30 +47,30 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
     );
 
     setNewCommentText('');
-    toast.success('Comment posted successfully!');
+    toast.success(t('comments.posted'));
   };
 
   const handleLikeClick = (commentId: string) => {
     if (!currentUser) {
-      toast.info('Please log in to like comments.');
+      toast.info(t('comments.loginToLike'));
       return;
     }
     likeComment(commentId, currentUser.id);
   };
 
   const handleDeleteClick = (commentId: string) => {
-    if (window.confirm('Are you sure you want to delete this comment?')) {
+    if (window.confirm(t('comments.confirmDelete'))) {
       deleteComment(commentId);
-      toast.success('Comment deleted.');
+      toast.success(t('comments.deleted'));
     }
   };
 
   const handleReportComment = (comment: Comment) => {
     if (!currentUser) {
-      toast.info('Please log in to report comments.');
+      toast.info(t('comments.loginToReport'));
       return;
     }
-    const reason = window.prompt('Specify the reason for reporting this comment:');
+    const reason = window.prompt(t('comments.reportPrompt'));
     if (reason && reason.trim()) {
       submitReport(
         currentUser.id,
@@ -77,36 +80,23 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
         `Comment by @${comment.username}`,
         reason.trim(),
       );
-      toast.success('Thank you. The comment has been flagged for admin review.');
+      toast.success(t('comments.reported'));
     }
   };
 
-  const timeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
+  const timeAgo = (dateString: string) => formatRelativeTime(dateString, t, locale);
 
   return (
     <div style={containerStyle}>
-      <h3 style={sectionTitleStyle}>Comments ({gameComments.length})</h3>
+      <h3 style={sectionTitleStyle}>{t('comments.title', { count: gameComments.length })}</h3>
 
       {/* Post comment block */}
       {currentUser ? (
         <form onSubmit={handleCommentSubmit} style={formStyle}>
           <div style={inputContainerStyle}>
-            <img src={currentUser.avatar} alt="You" style={avatarStyle} />
+            <img src={currentUser.avatar} alt={t('comments.you')} style={avatarStyle} />
             <textarea
-              placeholder="Leave a helpful comment about the gameplay, controls or bugs..."
+              placeholder={t('comments.placeholder')}
               value={newCommentText}
               onChange={(e) => setNewCommentText(e.target.value)}
               maxLength={300}
@@ -116,15 +106,15 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
           <div style={formFooterStyle}>
             <span style={charCountStyle}>{newCommentText.length} / 300</span>
             <button type="submit" className="btn btn-primary btn-sm">
-              Post Comment
+              {t('comments.post')}
             </button>
           </div>
         </form>
       ) : (
         <div style={loginCTAStyle}>
-          <p>Want to join the conversation?</p>
+          <p>{t('comments.joinPrompt')}</p>
           <Link to="/login" className="btn btn-secondary btn-sm" style={{ marginTop: '0.5rem' }}>
-            Log in to comment
+            {t('comments.loginToComment')}
           </Link>
         </div>
       )}
@@ -132,9 +122,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
       {/* List comments */}
       <div style={listStyle}>
         {gameComments.length === 0 ? (
-          <div style={emptyCommentsStyle}>
-            No comments yet. Be the first to share your thoughts!
-          </div>
+          <div style={emptyCommentsStyle}>{t('comments.emptyState')}</div>
         ) : (
           gameComments.map((c) => (
             <div key={c.id} style={commentCardStyle} className="animate-fade">
@@ -153,7 +141,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
                       <button
                         onClick={() => handleDeleteClick(c.id)}
                         style={actionIconBtnDangerStyle}
-                        title="Delete comment"
+                        title={t('comments.deleteTitle')}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -161,7 +149,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ gameId }) => {
                       <button
                         onClick={() => handleReportComment(c)}
                         style={actionIconBtnStyle}
-                        title="Report comment"
+                        title={t('comments.reportTitle')}
                       >
                         <AlertOctagon size={14} />
                       </button>

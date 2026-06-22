@@ -8,7 +8,7 @@ import { useI18n } from '../../i18n/useI18n';
 import { CheckCircle, XCircle } from 'lucide-react';
 
 export const AdminReports: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { reports, resolveReport, dismissReport } = useGames();
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
 
@@ -21,12 +21,12 @@ export const AdminReports: React.FC = () => {
 
   const handleResolve = (id: string) => {
     resolveReport(id);
-    toast.success('Report marked as Resolved.');
+    toast.success(t('admin.reports.markedResolved'));
   };
 
   const handleDismiss = (id: string) => {
     dismissReport(id);
-    toast.info('Report dismissed.');
+    toast.info(t('admin.reports.dismissed'));
   };
 
   const handleFeedbackResolve = async (id: string) => {
@@ -39,7 +39,7 @@ export const AdminReports: React.FC = () => {
             : item,
         ),
       );
-      toast.success('Feedback marked as resolved.');
+      toast.success(t('admin.reports.feedbackResolved'));
     } catch (error) {
       toast.danger(errorMessage(error));
     }
@@ -48,13 +48,13 @@ export const AdminReports: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'resolved':
-        return <span className="badge badge-success">Resolved</span>;
+        return <span className="badge badge-success">{t('admin.reports.statusResolved')}</span>;
       case 'dismissed':
-        return <span className="badge badge-secondary">Dismissed</span>;
+        return <span className="badge badge-secondary">{t('admin.reports.statusDismissed')}</span>;
       case 'reviewing':
-        return <span className="badge badge-warning">Reviewing</span>;
+        return <span className="badge badge-warning">{t('admin.reports.statusReviewing')}</span>;
       default:
-        return <span className="badge badge-danger">Open</span>;
+        return <span className="badge badge-danger">{t('admin.reports.statusOpen')}</span>;
     }
   };
 
@@ -64,7 +64,7 @@ export const AdminReports: React.FC = () => {
       <div>
         <h1>{t('admin.systemReports')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-          Review complaints lodged by players regarding games or comments.
+          {t('admin.reports.subtitle')}
         </p>
       </div>
 
@@ -72,32 +72,39 @@ export const AdminReports: React.FC = () => {
 
       <section style={listAreaStyle}>
         <div>
-          <h2 style={{ fontSize: '1.2rem' }}>Beta Feedback</h2>
+          <h2 style={{ fontSize: '1.2rem' }}>{t('admin.reports.feedbackTitle')}</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
-            Product feedback and bug reports submitted by authenticated beta users.
+            {t('admin.reports.feedbackSubtitle')}
           </p>
         </div>
         {feedback.length === 0 ? (
           <div style={emptyContainerStyle}>
             <CheckCircle size={40} color="var(--success)" style={{ opacity: 0.3 }} />
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              No beta feedback yet.
+              {t('admin.reports.noFeedback')}
             </span>
           </div>
         ) : (
           feedback.map((item) => (
             <article key={item.id} style={reportCardStyle} className="bg-glass">
               <div style={cardHeaderStyle}>
-                <strong>{item.category === 'BUG' ? 'Bug report' : 'Feedback'}</strong>
+                <strong>
+                  {item.category === 'BUG'
+                    ? t('admin.reports.bugReport')
+                    : t('admin.reports.feedback')}
+                </strong>
                 <span
                   className={`badge ${item.status === 'OPEN' ? 'badge-warning' : 'badge-success'}`}
                 >
-                  {item.status === 'OPEN' ? 'Open' : 'Resolved'}
+                  {item.status === 'OPEN'
+                    ? t('admin.reports.statusOpen')
+                    : t('admin.reports.statusResolved')}
                 </span>
               </div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                {item.user ? `@${item.user.username}` : 'Deleted user'} ·{' '}
-                {new Date(item.createdAt).toLocaleString()} · {item.page || 'unknown page'}
+                {item.user ? `@${item.user.username}` : t('admin.reports.deletedUser')} ·{' '}
+                {new Date(item.createdAt).toLocaleString(locale)} ·{' '}
+                {item.page || t('admin.reports.unknownPage')}
               </div>
               <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{item.message}</p>
               {item.status === 'OPEN' && (
@@ -108,7 +115,7 @@ export const AdminReports: React.FC = () => {
                     onClick={() => void handleFeedbackResolve(item.id)}
                   >
                     <CheckCircle size={12} />
-                    Resolve feedback
+                    {t('admin.reports.resolveFeedback')}
                   </button>
                 </div>
               )}
@@ -130,7 +137,7 @@ export const AdminReports: React.FC = () => {
             />
             <h3>{t('admin.noReports')}</h3>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              VibePlay platform is running smoothly.
+              {t('admin.reports.healthy')}
             </span>
           </div>
         ) : (
@@ -146,7 +153,9 @@ export const AdminReports: React.FC = () => {
             >
               <div style={cardHeaderStyle}>
                 <div>
-                  <strong style={{ fontSize: '1rem' }}>Report #{r.id.split('_')[1] || r.id}</strong>
+                  <strong style={{ fontSize: '1rem' }}>
+                    {t('admin.reports.reportNo', { id: r.id.split('_')[1] || r.id })}
+                  </strong>
                   <span
                     style={{
                       fontSize: '0.75rem',
@@ -154,7 +163,9 @@ export const AdminReports: React.FC = () => {
                       marginLeft: '12px',
                     }}
                   >
-                    Filed on {new Date(r.timestamp).toLocaleString()}
+                    {t('admin.reports.filedOn', {
+                      date: new Date(r.timestamp).toLocaleString(locale),
+                    })}
                   </span>
                 </div>
                 {getStatusBadge(r.status)}
@@ -162,11 +173,11 @@ export const AdminReports: React.FC = () => {
 
               <div style={metaGridStyle}>
                 <div>
-                  <strong>Reporter:</strong>
+                  <strong>{t('admin.reports.reporter')}</strong>
                   <span style={valStyle}>@{r.reporterName}</span>
                 </div>
                 <div>
-                  <strong>Target:</strong>
+                  <strong>{t('admin.reports.target')}</strong>
                   <span style={valStyle}>
                     {r.targetType.toUpperCase()} ({r.targetName})
                   </span>
@@ -174,7 +185,7 @@ export const AdminReports: React.FC = () => {
               </div>
 
               <div style={reasonBoxStyle}>
-                <strong>Reason:</strong>
+                <strong>{t('admin.reports.reason')}</strong>
                 <p
                   style={{
                     fontSize: '0.9rem',
@@ -195,7 +206,7 @@ export const AdminReports: React.FC = () => {
                     style={{ gap: '4px' }}
                   >
                     <CheckCircle size={12} />
-                    Resolve Report
+                    {t('admin.reports.resolve')}
                   </button>
                   <button
                     onClick={() => handleDismiss(r.id)}
@@ -203,7 +214,7 @@ export const AdminReports: React.FC = () => {
                     style={{ gap: '4px' }}
                   >
                     <XCircle size={12} />
-                    Dismiss Report
+                    {t('admin.reports.dismiss')}
                   </button>
                 </div>
               )}

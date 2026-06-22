@@ -20,7 +20,7 @@ export const AdminActivityLog: React.FC = () => {
       <div>
         <h1>{t('admin.activityLog')}</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '4px' }}>
-          Immutable audit trails detailing administrative mod actions.
+          {t('admin.activityLog.subtitle')}
         </p>
       </div>
 
@@ -30,7 +30,7 @@ export const AdminActivityLog: React.FC = () => {
       <div style={consoleWrapperStyle} className="bg-glass">
         <div style={consoleHeaderStyle}>
           <Terminal size={14} color="var(--text-secondary)" />
-          <span>VibePlay Platform System Console Logs</span>
+          <span>{t('admin.activityLog.consoleTitle')}</span>
         </div>
 
         <div style={logsContainerStyle}>
@@ -41,15 +41,25 @@ export const AdminActivityLog: React.FC = () => {
               <div key={log.id} style={logItemStyle}>
                 <div style={logMetaRowStyle}>
                   <span style={timestampStyle}>[{new Date(log.timestamp).toISOString()}]</span>
-                  <span style={operatorStyle}>operator: @{log.adminName}</span>
+                  <span style={operatorStyle}>
+                    {t('admin.log.operator', { name: log.adminName })}
+                  </span>
                   <span style={{ ...actionStyle, color: getActionColor(log.action) }}>
-                    action: {log.action.toUpperCase()}
+                    {t('admin.log.action', { action: log.action.toUpperCase() })}
                   </span>
                 </div>
 
                 <div style={logBodyRowStyle}>
-                  &gt; Target: {log.targetType.toUpperCase()} ({log.targetName} : ID {log.targetId})
-                  {log.details && <div style={detailsStyle}>&gt; Diagnostics: {log.details}</div>}
+                  {t('admin.log.target', {
+                    type: log.targetType.toUpperCase(),
+                    name: log.targetName,
+                    id: log.targetId,
+                  })}
+                  {log.details && (
+                    <div style={detailsStyle}>
+                      {t('admin.log.diagnostics', { details: log.details })}
+                    </div>
+                  )}
                 </div>
               </div>
             ))

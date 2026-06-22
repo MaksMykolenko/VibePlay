@@ -43,10 +43,10 @@ export const LibraryPage: React.FC = () => {
         <ShieldAlert size={48} color="var(--danger)" />
         <h2 style={{ marginTop: '1rem' }}>{t('library.login')}</h2>
         <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 1.5rem' }}>
-          Your game library is tied to your account.
+          {t('library.accountTied')}
         </p>
         <button onClick={() => navigate('/login')} className="btn btn-primary">
-          Log In
+          {t('common.logIn')}
         </button>
       </div>
     );
@@ -86,7 +86,7 @@ export const LibraryPage: React.FC = () => {
           }}
         >
           <Star size={16} />
-          <span>Favorites ({favoriteGames.length})</span>
+          <span>{t('library.favorites', { count: favoriteGames.length })}</span>
         </button>
 
         <button
@@ -98,7 +98,7 @@ export const LibraryPage: React.FC = () => {
           }}
         >
           <Clock size={16} />
-          <span>Recently Played ({recentlyPlayed.length})</span>
+          <span>{t('library.recently', { count: recentlyPlayed.length })}</span>
         </button>
 
         <button
@@ -110,7 +110,7 @@ export const LibraryPage: React.FC = () => {
           }}
         >
           <ThumbsUp size={16} />
-          <span>Liked Games ({likedGames.length})</span>
+          <span>{t('library.liked', { count: likedGames.length })}</span>
         </button>
       </div>
 
@@ -128,12 +128,12 @@ export const LibraryPage: React.FC = () => {
                 marginBottom: '1.5rem',
               }}
             >
-              {activeTab === 'favorites' && "You haven't added any games to your favorites yet."}
-              {activeTab === 'recently' && "You haven't played any games on VibePlay yet."}
-              {activeTab === 'liked' && "You haven't liked any games on VibePlay yet."}
+              {activeTab === 'favorites' && t('library.emptyFavorites')}
+              {activeTab === 'recently' && t('library.emptyRecently')}
+              {activeTab === 'liked' && t('library.emptyLiked')}
             </p>
             <Link to="/games" className="btn btn-primary btn-sm">
-              Discover Games
+              {t('footer.discoverGames')}
             </Link>
           </div>
         ) : (

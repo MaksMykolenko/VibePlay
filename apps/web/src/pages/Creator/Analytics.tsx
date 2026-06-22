@@ -5,9 +5,10 @@ import { BarChart3, Clock, LockKeyhole, Users } from 'lucide-react';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/api/errors';
 import { useI18n } from '../../i18n/useI18n';
+import { formatDate, formatNumber } from '../../lib/formatTime';
 
 export const CreatorAnalytics: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [analytics, setAnalytics] = useState<CreatorAnalyticsDto | null>(null);
   const [error, setError] = useState('');
 
@@ -27,26 +28,26 @@ export const CreatorAnalytics: React.FC = () => {
   }, []);
 
   if (error) return <div style={messageStyle}>{error}</div>;
-  if (!analytics) return <div style={messageStyle}>Loading analytics…</div>;
+  if (!analytics) return <div style={messageStyle}>{t('analytics.loading')}</div>;
 
   const maxDaily = Math.max(1, ...(analytics.details?.dailyPlays.map((day) => day.plays) ?? [1]));
   return (
     <div style={containerStyle} className="animate-fade">
       <div>
-        <h1>Creator Analytics</h1>
-        <p style={descriptionStyle}>Verified platform play sessions and catalog performance.</p>
+        <h1>{t('analytics.title')}</h1>
+        <p style={descriptionStyle}>{t('analytics.subtitle')}</p>
       </div>
 
       <div style={summaryGridStyle}>
         {[
-          ['Games', analytics.totals.games],
-          ['Published', analytics.totals.publishedGames],
-          ['Plays', analytics.totals.plays],
-          ['Likes', analytics.totals.likes],
+          [t('analytics.games'), analytics.totals.games],
+          [t('analytics.published'), analytics.totals.publishedGames],
+          [t('analytics.plays'), analytics.totals.plays],
+          [t('analytics.likes'), analytics.totals.likes],
         ].map(([label, value]) => (
           <div key={label} style={summaryCardStyle} className="bg-glass">
             <span>{label}</span>
-            <strong>{Number(value).toLocaleString()}</strong>
+            <strong>{formatNumber(Number(value), locale)}</strong>
           </div>
         ))}
       </div>
@@ -55,12 +56,8 @@ export const CreatorAnalytics: React.FC = () => {
         <div style={lockedStyle} className="bg-glass">
           <LockKeyhole size={30} color="var(--secondary)" />
           <div>
-            <h2>Detailed analytics are included with Creator Plus</h2>
-            <p style={descriptionStyle}>
-              Unlock 30-day play trends, session duration, unique signed-in players, and per-game
-              performance. VibePlay does not invent country, device, or referrer data that it does
-              not collect.
-            </p>
+            <h2>{t('analytics.creatorPlusTitle')}</h2>
+            <p style={descriptionStyle}>{t('analytics.creatorPlusBody')}</p>
           </div>
           <Link to="/settings/billing" className="btn btn-primary">
             {t('billing.upgrade')}
@@ -72,15 +69,19 @@ export const CreatorAnalytics: React.FC = () => {
             <div style={metricCardStyle} className="bg-glass">
               <Clock size={25} color="var(--warning)" />
               <div>
-                <strong>{Math.round(analytics.details.averageSessionSeconds / 60)}m</strong>
-                <span>Average completed session</span>
+                <strong>
+                  {t('analytics.minutesShort', {
+                    count: Math.round(analytics.details.averageSessionSeconds / 60),
+                  })}
+                </strong>
+                <span>{t('analytics.averageSession')}</span>
               </div>
             </div>
             <div style={metricCardStyle} className="bg-glass">
               <Users size={25} color="var(--success)" />
               <div>
-                <strong>{analytics.details.uniquePlayers}</strong>
-                <span>Unique signed-in players (30 days)</span>
+                <strong>{formatNumber(analytics.details.uniquePlayers, locale)}</strong>
+                <span>{t('analytics.uniquePlayers')}</span>
               </div>
             </div>
           </div>
@@ -88,11 +89,18 @@ export const CreatorAnalytics: React.FC = () => {
           <section style={chartCardStyle} className="bg-glass">
             <h2>
               <BarChart3 size={20} />
-              30-day play trend
+              {t('analytics.playTrend')}
             </h2>
-            <div style={chartStyle} aria-label="Daily plays over the last 30 days">
+            <div style={chartStyle} aria-label={t('analytics.chartLabel')}>
               {analytics.details.dailyPlays.map((day) => (
-                <div key={day.date} style={barColumnStyle} title={`${day.date}: ${day.plays}`}>
+                <div
+                  key={day.date}
+                  style={barColumnStyle}
+                  title={t('analytics.dailyPlays', {
+                    date: formatDate(day.date, locale),
+                    count: formatNumber(day.plays, locale),
+                  })}
+                >
                   <div
                     style={{
                       ...barStyle,
@@ -105,13 +113,19 @@ export const CreatorAnalytics: React.FC = () => {
           </section>
 
           <section style={chartCardStyle} className="bg-glass">
-            <h2>Per-game sessions (30 days)</h2>
+            <h2>{t('analytics.perGame')}</h2>
             <div style={gameListStyle}>
               {analytics.details.games.map((game) => (
                 <div key={game.gameId} style={gameRowStyle}>
                   <strong>{game.title}</strong>
-                  <span>{game.plays} plays</span>
-                  <span>{Math.round(game.averageSessionSeconds / 60)}m avg.</span>
+                  <span>
+                    {t('analytics.playCount', { count: formatNumber(game.plays, locale) })}
+                  </span>
+                  <span>
+                    {t('analytics.averageMinutes', {
+                      count: Math.round(game.averageSessionSeconds / 60),
+                    })}
+                  </span>
                 </div>
               ))}
             </div>

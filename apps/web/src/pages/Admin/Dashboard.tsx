@@ -6,9 +6,10 @@ import { Users, AlertTriangle, Play, HelpCircle } from 'lucide-react';
 import { api } from '../../lib/api';
 import { toast } from '../../components/toastEvents';
 import { useI18n } from '../../i18n/useI18n';
+import { formatNumber } from '../../lib/formatTime';
 
 export const AdminDashboard: React.FC = () => {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { games } = useGames();
   const [stats, setStats] = useState<Record<string, number>>({});
   const [recentUsers, setRecentUsers] = useState<CurrentUserDto[]>([]);
@@ -22,12 +23,12 @@ export const AdminDashboard: React.FC = () => {
         setRecentUsers(users.items);
       })
       .catch((error) => {
-        if (active) toast.danger(error instanceof Error ? error.message : 'Failed to load stats');
+        if (active) toast.danger(error instanceof Error ? error.message : t('admin.failedStats'));
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   // Platform metrics
   const totalUsers = stats.users ?? 0;
@@ -57,8 +58,10 @@ export const AdminDashboard: React.FC = () => {
             <span style={statTitleStyle}>{t('admin.totalRegistrants')}</span>
             <Users size={18} color="var(--secondary)" />
           </div>
-          <div style={statValueStyle}>{totalUsers}</div>
-          <div style={statSubStyle}>{t('admin.verifiedCreators', { count: totalCreators })}</div>
+          <div style={statValueStyle}>{formatNumber(totalUsers, locale)}</div>
+          <div style={statSubStyle}>
+            {t('admin.verifiedCreators', { count: formatNumber(totalCreators, locale) })}
+          </div>
         </div>
 
         <div style={statBoxStyle} className="bg-glass">
@@ -66,9 +69,9 @@ export const AdminDashboard: React.FC = () => {
             <span style={statTitleStyle}>{t('admin.publishedGames')}</span>
             <Play size={18} color="var(--success)" />
           </div>
-          <div style={statValueStyle}>{publishedGames}</div>
+          <div style={statValueStyle}>{formatNumber(publishedGames, locale)}</div>
           <div style={statSubStyle}>
-            {t('admin.totalPlaysText', { count: totalPlays.toLocaleString() })}
+            {t('admin.totalPlaysText', { count: formatNumber(totalPlays, locale) })}
           </div>
         </div>
 
@@ -90,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
               color: pendingReviews > 0 ? 'var(--warning)' : 'var(--text-primary)',
             }}
           >
-            {pendingReviews}
+            {formatNumber(pendingReviews, locale)}
           </div>
           <div style={statSubStyle}>{t('admin.moderationQueueItems')}</div>
         </div>
@@ -113,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
               color: openReports > 0 ? 'var(--danger)' : 'var(--text-primary)',
             }}
           >
-            {openReports}
+            {formatNumber(openReports, locale)}
           </div>
           <div style={statSubStyle}>{t('admin.reportsNeedingResolution')}</div>
         </div>
@@ -142,7 +145,7 @@ export const AdminDashboard: React.FC = () => {
                   <div style={itemMetaStyle}>
                     <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{g.title}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {t('common.by', { creator: g.creatorName })} • {g.category}
+                      {t('common.by', { creator: g.creatorName })} • {t(`category.${g.category}`)}
                     </div>
                   </div>
                   <Link
@@ -181,7 +184,7 @@ export const AdminDashboard: React.FC = () => {
                   className={`badge ${user.role === 'OWNER' ? 'badge-danger' : user.role === 'ADMIN' ? 'badge-danger' : user.role === 'CREATOR' ? 'badge-success' : 'badge-primary'}`}
                   style={{ fontSize: '0.65rem' }}
                 >
-                  {user.role.toLowerCase()}
+                  {t(`role.${user.role.toLowerCase()}`)}
                 </span>
               </div>
             ))}

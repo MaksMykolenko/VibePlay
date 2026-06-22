@@ -12,6 +12,7 @@ import { useI18n } from '../i18n/useI18n';
 import { trackEvent } from '../lib/analytics';
 import { canShowCta, suppressCta } from '../lib/cloudSaveCta';
 import { withReturnTo } from '../lib/returnTo';
+import { formatDate, formatNumber } from '../lib/formatTime';
 import {
   Play,
   ThumbsUp,
@@ -33,7 +34,7 @@ export const GameDetailPage: React.FC = () => {
   const { games, isLoading, library, toggleLikeGame, toggleFavoriteGame, submitReport } =
     useGames();
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   const [activeTab, setActiveTab] = useState<'info' | 'screenshots' | 'changelog'>('info');
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
@@ -74,11 +75,9 @@ export const GameDetailPage: React.FC = () => {
       <div style={notFoundContainerStyle}>
         <ShieldAlertStyle />
         <h2>{t('game.notFound')}</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          The game you are looking for does not exist or has been removed.
-        </p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('game.notFoundBody')}</p>
         <Link to="/games" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-          Back to Catalog
+          {t('game.backToCatalog')}
         </Link>
       </div>
     );
@@ -93,11 +92,9 @@ export const GameDetailPage: React.FC = () => {
       <div style={notFoundContainerStyle}>
         <ShieldAlertStyle />
         <h2>{t('game.accessDenied')}</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>
-          This game is currently undergoing moderation and is unavailable.
-        </p>
+        <p style={{ color: 'var(--text-secondary)' }}>{t('game.moderationUnavailable')}</p>
         <Link to="/" className="btn btn-primary" style={{ marginTop: '1.5rem' }}>
-          Back to Home
+          {t('game.backHome')}
         </Link>
       </div>
     );
@@ -108,31 +105,31 @@ export const GameDetailPage: React.FC = () => {
 
   const handleLike = () => {
     if (!currentUser) {
-      toast.info('Please log in to like games.');
+      toast.info(t('game.loginToLike'));
       navigate('/login');
       return;
     }
     toggleLikeGame(game.id, currentUser.id);
-    toast.success(hasLiked ? 'Removed like.' : 'Liked this game!');
+    toast.success(hasLiked ? t('game.likeRemoved') : t('game.liked'));
   };
 
   const handleFavorite = () => {
     if (!currentUser) {
-      toast.info('Please log in to add games to your library.');
+      toast.info(t('game.loginToFavorite'));
       navigate('/login');
       return;
     }
     toggleFavoriteGame(game.id, currentUser.id);
-    toast.success(hasFavorited ? 'Removed from library.' : 'Added to library favorites!');
+    toast.success(hasFavorited ? t('game.favoriteRemoved') : t('game.favorited'));
   };
 
   const handleReport = () => {
     if (!currentUser) {
-      toast.info('Please log in to submit complaints.');
+      toast.info(t('game.loginToReport'));
       navigate('/login');
       return;
     }
-    const reason = window.prompt('Provide a detailed reason for reporting this game:');
+    const reason = window.prompt(t('game.reportPrompt'));
     if (reason && reason.trim()) {
       submitReport(
         currentUser.id,
@@ -142,7 +139,7 @@ export const GameDetailPage: React.FC = () => {
         game.title,
         reason.trim(),
       );
-      toast.success('Complaint filed. Admins will investigate this build.');
+      toast.success(t('game.reported'));
     }
   };
 
@@ -195,7 +192,7 @@ export const GameDetailPage: React.FC = () => {
       : games.filter((g) => g.status === 'published' && g.id !== game.id).slice(0, 3);
 
   const formatPlays = (plays: number) => {
-    return plays.toLocaleString();
+    return formatNumber(plays, locale);
   };
 
   const likeRatio =
@@ -229,23 +226,19 @@ export const GameDetailPage: React.FC = () => {
             color={game.status === 'rejected' ? 'var(--danger)' : 'var(--warning)'}
           />
           <div>
-            <strong>Status: {game.status.toUpperCase()}</strong>
+            <strong>{t('game.statusLabel', { status: t(`status.${game.status}`) })}</strong>
             {game.status === 'pending' && (
-              <p style={{ fontSize: '0.85rem' }}>
-                This build is currently in the moderation queue. Only you and administrators can
-                preview it.
-              </p>
+              <p style={{ fontSize: '0.85rem' }}>{t('game.statusPendingHint')}</p>
             )}
             {game.status === 'rejected' && (
               <p style={{ fontSize: '0.85rem' }}>
-                Rejection Reason: <span style={{ color: '#ff8a9a' }}>"{game.rejectReason}"</span>.
-                Please edit details or re-upload a compliant archive.
+                {t('game.rejectionReason')}{' '}
+                <span style={{ color: '#ff8a9a' }}>"{game.rejectReason}"</span>.{' '}
+                {t('game.rejectionEditHint')}
               </p>
             )}
             {game.status === 'draft' && (
-              <p style={{ fontSize: '0.85rem' }}>
-                This game is a Draft. Submit for review in the Creator Hub to publish it.
-              </p>
+              <p style={{ fontSize: '0.85rem' }}>{t('game.draftHint')}</p>
             )}
           </div>
         </div>
@@ -270,15 +263,15 @@ export const GameDetailPage: React.FC = () => {
               <div style={badgeRowStyle}>
                 {game.isFeatured && (
                   <span className="badge badge-primary">
-                    <Sparkles size={10} style={{ marginRight: '3px' }} /> Featured
+                    <Sparkles size={10} style={{ marginRight: '3px' }} /> {t('card.badge.featured')}
                   </span>
                 )}
                 {game.aiDisclosure !== 'no' && (
                   <span className="badge badge-secondary">
-                    <Bot size={10} style={{ marginRight: '3px' }} /> AI-assisted
+                    <Bot size={10} style={{ marginRight: '3px' }} /> {t('games.aiAssisted')}
                   </span>
                 )}
-                <span className="badge badge-success">{game.category}</span>
+                <span className="badge badge-success">{t(`category.${game.category}`)}</span>
               </div>
 
               <h1 style={titleStyle}>{game.title}</h1>
@@ -286,7 +279,7 @@ export const GameDetailPage: React.FC = () => {
               <div style={creatorRowStyle}>
                 <img src={game.creatorAvatar} alt={game.creatorName} style={creatorAvatarStyle} />
                 <span style={{ fontSize: '0.95rem' }}>
-                  by{' '}
+                  {t('game.byPrefix')}{' '}
                   <Link
                     to={`/profile/${game.creatorUsername ?? game.creatorName}`}
                     style={creatorLinkStyle}
@@ -307,7 +300,7 @@ export const GameDetailPage: React.FC = () => {
               <div style={statDividerStyle}></div>
               <div style={statColStyle}>
                 <strong style={{ color: 'var(--success)' }}>{likeRatio}%</strong>
-                <span>Rating ({game.likes} likes)</span>
+                <span>{t('game.ratingLikes', { count: game.likes })}</span>
               </div>
               <div style={statDividerStyle}></div>
               <div style={statColStyle}>
@@ -339,7 +332,7 @@ export const GameDetailPage: React.FC = () => {
               }}
             >
               <ThumbsUp size={16} fill={hasLiked ? 'var(--accent)' : 'none'} />
-              <span>{hasLiked ? 'Liked' : 'Like'}</span>
+              <span>{t(hasLiked ? 'game.actionLiked' : 'game.actionLike')}</span>
             </button>
 
             <button
@@ -353,14 +346,14 @@ export const GameDetailPage: React.FC = () => {
               }}
             >
               <Heart size={16} fill={hasFavorited ? 'var(--primary)' : 'none'} />
-              <span>{hasFavorited ? 'In Library' : 'Add to Library'}</span>
+              <span>{t(hasFavorited ? 'game.actionInLibrary' : 'game.actionAddLibrary')}</span>
             </button>
 
             <button
               onClick={handleReport}
               className="btn btn-danger btn-sm"
               style={{ padding: '0.75rem' }}
-              title="Report Game"
+              title={t('game.reportGame')}
             >
               <AlertTriangle size={16} />
             </button>
@@ -411,7 +404,7 @@ export const GameDetailPage: React.FC = () => {
                 color: activeTab === 'info' ? 'var(--text-primary)' : 'var(--text-secondary)',
               }}
             >
-              Details
+              {t('game.tabDetails')}
             </button>
             <button
               onClick={() => setActiveTab('screenshots')}
@@ -422,7 +415,7 @@ export const GameDetailPage: React.FC = () => {
                   activeTab === 'screenshots' ? 'var(--text-primary)' : 'var(--text-secondary)',
               }}
             >
-              Media ({game.screenshots.length})
+              {t('game.tabMedia', { count: game.screenshots.length })}
             </button>
             <button
               onClick={() => setActiveTab('changelog')}
@@ -432,7 +425,7 @@ export const GameDetailPage: React.FC = () => {
                 color: activeTab === 'changelog' ? 'var(--text-primary)' : 'var(--text-secondary)',
               }}
             >
-              Changelog
+              {t('game.tabChangelog')}
             </button>
           </div>
 
@@ -487,7 +480,7 @@ export const GameDetailPage: React.FC = () => {
                       <h4
                         style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}
                       >
-                        AI-Assisted Build Disclosure
+                        {t('game.aiDisclosureTitle')}
                       </h4>
                       <p
                         style={{
@@ -498,10 +491,10 @@ export const GameDetailPage: React.FC = () => {
                         }}
                       >
                         {game.aiDisclosure === 'no'
-                          ? 'This game was built entirely by human hands. No generative AI code assistants or asset generation tools were used during production.'
+                          ? t('game.aiDisclosureNone')
                           : game.aiDisclosure === 'assisted'
-                            ? `This game development was assisted by AI tools. Code fragments, bug analysis, or asset prototyping were generated using ${game.aiTools.join(', ')}.`
-                            : `This game is mostly AI-generated. The core code structure, game assets, and shaders were generated with AI assistance from ${game.aiTools.join(', ')}.`}
+                            ? t('game.aiDisclosureAssisted', { tools: game.aiTools.join(', ') })
+                            : t('game.aiDisclosureGenerated', { tools: game.aiTools.join(', ') })}
                       </p>
                     </div>
                   </div>
@@ -515,7 +508,7 @@ export const GameDetailPage: React.FC = () => {
                 <div style={screenshotActiveWrapperStyle}>
                   <img
                     src={game.screenshots[selectedScreenshotIndex]}
-                    alt="Screenshot active"
+                    alt={t('game.screenshotAlt')}
                     style={screenshotActiveStyle}
                   />
                 </div>
@@ -535,7 +528,7 @@ export const GameDetailPage: React.FC = () => {
                               : 'var(--border-color)',
                         }}
                       >
-                        <img src={scr} alt="Thumb" style={screenshotThumbImgStyle} />
+                        <img src={scr} alt={t('game.thumbAlt')} style={screenshotThumbImgStyle} />
                       </button>
                     ))}
                   </div>
@@ -557,7 +550,7 @@ export const GameDetailPage: React.FC = () => {
                             v{log.version}
                           </strong>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {new Date(log.date).toLocaleDateString()}
+                            {formatDate(log.date, locale)}
                           </span>
                         </div>
                         <p style={timelineNotesStyle}>{log.notes}</p>
