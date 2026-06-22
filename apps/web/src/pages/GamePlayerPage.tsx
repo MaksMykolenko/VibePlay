@@ -13,6 +13,8 @@ import { GAME_ORIGIN } from '../lib/appMode';
 import { createCloudSaveAdapter } from '../lib/cloudSaveAdapter';
 import { CloudSaveCTA } from '../components/CloudSaveCTA';
 import { CloudSaveSyncPrompt } from '../components/CloudSaveSyncPrompt';
+import { GuestExitWarningModal } from '../components/GuestExitWarningModal';
+import { useGuestExitWarning } from '../hooks/useGuestExitWarning';
 import { trackEvent } from '../lib/analytics';
 import {
   canShowCta,
@@ -92,6 +94,17 @@ export const GamePlayerPage: React.FC = () => {
   const gameId = game?.id;
   const launchLoading = IS_DEMO ? loading : launch === null;
   const isGuest = !currentUser;
+
+  // Guest exit warning (real build only): once the iframe has launched, a guest
+  // could have local-only progress — warn before they navigate away/refresh.
+  const playActive = !IS_DEMO && launch !== null;
+  const guestExit = useGuestExitWarning({
+    active: isGuest && playActive,
+    gameId,
+    gameSlug: slug,
+    playPath: slug ? `/play/${slug}` : '/',
+    exitFallbackPath: game ? `/game/${game.slug}` : '/games',
+  });
 
   // --- cloud-save conversion CTA + guest-save sync (Phases 3-4) ------------
   const [ctaVisible, setCtaVisible] = useState(false);
@@ -568,11 +581,11 @@ export const GamePlayerPage: React.FC = () => {
   };
 
   const handleExit = () => {
-    if (game) {
-      navigate(`/game/${game.slug}`);
-    } else {
-      navigate('/games');
-    }
+    const target = game ? `/game/${game.slug}` : '/games';
+    // Route through the guest-exit warning when armed; it returns false (and we
+    // navigate directly) for logged-in users or before play is active.
+    if (guestExit.requestLeave(target, 'exit_button')) return;
+    navigate(target);
   };
 
   if (!game) return null;
@@ -718,6 +731,15 @@ export const GamePlayerPage: React.FC = () => {
           </span>
         </p>
       )}
+
+      {/* Guest-only "your progress may not be saved" warning on leave attempts. */}
+      <GuestExitWarningModal
+        open={guestExit.isOpen}
+        onKeepPlaying={guestExit.keepPlaying}
+        onLeaveAnyway={guestExit.leaveAnyway}
+        onCreateAccount={guestExit.createAccount}
+        onLogIn={guestExit.logIn}
+      />
     </div>
   );
 };

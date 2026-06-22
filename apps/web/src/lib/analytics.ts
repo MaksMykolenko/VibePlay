@@ -66,7 +66,12 @@ export type FunnelEvent =
   | 'cloud_save_sync_prompt_shown'
   | 'cloud_save_sync_accepted'
   | 'cloud_save_sync_skipped'
-  | 'creator_access_clicked';
+  | 'creator_access_clicked'
+  | 'guest_exit_warning_shown'
+  | 'guest_exit_warning_keep_playing'
+  | 'guest_exit_warning_leave_anyway'
+  | 'guest_exit_warning_signup_clicked'
+  | 'guest_exit_warning_login_clicked';
 
 export interface AnalyticsEventParams {
   game_id?: string;
