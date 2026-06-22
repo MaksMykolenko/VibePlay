@@ -19,6 +19,7 @@ import {
   suppressCta,
   markSignupIntent,
   consumeSignupIntent,
+  canOfferCloudSaveSync,
   CTA_PLAY_THRESHOLD_MS,
 } from '../lib/cloudSaveCta';
 import { withReturnTo } from '../lib/returnTo';
@@ -110,24 +111,50 @@ export const GamePlayerPage: React.FC = () => {
       setCtaVisible(true);
       if (!ctaShownRef.current) {
         ctaShownRef.current = true;
-        trackEvent('cloud_save_cta_shown', { trigger, game_id: gameId ?? '' });
+        const params = {
+          game_id: gameId ?? '',
+          game_slug: slug ?? '',
+          source: trigger,
+          cta_location: 'play_overlay',
+          logged_in: false,
+        } as const;
+        trackEvent('cloud_save_cta_shown', params);
+        trackEvent('signup_cta_shown', params);
       }
     },
-    [currentUser, gameId],
+    [currentUser, gameId, slug],
   );
 
   const handleCtaCreateAccount = useCallback(() => {
-    trackEvent('cloud_save_cta_create_account_click', { game_id: gameId ?? '' });
+    trackEvent('signup_cta_clicked', {
+      game_id: gameId ?? '',
+      game_slug: slug ?? '',
+      source: 'cloud_save',
+      cta_location: 'play_overlay',
+      logged_in: false,
+    });
     const returnTo = slug ? `/play/${slug}` : '/';
     if (gameId) markSignupIntent(gameId); // so we can offer to sync after signup
     navigate(withReturnTo('/register', returnTo));
   }, [gameId, slug, navigate]);
 
+  const handleCtaLogin = useCallback(() => {
+    trackEvent('login_cta_clicked', {
+      game_id: gameId ?? '',
+      game_slug: slug ?? '',
+      source: 'cloud_save',
+      cta_location: 'play_overlay',
+      logged_in: false,
+    });
+    const returnTo = slug ? `/play/${slug}` : '/';
+    if (gameId) markSignupIntent(gameId);
+    navigate(withReturnTo('/login', returnTo));
+  }, [gameId, slug, navigate]);
+
   const handleCtaContinueGuest = useCallback(() => {
-    trackEvent('cloud_save_cta_continue_guest_click', { game_id: gameId ?? '' });
     suppressCta();
     setCtaVisible(false);
-  }, [gameId]);
+  }, []);
 
   // Ask the game (over the SDK) for its local save, then decide sync vs conflict.
   const offerSyncIfNeeded = useCallback(async () => {
@@ -137,7 +164,7 @@ export const GamePlayerPage: React.FC = () => {
     if (!bridge) return;
     syncOfferedRef.current = true;
     const local = await bridge.requestLocalSave();
-    if (!local || local.data === null || local.data === undefined) {
+    if (!local || !canOfferCloudSaveSync(Boolean(currentUser), gameId, local.data)) {
       syncOfferedRef.current = false; // nothing provided; allow a later attempt
       return;
     }
@@ -149,8 +176,13 @@ export const GamePlayerPage: React.FC = () => {
       hasCloud = false;
     }
     setSyncPrompt({ hasCloud });
-    trackEvent('cloud_save_sync_prompt_shown', { game_id: gameId });
-  }, [currentUser, gameId]);
+    trackEvent('cloud_save_sync_prompt_shown', {
+      game_id: gameId,
+      game_slug: slug ?? '',
+      source: hasCloud ? 'save_conflict' : 'local_progress',
+      logged_in: true,
+    });
+  }, [currentUser, gameId, slug]);
 
   // Upload this device's local save (sync mode, or "replace cloud" in conflict).
   const handleSyncUpload = useCallback(async () => {
@@ -161,24 +193,37 @@ export const GamePlayerPage: React.FC = () => {
       return;
     }
     setSyncBusy(true);
+    trackEvent('cloud_save_sync_accepted', {
+      game_id: gameId,
+      game_slug: slug ?? '',
+      source: syncPrompt?.hasCloud ? 'replace_cloud' : 'local_progress',
+      logged_in: true,
+    });
     try {
       await api.putGameSave(gameId, local.data, local.schemaVersion);
-      trackEvent('cloud_save_synced', { game_id: gameId });
       toast.success(translateRef.current('cloudSave.syncedToast'));
       setSyncPrompt(null);
     } catch {
-      trackEvent('cloud_save_sync_failed', { game_id: gameId });
       toast.danger(translateRef.current('cloudSave.syncFailedToast'));
     } finally {
       setSyncBusy(false);
     }
-  }, [gameId]);
+  }, [gameId, slug, syncPrompt]);
 
-  const handleSyncDismiss = useCallback(() => {
-    // "Keep cloud" and "Keep local only" both just dismiss — we never delete the
-    // local save automatically; the game owns its local storage.
-    setSyncPrompt(null);
-  }, []);
+  const handleSyncDismiss = useCallback(
+    (source: 'keep_cloud' | 'keep_local') => {
+      // "Keep cloud" and "Keep local only" both just dismiss — we never delete the
+      // local save automatically; the game owns its local storage.
+      trackEvent('cloud_save_sync_skipped', {
+        game_id: gameId ?? '',
+        game_slug: slug ?? '',
+        source,
+        logged_in: true,
+      });
+      setSyncPrompt(null);
+    },
+    [gameId, slug],
+  );
 
   useEffect(() => {
     if (!isLoading && !game) {
@@ -210,6 +255,12 @@ export const GamePlayerPage: React.FC = () => {
         }
         setLaunch(descriptor);
         setIsPlaying(true);
+        trackEvent('play_started', {
+          game_id: gameId,
+          game_slug: slug ?? '',
+          source: 'play_page',
+          logged_in: Boolean(currentUser),
+        });
       })
       .catch((error) => {
         if (!active) return;
@@ -222,7 +273,7 @@ export const GamePlayerPage: React.FC = () => {
       active = false;
       if (sessionId) void api.endPlaySession(sessionId);
     };
-  }, [gameId]);
+  }, [currentUser, gameId, slug]);
 
   useEffect(() => {
     if (IS_DEMO || !launch || !iframeRef.current) return;
@@ -232,11 +283,7 @@ export const GamePlayerPage: React.FC = () => {
     const saveAdapter: HostSaveAdapter | null =
       currentUser && gameId
         ? createCloudSaveAdapter(api, gameId, {
-            onLoaded: () => trackEvent('cloud_save_loaded', { game_id: gameId }),
-            onAuthRequired: () => {
-              trackEvent('cloud_save_auth_required', { game_id: gameId });
-              requestCta('auth_required');
-            },
+            onAuthRequired: () => requestCta('auth_required'),
           })
         : null;
 
@@ -256,7 +303,6 @@ export const GamePlayerPage: React.FC = () => {
         onReady: () => setSdkReady(true),
         onProgress: () => requestCta('progress'),
         onGuestSaveAttempt: () => {
-          trackEvent('cloud_save_auth_required', { game_id: gameId ?? '' });
           requestCta('guest_save');
         },
         onLocalSaveAvailable: (meta: LocalSaveAvailablePayload) => {
@@ -294,9 +340,9 @@ export const GamePlayerPage: React.FC = () => {
   useEffect(() => {
     if (IS_DEMO || !currentUser || !gameId) return;
     if (consumeSignupIntent(gameId)) {
-      trackEvent('signup_returned_to_game', { game_id: gameId });
+      void offerSyncIfNeeded();
     }
-  }, [currentUser, gameId]);
+  }, [currentUser, gameId, offerSyncIfNeeded]);
 
   // Loading simulation
   useEffect(() => {
@@ -639,7 +685,9 @@ export const GamePlayerPage: React.FC = () => {
           {/* Soft conversion CTA — guests only, dismissible, never blocks play. */}
           {!IS_DEMO && ctaVisible && (
             <CloudSaveCTA
+              isGuest={isGuest}
               onCreateAccount={handleCtaCreateAccount}
+              onLogin={handleCtaLogin}
               onContinueGuest={handleCtaContinueGuest}
             />
           )}
@@ -651,8 +699,8 @@ export const GamePlayerPage: React.FC = () => {
               hasCloud={syncPrompt.hasCloud}
               busy={syncBusy}
               onSync={handleSyncUpload}
-              onKeepCloud={handleSyncDismiss}
-              onKeepLocal={handleSyncDismiss}
+              onKeepCloud={() => handleSyncDismiss('keep_cloud')}
+              onKeepLocal={() => handleSyncDismiss('keep_local')}
             />
           )}
         </div>
@@ -666,7 +714,7 @@ export const GamePlayerPage: React.FC = () => {
         >
           <Cloud size={14} aria-hidden="true" />
           <span>
-            <strong>{t('cloudSave.tagline')}</strong>
+            <strong>{t('cloudSave.available')}</strong>
           </span>
         </p>
       )}

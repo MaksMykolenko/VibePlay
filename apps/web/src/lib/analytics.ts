@@ -40,47 +40,67 @@ export function trackPageView(path: string, title?: string): void {
   if (typeof window === 'undefined' || !window.gtag) return;
 
   window.gtag('event', 'page_view', {
-    page_path: path,
+    page_path: sanitizePagePath(path),
     page_title: title || document.title,
   });
 }
 
-/**
- * Cloud-save / conversion funnel events (spec Phase 6). GA4-safe:
- * - only fire in the real production build (same gate as page views);
- * - parameters are limited to small scalar metadata (ids/slugs/reasons).
- *
- * IMPORTANT: never pass save DATA or any user content here — only the metadata
- * keys below are accepted, and only string/number/boolean values are forwarded.
- */
-export type CloudSaveEvent =
+/** Page views intentionally exclude all query/fragment data (tokens, searches, invites). */
+export function sanitizePagePath(path: string): string {
+  const pathname = path.split(/[?#]/, 1)[0];
+  return pathname?.startsWith('/') ? pathname.slice(0, 512) : '/';
+}
+
+export type FunnelEvent =
+  | 'view_home'
+  | 'view_game'
+  | 'click_play_game'
+  | 'play_started'
+  | 'signup_cta_shown'
+  | 'signup_cta_clicked'
+  | 'login_cta_clicked'
+  | 'signup_started'
+  | 'signup_success'
+  | 'email_verify_success'
   | 'cloud_save_cta_shown'
-  | 'cloud_save_cta_create_account_click'
-  | 'cloud_save_cta_continue_guest_click'
-  | 'cloud_save_auth_required'
   | 'cloud_save_sync_prompt_shown'
-  | 'cloud_save_synced'
-  | 'cloud_save_sync_failed'
-  | 'signup_returned_to_game'
-  | 'cloud_save_loaded';
+  | 'cloud_save_sync_accepted'
+  | 'cloud_save_sync_skipped'
+  | 'creator_access_clicked';
 
-/** Allowed parameter keys. Anything else is dropped so save data can't leak. */
-const ALLOWED_EVENT_PARAM_KEYS = new Set(['game_id', 'game_slug', 'source', 'reason', 'trigger']);
+export interface AnalyticsEventParams {
+  game_id?: string;
+  game_slug?: string;
+  source?: string;
+  cta_location?: string;
+  role?: string;
+  logged_in?: boolean;
+}
 
-export function trackEvent(
-  name: CloudSaveEvent,
-  params?: Record<string, string | number | boolean>,
-): void {
+const ALLOWED_EVENT_PARAM_KEYS = new Set<keyof AnalyticsEventParams>([
+  'game_id',
+  'game_slug',
+  'source',
+  'cta_location',
+  'role',
+  'logged_in',
+]);
+
+/** Drop unknown, personal, session, and save-data fields before GA receives them. */
+export function sanitizeEventParams(params?: object): AnalyticsEventParams {
+  const safe: Record<string, string | boolean> = {};
+  if (!params) return safe;
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!ALLOWED_EVENT_PARAM_KEYS.has(key as keyof AnalyticsEventParams)) continue;
+    if (typeof value === 'string') safe[key] = value.slice(0, 100);
+    else if (typeof value === 'boolean') safe[key] = value;
+  }
+  return safe;
+}
+
+export function trackEvent(name: FunnelEvent, params?: AnalyticsEventParams): void {
   if (!IS_ANALYTICS_ENABLED) return;
   if (typeof window === 'undefined' || !window.gtag) return;
-
-  const safe: Record<string, string | number | boolean> = {};
-  if (params) {
-    for (const [k, v] of Object.entries(params)) {
-      if (!ALLOWED_EVENT_PARAM_KEYS.has(k)) continue;
-      if (typeof v === 'string') safe[k] = v.slice(0, 100);
-      else if (typeof v === 'number' || typeof v === 'boolean') safe[k] = v;
-    }
-  }
-  window.gtag('event', name, safe);
+  window.gtag('event', name, sanitizeEventParams(params));
 }

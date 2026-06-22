@@ -14,7 +14,7 @@ export const AnalyticsRouteTracker: React.FC = () => {
   useEffect(() => {
     // Wait a brief tick to ensure document.title is updated by the page component
     const timer = setTimeout(() => {
-      trackPageView(location.pathname + location.search);
+      trackPageView(location.pathname);
     }, 100);
     return () => clearTimeout(timer);
   }, [location]);

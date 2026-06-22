@@ -230,10 +230,7 @@ export const GameCarousel: React.FC<GameCarouselProps> = ({
         >
           <div className="game-carousel__track">
             {gamesList.map((game) => (
-              <div
-                key={game.id}
-                className="game-carousel__item"
-              >
+              <div key={game.id} className="game-carousel__item">
                 <GameCard game={game} variant={isContinue ? 'continue' : 'default'} />
               </div>
             ))}

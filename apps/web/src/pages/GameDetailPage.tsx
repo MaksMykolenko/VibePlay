@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
@@ -9,6 +9,9 @@ import { GameControlsCard } from '../components/GameControlsCard';
 import { CreatorPlusBadge } from '../components/CreatorPlusBadge';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
+import { trackEvent } from '../lib/analytics';
+import { canShowCta, suppressCta } from '../lib/cloudSaveCta';
+import { withReturnTo } from '../lib/returnTo';
 import {
   Play,
   ThumbsUp,
@@ -21,6 +24,7 @@ import {
   Bot,
   Sparkles,
   Cloud,
+  X,
 } from 'lucide-react';
 
 export const GameDetailPage: React.FC = () => {
@@ -33,9 +37,33 @@ export const GameDetailPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'info' | 'screenshots' | 'changelog'>('info');
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
+  const [showGuestCta, setShowGuestCta] = useState(() => canShowCta(!currentUser));
 
   // Locate the game
   const game = games.find((g) => g.slug === slug);
+
+  useEffect(() => {
+    if (!game) return;
+    trackEvent('view_game', {
+      game_id: game.id,
+      game_slug: game.slug,
+      source: 'game_detail',
+      logged_in: Boolean(currentUser),
+    });
+  }, [currentUser, game]);
+
+  useEffect(() => {
+    if (!game || currentUser || !showGuestCta) return;
+    const params = {
+      game_id: game.id,
+      game_slug: game.slug,
+      source: 'game_detail',
+      cta_location: 'near_play',
+      logged_in: false,
+    } as const;
+    trackEvent('signup_cta_shown', params);
+    trackEvent('cloud_save_cta_shown', params);
+  }, [currentUser, game, showGuestCta]);
 
   if (isLoading && !game) {
     return <div style={notFoundContainerStyle}>{t('game.loading')}</div>;
@@ -119,7 +147,40 @@ export const GameDetailPage: React.FC = () => {
   };
 
   const handlePlayNow = () => {
+    trackEvent('click_play_game', {
+      game_id: game.id,
+      game_slug: game.slug,
+      source: 'game_detail',
+      logged_in: Boolean(currentUser),
+    });
     navigate(`/play/${game.slug}`);
+  };
+
+  const handleCreateAccount = () => {
+    trackEvent('signup_cta_clicked', {
+      game_id: game.id,
+      game_slug: game.slug,
+      source: 'game_detail',
+      cta_location: 'near_play',
+      logged_in: false,
+    });
+    navigate(withReturnTo('/register', `/game/${game.slug}`));
+  };
+
+  const handleLogin = () => {
+    trackEvent('login_cta_clicked', {
+      game_id: game.id,
+      game_slug: game.slug,
+      source: 'game_detail',
+      cta_location: 'near_play',
+      logged_in: false,
+    });
+    navigate(withReturnTo('/login', `/game/${game.slug}`));
+  };
+
+  const handleDismissCta = () => {
+    suppressCta();
+    setShowGuestCta(false);
   };
 
   // Find related games in same category (excluding current)
@@ -306,13 +367,38 @@ export const GameDetailPage: React.FC = () => {
           </div>
 
           {/* Site copy: play instantly as guest, save with a free account. */}
-          {!currentUser && (
-            <p className="cloud-save-tagline" style={{ marginTop: '0.75rem' }}>
-              <Cloud size={14} aria-hidden="true" />
-              <span>
-                <strong>{t('cloudSave.tagline')}</strong> {t('cloudSave.taglineBody')}
-              </span>
-            </p>
+          {!currentUser && showGuestCta && (
+            <div className="guest-registration-inline">
+              <button
+                type="button"
+                className="guest-registration-inline__close"
+                onClick={handleDismissCta}
+                aria-label={t('common.close')}
+              >
+                <X size={15} aria-hidden="true" />
+              </button>
+              <p className="cloud-save-tagline">
+                <Cloud size={14} aria-hidden="true" />
+                <span>
+                  <strong>{t('cloudSave.ctaTitle')}</strong> {t('cloudSave.available')}
+                </span>
+              </p>
+              <div className="guest-registration-inline__actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleCreateAccount}
+                >
+                  {t('cloudSave.createAccount')}
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={handleLogin}>
+                  {t('cloudSave.logIn')}
+                </button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={handleDismissCta}>
+                  {t('cloudSave.continuePlaying')}
+                </button>
+              </div>
+            </div>
           )}
 
           {/* Tabs Navigation */}

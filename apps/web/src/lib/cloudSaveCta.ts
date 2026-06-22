@@ -68,11 +68,19 @@ export function canShowCta(isGuest: boolean, opts: CtaStorages = {}): boolean {
   return !isCtaSuppressed(opts);
 }
 
+/** Sync is relevant only for an authenticated player with actual local progress. */
+export function canOfferCloudSaveSync(
+  isLoggedIn: boolean,
+  gameId: string | null | undefined,
+  localData: unknown,
+): boolean {
+  return Boolean(isLoggedIn && gameId && localData !== null && localData !== undefined);
+}
+
 // --- signup-return intent --------------------------------------------------
 // When a guest clicks "Create account" from the CTA we record which game they
 // came from. After they register and return to that play page, we detect it to
-// (a) fire the `signup_returned_to_game` analytic and (b) offer to sync any
-// local progress to their new account (Phase 4).
+// offer to sync any local progress to their new account (Phase 4).
 const SIGNUP_INTENT_KEY = 'vp_cloudsave_signup_intent';
 
 export function markSignupIntent(gameId: string, storage?: CtaStorage | null): void {

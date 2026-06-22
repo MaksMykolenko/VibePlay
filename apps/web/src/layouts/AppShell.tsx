@@ -42,6 +42,8 @@ import { useTheme } from '../hooks/useTheme';
 import { useVerificationResend } from '../hooks/useVerificationResend';
 import { useI18n } from '../i18n/useI18n';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
+import { trackEvent } from '../lib/analytics';
+import { withReturnTo } from '../lib/returnTo';
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(() => {
@@ -1665,14 +1667,28 @@ export const AppShell: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', gap: '8px' }}>
               <Link
-                to="/login"
+                to={withReturnTo('/login', location.pathname + location.search)}
+                onClick={() =>
+                  trackEvent('login_cta_clicked', {
+                    source: 'header',
+                    cta_location: 'top_navigation',
+                    logged_in: false,
+                  })
+                }
                 className="btn btn-secondary btn-sm"
                 style={{ padding: '0.4rem 0.8rem' }}
               >
                 {t('header.login')}
               </Link>
               <Link
-                to="/register"
+                to={withReturnTo('/register', location.pathname + location.search)}
+                onClick={() =>
+                  trackEvent('signup_cta_clicked', {
+                    source: 'header',
+                    cta_location: 'top_navigation',
+                    logged_in: false,
+                  })
+                }
                 className="btn btn-primary btn-sm"
                 style={{ padding: '0.4rem 0.8rem' }}
               >

@@ -36,7 +36,7 @@ test.describe('account controls and beta feedback', () => {
     const feedbackResponse = page.waitForResponse(
       (response) => response.url().endsWith('/api/feedback') && response.status() === 204,
     );
-    await page.getByRole('button', { name: 'Send to the team' }).click();
+    await page.getByRole('button', { name: 'Send to NeoFlux Software' }).click();
     await feedbackResponse;
     await expect(page.getByText(/Bug report sent/)).toBeVisible();
 

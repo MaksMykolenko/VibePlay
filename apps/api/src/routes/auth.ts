@@ -8,6 +8,7 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
   changePasswordSchema,
+  sanitizeReturnTo,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { generateToken, hashPassword, hashToken, verifyPassword } from '../lib/crypto.js';
@@ -110,7 +111,7 @@ export async function registerAuthRoutes(app: FastifyInstance): Promise<void> {
 
     await mailer.send({
       to: user.email,
-      ...emailTemplates.verifyEmail(env.WEB_ORIGIN, verifyToken),
+      ...emailTemplates.verifyEmail(env.WEB_ORIGIN, verifyToken, sanitizeReturnTo(body.returnTo)),
     });
     await audit(prisma, {
       actorId: user.id,

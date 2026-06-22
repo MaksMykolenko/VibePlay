@@ -92,9 +92,10 @@ test.describe('launch and origin isolation', () => {
 
   test('game A cannot read game B storage (distinct origins, runtime proof)', async ({ page }) => {
     const admin = await adminAgent();
-    const { agent: creator } = await registerVerifiedCreator(admin);
-    const gameA = await publishGame(admin, creator, uniq('Iso A '));
-    const gameB = await publishGame(admin, creator, uniq('Iso B '));
+    const { agent: creatorA } = await registerVerifiedCreator(admin);
+    const { agent: creatorB } = await registerVerifiedCreator(admin);
+    const gameA = await publishGame(admin, creatorA, uniq('Iso A '));
+    const gameB = await publishGame(admin, creatorB, uniq('Iso B '));
 
     const originA = `http://${gameA.versionId}--${gameA.gameId}.games.localhost:${E2E.gameHostPort}`;
     const originB = `http://${gameB.versionId}--${gameB.gameId}.games.localhost:${E2E.gameHostPort}`;

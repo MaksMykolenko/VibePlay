@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGames } from '../hooks/useGames';
 import { useAuth } from '../hooks/useAuth';
@@ -7,12 +7,29 @@ import { OnboardingCard } from '../components/OnboardingCard';
 import { UploadCloud, Cloud } from 'lucide-react';
 import { toast } from '../components/toastEvents';
 import { useI18n } from '../i18n/useI18n';
+import { AccountBenefits } from '../components/AccountBenefits';
+import { trackEvent } from '../lib/analytics';
 
 export const LandingPage: React.FC = () => {
   const { games, library } = useGames();
   const { currentUser, becomeCreator } = useAuth();
   const navigate = useNavigate();
   const { t } = useI18n();
+
+  useEffect(() => {
+    trackEvent('view_home', {
+      source: 'home',
+      role: currentUser?.role ?? 'guest',
+      logged_in: Boolean(currentUser),
+    });
+    if (!currentUser) {
+      trackEvent('signup_cta_shown', {
+        source: 'home',
+        cta_location: 'account_benefits',
+        logged_in: false,
+      });
+    }
+  }, [currentUser]);
 
   // Filter published games
   const publishedGames = games.filter((g) => g.status === 'published');
@@ -26,6 +43,11 @@ export const LandingPage: React.FC = () => {
   };
 
   const handleBecomeCreator = () => {
+    trackEvent('creator_access_clicked', {
+      source: 'home',
+      role: currentUser?.role ?? 'guest',
+      logged_in: Boolean(currentUser),
+    });
     if (!currentUser) {
       toast.info(t('app.loginFirst'));
       navigate('/login');
@@ -42,6 +64,24 @@ export const LandingPage: React.FC = () => {
     }
     toast.success(t('app.creatorSuccess'));
     navigate('/creator');
+  };
+
+  const handleCreateAccount = () => {
+    trackEvent('signup_cta_clicked', {
+      source: 'home',
+      cta_location: 'account_benefits',
+      logged_in: false,
+    });
+    navigate('/register');
+  };
+
+  const handleLogin = () => {
+    trackEvent('login_cta_clicked', {
+      source: 'home',
+      cta_location: 'account_benefits',
+      logged_in: false,
+    });
+    navigate('/login');
   };
 
   // Section 1: Continue Playing (Recently Played games from library)
@@ -110,6 +150,10 @@ export const LandingPage: React.FC = () => {
             t('home.onboardingReport'),
           ]}
         />
+      )}
+
+      {!currentUser && (
+        <AccountBenefits onCreateAccount={handleCreateAccount} onLogin={handleLogin} />
       )}
 
       {/* Horizontal Carousels */}
@@ -223,7 +267,9 @@ export const LandingPage: React.FC = () => {
           <div style={creatorCtaInfoColStyle}>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{t('home.creatorTitle')}</h2>
             <p style={creatorCtaDescStyle}>{t('home.creatorDescription')}</p>
-            {currentUser?.role === 'creator' || currentUser?.role === 'admin' || currentUser?.role === 'owner' ? (
+            {currentUser?.role === 'creator' ||
+            currentUser?.role === 'admin' ||
+            currentUser?.role === 'owner' ? (
               <Link to="/creator" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>
                 {t('home.creatorDashboard')}
               </Link>

@@ -5,6 +5,7 @@ import {
   suppressCta,
   markSignupIntent,
   consumeSignupIntent,
+  canOfferCloudSaveSync,
   type CtaStorage,
 } from './cloudSaveCta';
 
@@ -37,6 +38,16 @@ describe('cloud-save CTA gate', () => {
     expect(isCtaSuppressed({ session: fakeStore(), local, now: 5000 })).toBe(true);
     // after the cooldown elapses, a fresh session may show it again
     expect(isCtaSuppressed({ session: fakeStore(), local, now: 20_000 })).toBe(false);
+  });
+});
+
+describe('cloud-save sync prompt gate', () => {
+  it('only offers sync to logged-in players with local progress for a game', () => {
+    expect(canOfferCloudSaveSync(true, 'game-1', { level: 2 })).toBe(true);
+    expect(canOfferCloudSaveSync(false, 'game-1', { level: 2 })).toBe(false);
+    expect(canOfferCloudSaveSync(true, undefined, { level: 2 })).toBe(false);
+    expect(canOfferCloudSaveSync(true, 'game-1', null)).toBe(false);
+    expect(canOfferCloudSaveSync(true, 'game-1', undefined)).toBe(false);
   });
 });
 

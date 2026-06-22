@@ -173,26 +173,33 @@ export async function uploadVersion(
   });
   expect(intent.ok(), await intent.text()).toBeTruthy();
   const intentBody = (await intent.json()) as { uploadId: string; uploadUrl: string };
+  const isApiDirectUpload =
+    !intentBody.uploadUrl || intentBody.uploadUrl.startsWith('/api/uploads/');
 
   if (intentBody.uploadUrl) {
     const put = await creator.ctx.put(intentBody.uploadUrl, {
-      headers: { 'content-type': 'application/zip' },
+      headers: {
+        ...(isApiDirectUpload ? authHeaders(creator) : {}),
+        'content-type': 'application/zip',
+      },
       data: zip,
     });
-    expect(put.ok()).toBeTruthy();
+    expect(put.ok(), await put.text()).toBeTruthy();
   } else {
     const put = await creator.ctx.put(`/api/uploads/${intentBody.uploadId}/direct`, {
       headers: { ...authHeaders(creator), 'content-type': 'application/zip' },
       data: zip,
     });
-    expect(put.status(), await put.text()).toBe(204);
+    expect(put.ok(), await put.text()).toBeTruthy();
   }
 
-  const complete = await creator.ctx.post(`/api/uploads/${intentBody.uploadId}/complete`, {
-    headers: authHeaders(creator),
-    data: {},
-  });
-  expect(complete.ok(), await complete.text()).toBeTruthy();
+  if (!isApiDirectUpload) {
+    const complete = await creator.ctx.post(`/api/uploads/${intentBody.uploadId}/complete`, {
+      headers: authHeaders(creator),
+      data: {},
+    });
+    expect(complete.ok(), await complete.text()).toBeTruthy();
+  }
 
   // Poll the real status endpoint until the pipeline reaches a terminal state.
   let status = '';

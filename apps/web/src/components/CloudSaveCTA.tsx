@@ -8,10 +8,14 @@ import { useI18n } from '../i18n/useI18n';
  * corner of the viewport and can always be dismissed ("Continue as guest").
  */
 export const CloudSaveCTA: React.FC<{
+  isGuest: boolean;
   onCreateAccount: () => void;
+  onLogin: () => void;
   onContinueGuest: () => void;
-}> = ({ onCreateAccount, onContinueGuest }) => {
+}> = ({ isGuest, onCreateAccount, onLogin, onContinueGuest }) => {
   const { t } = useI18n();
+  if (!isGuest) return null;
+
   return (
     <div
       className="cloud-save-cta"
@@ -36,12 +40,15 @@ export const CloudSaveCTA: React.FC<{
       <p id="cloud-save-cta-body" className="cloud-save-cta__body">
         {t('cloudSave.ctaBody')}
       </p>
-      <div className="cloud-save-cta__actions">
+      <div className="cloud-save-cta__actions cloud-save-cta__actions--stack">
         <button type="button" className="btn btn-primary" onClick={onCreateAccount}>
           {t('cloudSave.createAccount')}
         </button>
+        <button type="button" className="btn btn-secondary" onClick={onLogin}>
+          {t('cloudSave.logIn')}
+        </button>
         <button type="button" className="btn btn-ghost" onClick={onContinueGuest}>
-          {t('cloudSave.continueGuest')}
+          {t('cloudSave.continuePlaying')}
         </button>
       </div>
     </div>

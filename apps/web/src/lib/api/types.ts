@@ -30,6 +30,7 @@ export interface RegisterInput {
   displayName: string;
   password: string;
   inviteCode?: string;
+  returnTo?: string;
   acceptTerms: true;
 }
 
