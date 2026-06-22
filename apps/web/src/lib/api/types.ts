@@ -6,6 +6,7 @@ import type {
   CommentDto,
   CurrentUserDto,
   CreatorAnalyticsDto,
+  CreatorAnalyticsRange,
   GameDetailDto,
   GameControlDto,
   GameListItemDto,
@@ -257,7 +258,7 @@ export interface ApiClient {
   uploadZipDirect(uploadId: string, file: Blob): Promise<UploadStatusDto>;
   completeUpload(uploadId: string): Promise<UploadStatusDto>;
   getUploadStatus(uploadId: string): Promise<UploadStatusDto>;
-  creatorAnalytics(): Promise<CreatorAnalyticsDto>;
+  creatorAnalytics(range: CreatorAnalyticsRange): Promise<CreatorAnalyticsDto>;
 
   // admin
   adminModerationQueue(): Promise<ModerationQueueEntry[]>;

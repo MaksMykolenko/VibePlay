@@ -5,6 +5,7 @@ import type {
   CommentDto,
   CurrentUserDto,
   CreatorAnalyticsDto,
+  CreatorAnalyticsRange,
   GameDetailDto,
   GameListItemDto,
   GameSaveDto,
@@ -504,8 +505,8 @@ export function createHttpClient(): ApiClient {
     async getUploadStatus(uploadId) {
       return request<UploadStatusDto>(`/uploads/${uploadId}/status`);
     },
-    async creatorAnalytics() {
-      return request<CreatorAnalyticsDto>('/creator/analytics');
+    async creatorAnalytics(range: CreatorAnalyticsRange) {
+      return request<CreatorAnalyticsDto>(`/creator/analytics${qs({ range })}`);
     },
 
     // ----- admin -----

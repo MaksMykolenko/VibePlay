@@ -55,19 +55,87 @@ export interface BillingMeDto {
   entitlements: CreatorEntitlementsDto;
 }
 
+export type CreatorAnalyticsRange = '7d' | '30d' | '90d';
+
 export interface CreatorAnalyticsDto {
-  advanced: boolean;
-  totals: {
-    games: number;
+  range: CreatorAnalyticsRange;
+  period: {
+    from: string;
+    to: string;
+  };
+  summary: {
+    totalGames: number;
     publishedGames: number;
+    inModerationGames: number;
+    draftGames: number;
+    rejectedGames: number;
+    totalPlays: number;
+    playsInRange: number;
+    likes: number;
+    comments: number;
+    averageDurationSeconds: number | null;
+  };
+  timeseries: {
+    date: string;
+    plays: number;
+  }[];
+  topGames: {
+    gameId: string;
+    slug: string;
+    title: string;
     plays: number;
     likes: number;
+    comments: number;
+  }[];
+  recentActivity: {
+    type: 'PLAY' | 'LIKE' | 'COMMENT';
+    count: number;
+    latestAt: string | null;
+  }[];
+  entitlements: {
+    creatorPlus: boolean;
+    advancedAnalytics: boolean;
   };
-  details: {
-    averageSessionSeconds: number;
+  advanced: {
     uniquePlayers: number;
-    dailyPlays: { date: string; plays: number }[];
-    games: { gameId: string; title: string; plays: number; averageSessionSeconds: number }[];
+    loggedInPlays: number;
+    guestPlays: number;
+    returningPlayers: number;
+    cloudSaveUsers: number;
+    cloudSaveAdoptionPercent: number | null;
+    durationPercentiles: {
+      p50Seconds: number;
+      p90Seconds: number;
+    } | null;
+    comparison: {
+      previousPeriodPlays: number;
+      changePercent: number | null;
+      daily: {
+        date: string;
+        plays: number;
+        previousDate: string;
+        previousPlays: number;
+      }[];
+    };
+    games: {
+      gameId: string;
+      slug: string;
+      title: string;
+      plays: number;
+      uniquePlayers: number;
+      loggedInPlays: number;
+      guestPlays: number;
+      averageDurationSeconds: number | null;
+      cloudSaveUsers: number;
+      versions: {
+        versionId: string;
+        version: string;
+        plays: number;
+      }[];
+    }[];
+    conversion: {
+      registrationCta: 'NOT_ENOUGH_INTERNAL_DATA';
+    };
   } | null;
 }
 

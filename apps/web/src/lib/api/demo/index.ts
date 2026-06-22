@@ -804,18 +804,7 @@ export function createDemoClient(): ApiClient {
       notInDemo('Game build upload');
     },
     async creatorAnalytics() {
-      const me = requireUser();
-      const games = getGames().filter((game) => game.creatorId === me.id);
-      return {
-        advanced: false,
-        totals: {
-          games: games.length,
-          publishedGames: games.filter((game) => game.status === 'published').length,
-          plays: games.reduce((sum, game) => sum + game.plays, 0),
-          likes: games.reduce((sum, game) => sum + game.likes, 0),
-        },
-        details: null,
-      };
+      notInDemo('Creator analytics');
     },
 
     // ----- admin -----
