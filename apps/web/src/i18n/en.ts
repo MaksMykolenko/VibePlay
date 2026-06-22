@@ -107,6 +107,14 @@ export const en = {
   'cloudSave.replaceCloud': "Replace cloud with this device's progress",
   'cloudSave.syncedToast': 'Progress synced to your account.',
   'cloudSave.syncFailedToast': 'Could not sync progress. Your local save is safe.',
+  // Guest exit warning (leave-attempt modal on the play page)
+  'guestExit.title': 'Your progress may not be saved',
+  'guestExit.body':
+    'You are playing as a guest. If you leave now, your progress may only stay in this browser and could be lost. Create a free account to save progress in the cloud and continue on another device.',
+  'guestExit.keepPlaying': 'Keep playing',
+  'guestExit.createAccount': 'Create account',
+  'guestExit.logIn': 'Log in',
+  'guestExit.leaveAnyway': 'Leave anyway',
   'accountBenefits.title': 'Why create an account?',
   'accountBenefits.body': 'Play stays free and instant. An account adds a few useful extras.',
   'accountBenefits.cloudSaves': 'Save supported games to the cloud',
