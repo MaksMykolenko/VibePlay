@@ -22,6 +22,7 @@ import { toast } from '../components/toastEvents';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { useI18n } from '../i18n/useI18n';
 import { useVerificationResend } from '../hooks/useVerificationResend';
+import { trackEvent } from '../lib/analytics';
 
 const PasswordToggle: React.FC<{ shown: boolean; onToggle: () => void }> = ({
   shown,
@@ -47,14 +48,14 @@ const AuthLanguageControl = () => (
   </div>
 );
 
-const GoogleOAuthButton = () => {
+const GoogleOAuthButton: React.FC<{ returnTo?: string }> = ({ returnTo }) => {
   const { t } = useI18n();
   if (IS_DEMO) return null;
 
   return (
     <>
       <a
-        href={`${API_URL.replace(/\/$/, '')}/auth/google/start`}
+        href={withReturnTo(`${API_URL.replace(/\/$/, '')}/auth/google/start`, returnTo)}
         className="btn auth-google-button"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -147,7 +148,7 @@ export const LoginPage: React.FC = () => {
         <h1 className="auth-title">{t('auth.welcomeBack')}</h1>
         <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
 
-        <GoogleOAuthButton />
+        <GoogleOAuthButton returnTo={returnTo} />
 
         <form onSubmit={handleSubmit} className="auth-form auth-form--login" noValidate>
           <div className="form-group">
@@ -284,6 +285,14 @@ export const RegisterPage: React.FC = () => {
   const [formError, setFormError] = useState<string | null>(null);
   const [inviteOnly, setInviteOnly] = useState<boolean | null>(null);
   const [configError, setConfigError] = useState(false);
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo'));
+
+  useEffect(() => {
+    trackEvent('signup_started', {
+      source: returnTo.startsWith('/play/') ? 'play_page' : 'register_page',
+      logged_in: false,
+    });
+  }, [returnTo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -356,6 +365,7 @@ export const RegisterPage: React.FC = () => {
       displayName,
       password,
       inviteCode: inviteCode.trim() || undefined,
+      returnTo,
     });
     setLoading(false);
 
@@ -363,8 +373,12 @@ export const RegisterPage: React.FC = () => {
       setFormError(error);
       toast.danger(error);
     } else {
+      trackEvent('signup_success', {
+        source: returnTo.startsWith('/play/') ? 'play_page' : 'register_page',
+        logged_in: true,
+      });
       toast.success(IS_DEMO ? 'Demo account created (browser-local).' : t('auth.accountCreated'));
-      navigate(sanitizeReturnTo(searchParams.get('returnTo')));
+      navigate(returnTo);
     }
   };
 
@@ -383,7 +397,7 @@ export const RegisterPage: React.FC = () => {
                 : t('auth.registerDefault')}
         </p>
 
-        <GoogleOAuthButton />
+        <GoogleOAuthButton returnTo={returnTo} />
 
         <form onSubmit={handleSubmit} className="auth-form auth-form--register" noValidate>
           {showInvite && (
@@ -837,6 +851,7 @@ export const VerifyEmailPage: React.FC = () => {
   const [state, setState] = useState<'pending' | 'success' | 'error'>(token ? 'pending' : 'error');
   const [unexpectedError, setUnexpectedError] = useState<string | null>(null);
   const [redirectPath, setRedirectPath] = useState('/');
+  const returnTo = sanitizeReturnTo(searchParams.get('returnTo'));
 
   useEffect(() => {
     if (!token) return;
@@ -849,11 +864,18 @@ export const VerifyEmailPage: React.FC = () => {
         const user = await refresh();
         if (cancelled) return;
         const destination =
-          user?.role === 'CREATOR' || user?.role === 'ADMIN' || user?.role === 'OWNER'
-            ? '/creator'
-            : user
-              ? `/profile/${user.username}`
-              : '/';
+          returnTo !== '/'
+            ? returnTo
+            : user?.role === 'CREATOR' || user?.role === 'ADMIN' || user?.role === 'OWNER'
+              ? '/creator'
+              : user
+                ? `/profile/${user.username}`
+                : '/';
+        trackEvent('email_verify_success', {
+          source: returnTo !== '/' ? 'return_to' : 'verification_page',
+          role: user?.role.toLowerCase(),
+          logged_in: Boolean(user),
+        });
         setRedirectPath(destination);
         setState('success');
         redirectTimer = window.setTimeout(() => navigate(destination, { replace: true }), 1_500);
@@ -871,7 +893,7 @@ export const VerifyEmailPage: React.FC = () => {
       cancelled = true;
       if (redirectTimer !== undefined) window.clearTimeout(redirectTimer);
     };
-  }, [navigate, refresh, token]);
+  }, [navigate, refresh, returnTo, token]);
 
   const message =
     state === 'pending'

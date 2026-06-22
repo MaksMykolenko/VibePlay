@@ -105,7 +105,11 @@ describe('avatar upload + game version update', () => {
     expect(served.rawPayload.length).toBe(PNG_BYTES.length);
 
     // Removal resets to the fallback (404 afterwards).
-    const del = await app.inject({ method: 'DELETE', url: '/api/me/avatar', ...authed(creatorAgent) });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: '/api/me/avatar',
+      ...authed(creatorAgent),
+    });
     expect(del.statusCode).toBe(200);
     const gone = await app.inject({ method: 'GET', url: `/api/users/${creator.id}/avatar` });
     expect(gone.statusCode).toBe(404);
@@ -243,7 +247,11 @@ describe('avatar upload + game version update', () => {
     expect(game.publishedVersionId).toBe(v1); // unchanged before approval
 
     // It must also surface in the moderation queue even though the game is PUBLISHED.
-    const queue = await app.inject({ method: 'GET', url: '/api/admin/moderation', ...authed(adminAgent) });
+    const queue = await app.inject({
+      method: 'GET',
+      url: '/api/admin/moderation',
+      ...authed(adminAgent),
+    });
     const ids = (queue.json().queue as Array<{ version: { id: string } }>).map((e) => e.version.id);
     expect(ids).toContain(v2);
 

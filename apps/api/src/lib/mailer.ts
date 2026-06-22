@@ -70,8 +70,11 @@ ${bodyHtml}
 }
 
 export const emailTemplates = {
-  verifyEmail(webOrigin: string, token: string): Omit<MailMessage, 'to'> {
-    const url = `${webOrigin}/verify-email?token=${encodeURIComponent(token)}`;
+  verifyEmail(webOrigin: string, token: string, returnTo = '/'): Omit<MailMessage, 'to'> {
+    const verifyUrl = new URL('/verify-email', webOrigin);
+    verifyUrl.searchParams.set('token', token);
+    if (returnTo !== '/') verifyUrl.searchParams.set('returnTo', returnTo);
+    const url = verifyUrl.toString();
     return {
       subject: 'Verify your VibePlay email',
       text: `Welcome to VibePlay! Confirm your email address by opening:\n\n${url}\n\nThis link expires in 24 hours and can be used once.`,

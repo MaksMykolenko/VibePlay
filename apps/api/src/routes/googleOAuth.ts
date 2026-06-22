@@ -2,10 +2,12 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { ApiEnv } from '@vibeplay/config';
 import type { PrismaClient, User } from '@vibeplay/database';
 import { audit } from '../lib/audit.js';
+import { sanitizeReturnTo } from '@vibeplay/shared';
 import { generateToken, hashPassword, safeEqual, sha256 } from '../lib/crypto.js';
 import { cookiesAreSecure, createSession, setSessionCookies } from '../lib/sessions.js';
 
 export const GOOGLE_OAUTH_STATE_COOKIE = 'vp_google_oauth_state';
+export const GOOGLE_OAUTH_RETURN_TO_COOKIE = 'vp_google_oauth_return_to';
 const GOOGLE_PROVIDER = 'google';
 const STATE_TTL_MS = 10 * 60 * 1000;
 const OAUTH_COOKIE_PATH = '/api/auth/google';
@@ -24,9 +26,19 @@ interface CallbackQuery {
   error?: string;
 }
 
-function redirectToLogin(reply: FastifyReply, env: ApiEnv, error: OAuthErrorCode): FastifyReply {
+interface StartQuery {
+  returnTo?: string;
+}
+
+function redirectToLogin(
+  reply: FastifyReply,
+  env: ApiEnv,
+  error: OAuthErrorCode,
+  returnTo = '/',
+): FastifyReply {
   const url = new URL('/login', env.WEB_ORIGIN);
   url.searchParams.set('oauth_error', error);
+  if (returnTo !== '/') url.searchParams.set('returnTo', returnTo);
   return reply.redirect(url.toString());
 }
 
@@ -156,9 +168,17 @@ async function findOrCreateGoogleUser(
 export async function registerGoogleOAuthRoutes(app: FastifyInstance): Promise<void> {
   const { env, prisma, googleOAuth } = app;
 
-  app.get('/google/start', async (_req, reply) => {
+  app.get<{ Querystring: StartQuery }>('/google/start', async (req, reply) => {
     const state = generateToken();
+    const returnTo = sanitizeReturnTo(req.query.returnTo);
     reply.setCookie(GOOGLE_OAUTH_STATE_COOKIE, state, {
+      httpOnly: true,
+      secure: cookiesAreSecure(env),
+      sameSite: 'lax',
+      path: OAUTH_COOKIE_PATH,
+      expires: new Date(Date.now() + STATE_TTL_MS),
+    });
+    reply.setCookie(GOOGLE_OAUTH_RETURN_TO_COOKIE, returnTo, {
       httpOnly: true,
       secure: cookiesAreSecure(env),
       sameSite: 'lax',
@@ -170,7 +190,14 @@ export async function registerGoogleOAuthRoutes(app: FastifyInstance): Promise<v
 
   app.get<{ Querystring: CallbackQuery }>('/google/callback', async (req, reply) => {
     const cookieState = req.cookies[GOOGLE_OAUTH_STATE_COOKIE];
+    const returnTo = sanitizeReturnTo(req.cookies[GOOGLE_OAUTH_RETURN_TO_COOKIE]);
     reply.clearCookie(GOOGLE_OAUTH_STATE_COOKIE, {
+      httpOnly: true,
+      secure: cookiesAreSecure(env),
+      sameSite: 'lax',
+      path: OAUTH_COOKIE_PATH,
+    });
+    reply.clearCookie(GOOGLE_OAUTH_RETURN_TO_COOKIE, {
       httpOnly: true,
       secure: cookiesAreSecure(env),
       sameSite: 'lax',
@@ -178,20 +205,21 @@ export async function registerGoogleOAuthRoutes(app: FastifyInstance): Promise<v
     });
 
     if (!cookieState || !req.query.state || !safeEqual(cookieState, req.query.state)) {
-      return redirectToLogin(reply, env, 'invalid_state');
+      return redirectToLogin(reply, env, 'invalid_state', returnTo);
     }
     if (req.query.error || !req.query.code) {
-      return redirectToLogin(reply, env, 'provider_error');
+      return redirectToLogin(reply, env, 'provider_error', returnTo);
     }
 
     try {
       const identity = await googleOAuth.authenticate(req.query.code);
-      if (!identity.emailVerified) return redirectToLogin(reply, env, 'unverified_email');
+      if (!identity.emailVerified) return redirectToLogin(reply, env, 'unverified_email', returnTo);
 
       const user = await findOrCreateGoogleUser(prisma, env, identity);
-      if (user.status === 'SUSPENDED') return redirectToLogin(reply, env, 'account_suspended');
-      if (user.status === 'BANNED') return redirectToLogin(reply, env, 'account_banned');
-      if (user.status === 'DELETED') return redirectToLogin(reply, env, 'oauth_failed');
+      if (user.status === 'SUSPENDED')
+        return redirectToLogin(reply, env, 'account_suspended', returnTo);
+      if (user.status === 'BANNED') return redirectToLogin(reply, env, 'account_banned', returnTo);
+      if (user.status === 'DELETED') return redirectToLogin(reply, env, 'oauth_failed', returnTo);
 
       const { token, csrfToken, session } = await createSession(prisma, env, user, req);
       await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -204,10 +232,10 @@ export async function registerGoogleOAuthRoutes(app: FastifyInstance): Promise<v
         secret: env.SESSION_SECRET,
       });
       setSessionCookies(reply, env, token, csrfToken, session.expiresAt);
-      return reply.redirect(new URL('/', env.WEB_ORIGIN).toString());
+      return reply.redirect(new URL(returnTo, env.WEB_ORIGIN).toString());
     } catch (err) {
       req.log.error({ err }, 'Google OAuth callback failed');
-      return redirectToLogin(reply, env, 'oauth_failed');
+      return redirectToLogin(reply, env, 'oauth_failed', returnTo);
     }
   });
 }

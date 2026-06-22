@@ -51,6 +51,7 @@ describe('registration', () => {
         username: 'new_user',
         displayName: 'New User',
         password: 'a-long-secure-pass-1',
+        returnTo: '/play/safe-game?from=signup',
         acceptTerms: true,
       },
     });
@@ -71,6 +72,7 @@ describe('registration', () => {
     expect(mailer.outbox).toHaveLength(1);
     expect(mailer.outbox[0]!.to).toBe('newuser@example.com');
     expect(mailer.outbox[0]!.text).toContain('/verify-email?token=');
+    expect(mailer.outbox[0]!.text).toContain('returnTo=%2Fplay%2Fsafe-game%3Ffrom%3Dsignup');
   });
 
   it('rejects duplicate email and username with stable codes', async () => {

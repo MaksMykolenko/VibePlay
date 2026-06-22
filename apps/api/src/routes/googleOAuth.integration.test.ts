@@ -4,7 +4,7 @@ import type { ApiEnv } from '@vibeplay/config';
 import type { PrismaClient } from '@vibeplay/database';
 import { buildApp } from '../app.js';
 import type { GoogleIdentity, GoogleOAuthService } from '../lib/googleOAuth.js';
-import { GOOGLE_OAUTH_STATE_COOKIE } from './googleOAuth.js';
+import { GOOGLE_OAUTH_RETURN_TO_COOKIE, GOOGLE_OAUTH_STATE_COOKIE } from './googleOAuth.js';
 import { createUser, getTestPrisma, resetDb, testEnv } from '../test/helpers.js';
 
 class FakeGoogleOAuth implements GoogleOAuthService {
@@ -59,18 +59,25 @@ beforeEach(async () => {
   google.authenticateCalls = 0;
 });
 
-async function beginOAuth() {
-  const response = await app.inject({ method: 'GET', url: '/api/auth/google/start' });
+async function beginOAuth(returnTo?: string) {
+  const query = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '';
+  const response = await app.inject({ method: 'GET', url: `/api/auth/google/start${query}` });
   const stateCookie = response.cookies.find((cookie) => cookie.name === GOOGLE_OAUTH_STATE_COOKIE);
+  const returnToCookie = response.cookies.find(
+    (cookie) => cookie.name === GOOGLE_OAUTH_RETURN_TO_COOKIE,
+  );
   if (!stateCookie) throw new Error('OAuth start did not set its state cookie');
-  return { response, state: stateCookie.value };
+  return { response, state: stateCookie.value, returnTo: returnToCookie?.value };
 }
 
-async function finishOAuth(state: string) {
+async function finishOAuth(state: string, returnTo?: string) {
   return app.inject({
     method: 'GET',
     url: `/api/auth/google/callback?code=test-code&state=${encodeURIComponent(state)}`,
-    cookies: { [GOOGLE_OAUTH_STATE_COOKIE]: state },
+    cookies: {
+      [GOOGLE_OAUTH_STATE_COOKIE]: state,
+      ...(returnTo ? { [GOOGLE_OAUTH_RETURN_TO_COOKIE]: returnTo } : {}),
+    },
   });
 }
 
@@ -130,6 +137,17 @@ describe('Google OAuth', () => {
     expect(user?.oauthAccounts).toMatchObject([
       { provider: 'google', providerAccountId: 'google-sub-123' },
     ]);
+  });
+
+  it('returns to a safe internal path and rejects external return targets', async () => {
+    const safeStart = await beginOAuth('/play/safe-game?from=signup');
+    const safeResponse = await finishOAuth(safeStart.state, safeStart.returnTo);
+    expect(safeResponse.headers.location).toBe('http://localhost:5173/play/safe-game?from=signup');
+
+    await resetDb(prisma);
+    const unsafeStart = await beginOAuth('//evil.example/steal');
+    const unsafeResponse = await finishOAuth(unsafeStart.state, unsafeStart.returnTo);
+    expect(unsafeResponse.headers.location).toBe('http://localhost:5173/');
   });
 
   it('callback safely links a verified Google email to an existing user', async () => {

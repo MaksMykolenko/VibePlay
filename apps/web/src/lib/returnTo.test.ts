@@ -11,6 +11,9 @@ describe('sanitizeReturnTo', () => {
     expect(sanitizeReturnTo('//evil.com')).toBe('/');
     expect(sanitizeReturnTo('https://evil.com')).toBe('/');
     expect(sanitizeReturnTo('/\\evil.com')).toBe('/');
+    expect(sanitizeReturnTo('/%5cevil.com')).toBe('/');
+    expect(sanitizeReturnTo('/%2f%2fevil.com')).toBe('/');
+    expect(sanitizeReturnTo('/play/%E0%A4%A')).toBe('/');
     expect(sanitizeReturnTo('javascript:alert(1)')).toBe('/');
     expect(sanitizeReturnTo('relative/path')).toBe('/');
     expect(sanitizeReturnTo(null)).toBe('/');

@@ -6,7 +6,14 @@ import { toast } from './toastEvents';
 import { useAuth } from '../hooks/useAuth';
 import { useI18n } from '../i18n/useI18n';
 import { versionStatusLabel } from '../lib/versionStatus';
-import { UploadCloud, FileCode, AlertTriangle, History, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  UploadCloud,
+  FileCode,
+  AlertTriangle,
+  History,
+  RefreshCw,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface Props {
   gameId: string;
@@ -365,7 +372,9 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
                     )}
                   </div>
                   {v.changelog && (
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                    <div
+                      style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}
+                    >
                       {v.changelog}
                     </div>
                   )}
@@ -375,7 +384,9 @@ export const GameVersionManager: React.FC<Props> = ({ gameId }) => {
                     </div>
                   )}
                 </div>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}>
+                <span
+                  style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', flexShrink: 0 }}
+                >
                   {new Date(v.createdAt).toLocaleDateString()}
                 </span>
               </div>

@@ -28,6 +28,7 @@ export interface AuthContextType {
     displayName: string;
     password: string;
     inviteCode?: string;
+    returnTo?: string;
   }) => Promise<string | null>;
   updateProfile: (
     displayName: string,
@@ -120,6 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: string;
       password: string;
       inviteCode?: string;
+      returnTo?: string;
     }): Promise<string | null> => {
       try {
         const user = await api.register({
@@ -128,6 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: input.displayName,
           password: input.password,
           inviteCode: input.inviteCode || undefined,
+          returnTo: input.returnTo,
           acceptTerms: true,
         });
         setAccount(user);

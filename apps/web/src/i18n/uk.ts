@@ -92,7 +92,10 @@ export const uk: Record<keyof typeof en, string> = {
   'cloudSave.ctaBody':
     'Створіть безкоштовний акаунт VibePlay, щоб зберігати прогрес, продовжувати на іншому пристрої та ніколи не втрачати ігрові дані.',
   'cloudSave.createAccount': 'Створити акаунт',
+  'cloudSave.logIn': 'Увійти',
   'cloudSave.continueGuest': 'Продовжити як гість',
+  'cloudSave.continuePlaying': 'Продовжити грати',
+  'cloudSave.available': 'Хмарні збереження доступні з безкоштовним акаунтом.',
   'cloudSave.syncTitle': 'Синхронізувати прогрес?',
   'cloudSave.syncBody':
     'Ми знайшли локальний прогрес для {{game}}. Синхронізувати його з вашим акаунтом VibePlay?',
@@ -106,6 +109,14 @@ export const uk: Record<keyof typeof en, string> = {
   'cloudSave.syncedToast': 'Прогрес синхронізовано з вашим акаунтом.',
   'cloudSave.syncFailedToast':
     'Не вдалося синхронізувати прогрес. Ваше локальне збереження в безпеці.',
+  'accountBenefits.title': 'Навіщо створювати акаунт?',
+  'accountBenefits.body':
+    'Гра залишається безкоштовною та миттєвою. Акаунт додає кілька корисних можливостей.',
+  'accountBenefits.cloudSaves': 'Зберігайте підтримувані ігри у хмарі',
+  'accountBenefits.otherDevice': 'Продовжуйте на іншому пристрої',
+  'accountBenefits.favorites': 'Зберігайте список улюблених ігор',
+  'accountBenefits.comments': 'Залишайте коментарі та відгуки',
+  'accountBenefits.creatorLater': 'Подайте запит на доступ автора пізніше',
   'auth.languageHint': 'Мова інтерфейсу',
   'auth.showPassword': 'Показати пароль',
   'auth.hidePassword': 'Приховати пароль',

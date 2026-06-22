@@ -52,9 +52,7 @@ export const FeedbackModal: React.FC<{ asSidebarItem?: boolean; collapsed?: bool
       >
         <MessageSquarePlus size={asSidebarItem ? 20 : 16} />
         {!collapsed && asSidebarItem && (
-          <span style={{ marginLeft: '10px', fontWeight: 500 }}>
-            {t('feedback.shortTitle')}
-          </span>
+          <span style={{ marginLeft: '10px', fontWeight: 500 }}>{t('feedback.shortTitle')}</span>
         )}
       </button>
 
