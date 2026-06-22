@@ -1,38 +1,56 @@
 import { OnboardingCard } from '../../components/OnboardingCard';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import type { CreatorAnalyticsDto } from '@vibeplay/shared';
 import { useAuth } from '../../hooks/useAuth';
 import { useGames } from '../../hooks/useGames';
 import { Play, ThumbsUp, Layers, HelpCircle, Activity, ArrowRight, Eye, Edit } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { formatDate, formatNumber } from '../../lib/formatTime';
+import { api } from '../../lib/api';
 
 export const CreatorOverview: React.FC = () => {
   const { currentUser } = useAuth();
   const { games, comments } = useGames();
   const { t, locale } = useI18n();
+  const [analytics, setAnalytics] = useState<CreatorAnalyticsDto | null>(null);
+  const [analyticsUnavailable, setAnalyticsUnavailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!currentUser) return () => undefined;
+    api
+      .creatorAnalytics('30d')
+      .then((value) => {
+        if (active) setAnalytics(value);
+      })
+      .catch(() => {
+        if (active) setAnalyticsUnavailable(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
 
   if (!currentUser) return null;
 
   // Filter games created by this user
   const myGames = games.filter((g) => g.creatorId === currentUser.id);
 
-  const totalPlays = myGames.reduce((sum, g) => sum + g.plays, 0);
-  const totalLikes = myGames.reduce((sum, g) => sum + g.likes, 0);
-  const pendingReviews = myGames.filter((g) => g.status === 'pending').length;
+  const metric = (value: number | undefined): string =>
+    value === undefined ? t('analytics.loadingValue') : formatNumber(value, locale);
 
   const statusSummary = [
     {
       label: t('status.published'),
-      count: myGames.filter((game) => game.status === 'published').length,
+      count: analytics?.summary.publishedGames,
     },
-    { label: t('status.pending'), count: pendingReviews },
-    { label: t('status.draft'), count: myGames.filter((game) => game.status === 'draft').length },
+    { label: t('status.pending'), count: analytics?.summary.inModerationGames },
+    { label: t('status.draft'), count: analytics?.summary.draftGames },
     {
       label: t('status.rejected'),
-      count: myGames.filter((game) => game.status === 'rejected').length,
+      count: analytics?.summary.rejectedGames,
     },
-    { label: t('status.hidden'), count: myGames.filter((game) => game.status === 'hidden').length },
   ];
 
   // Get recent activity
@@ -67,7 +85,7 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.totalGames')}</span>
             <Layers size={18} color="var(--secondary)" />
           </div>
-          <div style={statValueStyle}>{myGames.length}</div>
+          <div style={statValueStyle}>{metric(analytics?.summary.totalGames)}</div>
           <div style={statSubStyle}>{t('creator.statDraftPublished')}</div>
         </div>
 
@@ -76,7 +94,7 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.totalPlays')}</span>
             <Play size={18} color="var(--primary)" />
           </div>
-          <div style={statValueStyle}>{formatNumber(totalPlays, locale)}</div>
+          <div style={statValueStyle}>{metric(analytics?.summary.totalPlays)}</div>
           <div style={statSubStyle}>{t('creator.statLaunches')}</div>
         </div>
 
@@ -85,7 +103,7 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.totalLikes')}</span>
             <ThumbsUp size={18} color="var(--success)" />
           </div>
-          <div style={statValueStyle}>{formatNumber(totalLikes, locale)}</div>
+          <div style={statValueStyle}>{metric(analytics?.summary.likes)}</div>
           <div style={statSubStyle}>{t('creator.statPositive')}</div>
         </div>
 
@@ -94,10 +112,16 @@ export const CreatorOverview: React.FC = () => {
             <span style={statTitleStyle}>{t('creator.inModeration')}</span>
             <HelpCircle size={18} color="var(--warning)" />
           </div>
-          <div style={statValueStyle}>{pendingReviews}</div>
+          <div style={statValueStyle}>{metric(analytics?.summary.inModerationGames)}</div>
           <div style={statSubStyle}>{t('creator.statPending')}</div>
         </div>
       </div>
+
+      {analyticsUnavailable ? (
+        <p style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>
+          {t('analytics.dashboardUnavailable')}
+        </p>
+      ) : null}
 
       {/* Portfolio and interaction summary */}
       <div style={layoutGridStyle}>
@@ -105,7 +129,9 @@ export const CreatorOverview: React.FC = () => {
           <div style={cardHeaderStyle}>
             <h3 style={cardTitleStyle}>{t('creator.buildStatus')}</h3>
             <span style={chartTotalStyle}>
-              {t('creator.totalCount', { count: myGames.length })}
+              {analytics
+                ? t('creator.totalCount', { count: analytics.summary.totalGames })
+                : t('analytics.loadingValue')}
             </span>
           </div>
 
@@ -127,7 +153,7 @@ export const CreatorOverview: React.FC = () => {
                   backgroundColor: 'var(--bg-surface)',
                 }}
               >
-                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{status.count}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{metric(status.count)}</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                   {status.label}
                 </div>

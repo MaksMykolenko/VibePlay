@@ -144,6 +144,14 @@ export const searchQuerySchema = paginationSchema.extend({
 // Creator
 // ---------------------------------------------------------------------------
 
+export const CREATOR_ANALYTICS_RANGES = ['7d', '30d', '90d'] as const;
+
+export const creatorAnalyticsQuerySchema = z
+  .object({
+    range: z.enum(CREATOR_ANALYTICS_RANGES).default('30d'),
+  })
+  .strict();
+
 export const gameControlSchema = z
   .object({
     action: z.string().trim().max(80),

@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  ApiError,
+  creatorAnalyticsQuerySchema,
   createGameSchema,
   createVersionSchema,
   errors,
@@ -8,6 +10,7 @@ import {
   uploadIntentSchema,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
+import { getCreatorAnalytics } from '../lib/creatorAnalytics.js';
 import { getCreatorAccess } from '../lib/entitlements.js';
 import { requireCreator, requireOwnershipOrAdmin, requireVerifiedEmail } from '../lib/guards.js';
 import { rlPolicy } from '../lib/rateLimit.js';
@@ -500,78 +503,14 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     };
   });
 
-  app.get('/creator/analytics', async (req) => {
+  app.get<{ Querystring: { range?: string } }>('/creator/analytics', async (req) => {
     const user = requireCreator(req);
-    const access = await getCreatorAccess(prisma, env, user.id);
-    const games = await prisma.game.findMany({
-      where: { creatorId: user.id },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        playsCount: true,
-        likesCount: true,
-      },
-    });
-    const totals = {
-      games: games.length,
-      publishedGames: games.filter((game) => game.status === 'PUBLISHED').length,
-      plays: games.reduce((sum, game) => sum + game.playsCount, 0),
-      likes: games.reduce((sum, game) => sum + game.likesCount, 0),
-    };
-    if (!access.billing.entitlements.advancedAnalytics && !access.bypassBillingLimits) {
-      return { advanced: false, totals, details: null };
+    const parsed = creatorAnalyticsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid analytics range', {
+        allowedRanges: ['7d', '30d', '90d'],
+      });
     }
-
-    const since = new Date();
-    since.setUTCDate(since.getUTCDate() - 29);
-    since.setUTCHours(0, 0, 0, 0);
-    const sessions = await prisma.playSession.findMany({
-      where: { game: { creatorId: user.id }, startedAt: { gte: since } },
-      select: { gameId: true, userId: true, startedAt: true, durationSeconds: true },
-    });
-    const daily = new Map<string, number>();
-    for (let offset = 0; offset < 30; offset += 1) {
-      const day = new Date(since);
-      day.setUTCDate(day.getUTCDate() + offset);
-      daily.set(day.toISOString().slice(0, 10), 0);
-    }
-    const gameStats = new Map<string, { plays: number; duration: number; completed: number }>();
-    let duration = 0;
-    let completed = 0;
-    for (const session of sessions) {
-      const day = session.startedAt.toISOString().slice(0, 10);
-      daily.set(day, (daily.get(day) ?? 0) + 1);
-      const stat = gameStats.get(session.gameId) ?? { plays: 0, duration: 0, completed: 0 };
-      stat.plays += 1;
-      if (session.durationSeconds !== null) {
-        duration += session.durationSeconds;
-        completed += 1;
-        stat.duration += session.durationSeconds;
-        stat.completed += 1;
-      }
-      gameStats.set(session.gameId, stat);
-    }
-    return {
-      advanced: true,
-      totals,
-      details: {
-        averageSessionSeconds: completed > 0 ? Math.round(duration / completed) : 0,
-        uniquePlayers: new Set(
-          sessions.flatMap((session) => (session.userId ? [session.userId] : [])),
-        ).size,
-        dailyPlays: [...daily].map(([date, plays]) => ({ date, plays })),
-        games: games.map((game) => {
-          const stat = gameStats.get(game.id) ?? { plays: 0, duration: 0, completed: 0 };
-          return {
-            gameId: game.id,
-            title: game.title,
-            plays: stat.plays,
-            averageSessionSeconds:
-              stat.completed > 0 ? Math.round(stat.duration / stat.completed) : 0,
-          };
-        }),
-      },
-    };
+    return getCreatorAnalytics(prisma, env, user.id, parsed.data.range);
   });
 }
