@@ -28,7 +28,22 @@ export function formatDate(dateString: string, locale: Locale): string {
   });
 }
 
+/** Compact locale-aware date (month + day, no year) for dense chart axes. */
+export function formatShortDate(dateString: string, locale: Locale): string {
+  return new Date(dateString).toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 /** Locale-aware integer formatting (thousands separators for play/like counts). */
 export function formatNumber(value: number, locale: Locale): string {
   return new Intl.NumberFormat(locale).format(value);
+}
+
+/** Locale-aware compact integer (e.g. 12.3K) for chart axis tick labels. */
+export function formatCompactNumber(value: number, locale: Locale): string {
+  return new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 }).format(
+    value,
+  );
 }

@@ -17,6 +17,18 @@ function t(key: string, params?: Record<string, string | number>): string {
   return value;
 }
 
+/** Build a contiguous daily series ending 2026-06-22 for range/scale tests. */
+function days(count: number, shape: (index: number) => number): { date: string; plays: number }[] {
+  const out: { date: string; plays: number }[] = [];
+  const end = new Date('2026-06-22T00:00:00Z');
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const d = new Date(end);
+    d.setUTCDate(end.getUTCDate() - i);
+    out.push({ date: d.toISOString().slice(0, 10), plays: shape(count - 1 - i) });
+  }
+  return out;
+}
+
 function response(overrides: Partial<CreatorAnalyticsDto> = {}): CreatorAnalyticsDto {
   return {
     range: '30d',
@@ -76,7 +88,7 @@ function response(overrides: Partial<CreatorAnalyticsDto> = {}): CreatorAnalytic
   };
 }
 
-function advancedResponse(): CreatorAnalyticsDto {
+function advancedResponse(overrides: Partial<CreatorAnalyticsDto> = {}): CreatorAnalyticsDto {
   return response({
     entitlements: { creatorPlus: true, advancedAnalytics: true },
     advanced: {
@@ -142,6 +154,7 @@ function advancedResponse(): CreatorAnalyticsDto {
         ],
       },
     },
+    ...overrides,
   });
 }
 
@@ -162,11 +175,18 @@ function render(analytics: CreatorAnalyticsDto | null, loading = false, error = 
   );
 }
 
+/** Count distinct rendered chart axis-label elements (ignores modifier classes). */
+function countAxisLabels(markup: string): number {
+  return (markup.match(/class="ca-chart__xlabel/g) ?? []).length;
+}
+
 describe('CreatorAnalyticsView', () => {
   it('renders a stable skeleton state before the API returns', () => {
     const markup = render(null, true);
     expect(markup).toContain('data-testid="analytics-skeleton"');
     expect(markup).toContain('Loading analytics');
+    expect(markup).toContain('ca-skel-card');
+    expect(markup).toContain('ca-skel-chart');
   });
 
   it('renders a clean error and retry state', () => {
@@ -174,6 +194,7 @@ describe('CreatorAnalyticsView', () => {
     expect(markup).toContain('Analytics did not load');
     expect(markup).toContain('Analytics could not be loaded: Network request failed');
     expect(markup).toContain('Retry');
+    expect(markup).toContain('ca-error');
   });
 
   it('renders an honest no-games empty state', () => {
@@ -206,8 +227,9 @@ describe('CreatorAnalyticsView', () => {
     expect(markup).toContain('No activity in this window');
   });
 
-  it('renders KPI cards with real values', () => {
+  it('renders the rebuilt KPI grid with real values and no demo data', () => {
     const markup = render(response());
+    expect(markup).toContain('ca-kpi-grid');
     expect(markup).toContain('1,234');
     expect(markup).toContain('42');
     expect(markup).toContain('8');
@@ -218,17 +240,72 @@ describe('CreatorAnalyticsView', () => {
     expect(markup).toContain('Published');
   });
 
-  it('renders the chart section with accessible daily data', () => {
+  it('renders the chart section with accessible daily data and a comparison line', () => {
     const markup = render(advancedResponse());
     expect(markup).toContain('Plays over time');
     expect(markup).toContain('aria-label="Daily plays in the selected date range"');
     expect(markup).toContain('Previous period');
     expect(markup).toContain('Jun 22, 2026: 26 plays');
+    // Area chart fill + a finite SVG line path (no NaN/Infinity).
+    expect(markup).toContain('url(#caPlaysGradient)');
+    expect(markup).not.toMatch(/d="[^"]*(NaN|Infinity)/);
+  });
+
+  it('renders a polished comparison card with a signed change', () => {
+    const markup = render(advancedResponse());
+    expect(markup).toContain('ca-compare');
+    expect(markup).toContain('+40%');
+  });
+
+  it('renders the chart for 7-day and 30-day ranges', () => {
+    const sevenDay = advancedResponse({
+      timeseries: days(7, (i) => [3, 0, 7, 12, 4, 0, 21][i] ?? 0),
+      advanced: null,
+      entitlements: { creatorPlus: false, advancedAnalytics: false },
+    });
+    const markupSeven = render(sevenDay);
+    expect(markupSeven).toContain('Plays over time');
+    expect(countAxisLabels(markupSeven)).toBeGreaterThanOrEqual(2);
+    expect(countAxisLabels(markupSeven)).toBeLessThanOrEqual(7);
+
+    const markupThirty = render(response());
+    expect(markupThirty).toContain('url(#caPlaysGradient)');
+  });
+
+  it('thins x-axis labels for long 90-day ranges and stays finite', () => {
+    const ninety = response({
+      timeseries: days(90, (i) => (i % 9 === 0 ? 120 : i % 3 === 0 ? 0 : 12)),
+    });
+    const markup = render(ninety);
+    expect(countAxisLabels(markup)).toBeGreaterThan(0);
+    expect(countAxisLabels(markup)).toBeLessThanOrEqual(6);
+    expect(markup).not.toMatch(/d="[^"]*(NaN|Infinity)/);
+  });
+
+  it('handles very high play counts without breaking the chart', () => {
+    const huge = response({
+      summary: { ...response().summary, totalPlays: 1234567, playsInRange: 98765 },
+      timeseries: days(30, (i) => (i === 15 ? 50000 : i % 4 === 0 ? 8000 : 200)),
+    });
+    const markup = render(huge);
+    expect(markup).toContain('1,234,567');
+    expect(markup).not.toMatch(/d="[^"]*(NaN|Infinity)/);
+  });
+
+  it('renders a polished empty chart state for zero data instead of a flat line', () => {
+    const zero = response({ timeseries: days(30, () => 0) });
+    const markup = render(zero);
+    expect(markup).toContain('ca-chart__empty');
+    expect(markup).toContain('No activity in this window');
+    // No area path and no axis labels are drawn when the window is empty.
+    expect(markup).not.toContain('url(#caPlaysGradient)');
+    expect(countAxisLabels(markup)).toBe(0);
   });
 
   it('groups internal events into product categories', () => {
     const markup = render(response());
     expect(markup).toContain('VibePlay internal events');
+    expect(markup).toContain('ca-events-grid');
     expect(markup).toContain('Launch');
     expect(markup).toContain('Cloud Saves');
     expect(markup).toContain('Guest Exit');
@@ -237,17 +314,28 @@ describe('CreatorAnalyticsView', () => {
     expect(markup).toContain('Top games by successful launches');
   });
 
+  it('renders the redesigned top games layout', () => {
+    const markup = render(response());
+    expect(markup).toContain('creator-analytics-top-grid');
+    expect(markup).toContain('creator-analytics-top-row');
+    expect(markup).toContain('ca-rank');
+    expect(markup).toContain('Real Game');
+  });
+
   it('renders the polished Creator Plus upgrade prompt for Free creators', () => {
     const markup = render(response());
+    expect(markup).toContain('ca-locked');
     expect(markup).toContain('Detailed analytics are included with Creator Plus');
     expect(markup).toContain('Player mix');
     expect(markup).toContain('Version comparison');
     expect(markup).not.toContain('Guest vs signed-in split');
   });
 
-  it('renders advanced analytics for Creator Plus/Admin/Owner data', () => {
+  it('renders advanced analytics split into clear subsections', () => {
     const markup = render(advancedResponse());
     expect(markup).toContain('Advanced Analytics');
+    expect(markup).toContain('ca-kpi-grid--six');
+    expect(markup).toContain('ca-grid-2');
     expect(markup).toContain('Guest vs signed-in split');
     expect(markup).toContain('Launch diagnostics');
     expect(markup).toContain('Custom event summaries');
@@ -272,6 +360,10 @@ describe('CreatorAnalyticsView', () => {
       'analytics.playerMixTitle',
       'analytics.versionComparisonTitle',
       'analytics.noCustomEvents',
+      'analytics.changeIncrease',
+      'analytics.comparisonThisPeriod',
+      'analytics.comparisonPrevPeriod',
+      'analytics.playerMixAria',
     ];
     for (const key of requiredKeys) {
       expect(en).toHaveProperty(key);
