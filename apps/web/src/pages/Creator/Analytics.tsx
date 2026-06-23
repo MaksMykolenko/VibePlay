@@ -17,6 +17,7 @@ import {
   Gauge,
   LockKeyhole,
   MessageSquare,
+  Minus,
   Play,
   RefreshCw,
   RotateCcw,
@@ -24,6 +25,7 @@ import {
   ShieldCheck,
   Sparkles,
   ThumbsUp,
+  TrendingDown,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -31,7 +33,12 @@ import type { LucideIcon } from 'lucide-react';
 import { api } from '../../lib/api';
 import { errorMessage } from '../../lib/api/errors';
 import { useI18n } from '../../i18n/useI18n';
-import { formatDate, formatNumber } from '../../lib/formatTime';
+import {
+  formatCompactNumber,
+  formatDate,
+  formatNumber,
+  formatShortDate,
+} from '../../lib/formatTime';
 
 interface CreatorAnalyticsViewProps {
   analytics: CreatorAnalyticsDto | null;
@@ -42,13 +49,15 @@ interface CreatorAnalyticsViewProps {
   onRetry: () => void;
 }
 
+type Tone = 'success' | 'warning' | 'danger' | 'info';
+
 interface KpiCard {
   key: string;
   label: string;
   value: string;
   helper: string;
   icon: LucideIcon;
-  tone?: 'success' | 'warning' | 'danger' | 'info';
+  tone?: Tone;
 }
 
 interface EventGroupDefinition {
@@ -60,6 +69,9 @@ interface EventGroupDefinition {
 }
 
 const RANGE_OPTIONS: CreatorAnalyticsRange[] = ['7d', '30d', '90d'];
+
+/** Maximum number of x-axis date labels rendered, regardless of range length. */
+const MAX_AXIS_LABELS = 6;
 
 const EVENT_GROUPS: EventGroupDefinition[] = [
   {
@@ -128,6 +140,18 @@ const EVENT_GROUPS: EventGroupDefinition[] = [
   },
 ];
 
+const toneIconClass = (tone?: Tone): string => (tone ? `ca-icon ca-icon--${tone}` : 'ca-icon');
+
+/** Evenly spaced indices (always including the first and last) for axis labels. */
+function pickAxisIndices(length: number, max: number): number[] {
+  if (length <= 0) return [];
+  if (length <= max) return Array.from({ length }, (_, index) => index);
+  const step = (length - 1) / (max - 1);
+  const seen = new Set<number>();
+  for (let k = 0; k < max; k += 1) seen.add(Math.round(k * step));
+  return [...seen].sort((a, b) => a - b);
+}
+
 export const CreatorAnalytics: React.FC = () => {
   const [range, setRange] = useState<CreatorAnalyticsRange>('30d');
   const [requestId, setRequestId] = useState(0);
@@ -187,10 +211,13 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
     },
     [t],
   );
-  const percent = (value: number | null): string =>
-    value === null
-      ? t('analytics.notEnoughData')
-      : t('analytics.percent', { count: formatNumber(value, locale) });
+  const percent = useCallback(
+    (value: number | null): string =>
+      value === null
+        ? t('analytics.notEnoughData')
+        : t('analytics.percent', { count: formatNumber(value, locale) }),
+    [locale, t],
+  );
 
   const kpis = useMemo<KpiCard[]>(() => {
     if (!analytics) return [];
@@ -258,13 +285,11 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
     ];
   }, [analytics, duration, locale, t]);
 
-  const showErrorOnly = error && !analytics;
-
   return (
-    <div style={containerStyle} className="animate-fade">
+    <div className="ca-page animate-fade">
       <AnalyticsHeader
         analytics={analytics}
-        errorOnly={Boolean(showErrorOnly)}
+        errorOnly={Boolean(error && !analytics)}
         loading={loading}
         range={range}
         onRangeChange={onRangeChange}
@@ -277,7 +302,7 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
 
       {analytics ? (
         <>
-          <section style={kpiGridStyle} data-layout="responsive-grid">
+          <section className="ca-kpi-grid" aria-label={t('analytics.title')}>
             {kpis.map((card) => (
               <MetricCard key={card.key} card={card} />
             ))}
@@ -311,10 +336,9 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
 
           <PlayTrendChart analytics={analytics} />
 
-          <div style={contentGridStyle}>
-            <TopGamesSection analytics={analytics} />
-            <ActivitySection analytics={analytics} />
-          </div>
+          <TopGamesSection analytics={analytics} />
+
+          <ActivitySection analytics={analytics} />
 
           <InternalEventsSection analytics={analytics} />
 
@@ -339,19 +363,20 @@ const AnalyticsHeader: React.FC<{
 }> = ({ analytics, errorOnly, loading, range, onRangeChange, onRefresh }) => {
   const { t, locale } = useI18n();
   return (
-    <header style={headerStyle} className="bg-glass">
-      <div style={headerCopyStyle}>
-        <span className="badge badge-primary" style={verifiedBadgeStyle}>
+    <header className="ca-card bg-glass ca-header">
+      <div className="ca-header__copy">
+        <span className="badge badge-primary ca-header__badge">
           <ShieldCheck size={14} aria-hidden="true" />
           {t('analytics.verifiedBadge')}
         </span>
         <div>
-          <h1 style={titleStyle}>{t('analytics.title')}</h1>
-          <p style={subtitleStyle}>{t('analytics.subtitle')}</p>
+          <h1 className="ca-title">{t('analytics.title')}</h1>
+          <p className="ca-subtitle">{t('analytics.subtitle')}</p>
         </div>
         {analytics ? (
-          <div style={metaRowStyle}>
+          <div className="ca-meta">
             <span>
+              <Clock size={13} aria-hidden="true" />
               {t('analytics.dataWindow', {
                 from: formatDate(analytics.period.from, locale),
                 to: formatDate(analytics.period.to, locale),
@@ -364,31 +389,25 @@ const AnalyticsHeader: React.FC<{
             </span>
           </div>
         ) : errorOnly ? (
-          <div style={metaRowStyle}>
+          <div className="ca-meta">
             <span>{t('analytics.errorMeta')}</span>
           </div>
         ) : null}
       </div>
-      <div style={headerControlsStyle}>
+      <div className="ca-header__controls">
         {loading && analytics ? (
-          <span style={refreshingPillStyle}>
+          <span className="ca-refreshing">
             <RefreshCw size={14} aria-hidden="true" />
             {t('analytics.refreshing')}
           </span>
         ) : null}
-        <div
-          className="creator-analytics-range"
-          style={rangeGroupStyle}
-          role="group"
-          aria-label={t('analytics.range')}
-        >
+        <div className="creator-analytics-range" role="group" aria-label={t('analytics.range')}>
           {RANGE_OPTIONS.map((option) => (
             <button
               key={option}
               type="button"
               aria-pressed={range === option}
               onClick={() => onRangeChange(option)}
-              style={range === option ? activeRangeButtonStyle : rangeButtonStyle}
             >
               {t(`analytics.range${option}`)}
             </button>
@@ -399,7 +418,6 @@ const AnalyticsHeader: React.FC<{
           className="btn btn-secondary btn-sm"
           onClick={onRefresh}
           disabled={loading && !analytics}
-          style={refreshButtonStyle}
         >
           <RefreshCw size={15} aria-hidden="true" />
           {t('analytics.refresh')}
@@ -412,40 +430,30 @@ const AnalyticsHeader: React.FC<{
 const AnalyticsSkeleton: React.FC = () => {
   const { t } = useI18n();
   return (
-    <section
-      style={skeletonWrapStyle}
-      className="bg-glass"
-      aria-busy="true"
-      data-testid="analytics-skeleton"
-    >
-      <div style={skeletonHeaderStyle}>
-        <span style={skeletonLineStyle} />
-        <span style={{ ...skeletonLineStyle, width: '34%' }} />
+    <div className="ca-skeleton" aria-busy="true" data-testid="analytics-skeleton">
+      <span className="ca-visually-hidden">{t('analytics.loading')}</span>
+      <div className="ca-card ca-section">
+        <span className="skeleton ca-skel-line" style={{ width: '40%', height: 26 }} />
+        <span className="skeleton ca-skel-line" style={{ width: '64%' }} />
       </div>
-      <div style={kpiGridStyle}>
+      <div className="ca-kpi-grid">
         {Array.from({ length: 8 }, (_, index) => (
-          <div key={index} style={skeletonCardStyle}>
-            <span style={{ ...skeletonLineStyle, width: '42%' }} />
-            <span style={{ ...skeletonLineStyle, width: '62%', height: 30 }} />
-            <span style={{ ...skeletonLineStyle, width: '70%' }} />
-          </div>
+          <div key={index} className="ca-card skeleton ca-skel-card" />
         ))}
       </div>
-      <div style={skeletonChartStyle}>
-        <span style={skeletonLineStyle}>{t('analytics.loading')}</span>
-      </div>
-    </section>
+      <div className="skeleton ca-skel-chart" />
+    </div>
   );
 };
 
 const ErrorPanel: React.FC<{ message: string; onRetry: () => void }> = ({ message, onRetry }) => {
   const { t } = useI18n();
   return (
-    <section style={errorPanelStyle} role="alert">
-      <AlertTriangle size={22} aria-hidden="true" />
-      <div style={{ flex: 1 }}>
-        <h2 style={compactTitleStyle}>{t('analytics.errorTitle')}</h2>
-        <p style={descriptionStyle}>{t('analytics.loadError', { message })}</p>
+    <section className="ca-error" role="alert">
+      <AlertTriangle size={24} aria-hidden="true" />
+      <div className="ca-error__body">
+        <h2>{t('analytics.errorTitle')}</h2>
+        <p>{t('analytics.loadError', { message })}</p>
       </div>
       <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
         <RefreshCw size={15} aria-hidden="true" />
@@ -458,15 +466,15 @@ const ErrorPanel: React.FC<{ message: string; onRetry: () => void }> = ({ messag
 const MetricCard: React.FC<{ card: KpiCard }> = ({ card }) => {
   const Icon = card.icon;
   return (
-    <article style={metricCardStyle} className="bg-glass">
-      <div style={metricCardHeaderStyle}>
-        <span style={metricLabelStyle}>{card.label}</span>
-        <span style={iconBubbleStyle(card.tone)}>
+    <article className="ca-card ca-kpi">
+      <div className="ca-kpi__top">
+        <span className="ca-kpi__label">{card.label}</span>
+        <span className={toneIconClass(card.tone)}>
           <Icon size={18} aria-hidden="true" />
         </span>
       </div>
-      <strong style={metricValueStyle}>{card.value}</strong>
-      <span style={metricHelperStyle}>{card.helper}</span>
+      <strong className="ca-kpi__value">{card.value}</strong>
+      <span className="ca-kpi__helper">{card.helper}</span>
     </article>
   );
 };
@@ -474,32 +482,20 @@ const MetricCard: React.FC<{ card: KpiCard }> = ({ card }) => {
 const PortfolioStrip: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytics }) => {
   const { t, locale } = useI18n();
   const items = [
-    {
-      label: t('analytics.totalGames'),
-      value: analytics.summary.totalGames,
-    },
-    {
-      label: t('analytics.inModeration'),
-      value: analytics.summary.inModerationGames,
-    },
-    {
-      label: t('analytics.draftGames'),
-      value: analytics.summary.draftGames,
-    },
-    {
-      label: t('analytics.rejectedGames'),
-      value: analytics.summary.rejectedGames,
-    },
+    { label: t('analytics.totalGames'), value: analytics.summary.totalGames },
+    { label: t('analytics.inModeration'), value: analytics.summary.inModerationGames },
+    { label: t('analytics.draftGames'), value: analytics.summary.draftGames },
+    { label: t('analytics.rejectedGames'), value: analytics.summary.rejectedGames },
   ];
   return (
-    <section style={portfolioStripStyle} aria-label={t('analytics.portfolioHealth')}>
-      <div>
-        <h2 style={compactTitleStyle}>{t('analytics.portfolioHealth')}</h2>
-        <p style={descriptionStyle}>{t('analytics.portfolioHealthBody')}</p>
+    <section className="ca-card ca-portfolio" aria-label={t('analytics.portfolioHealth')}>
+      <div className="ca-section__heading">
+        <h2 className="ca-section__title">{t('analytics.portfolioHealth')}</h2>
+        <p className="ca-section__desc">{t('analytics.portfolioHealthBody')}</p>
       </div>
-      <div style={portfolioMetricsStyle}>
+      <div className="ca-portfolio__pills">
         {items.map((item) => (
-          <span key={item.label} style={portfolioPillStyle}>
+          <span key={item.label} className="ca-tag">
             <strong>{formatNumber(item.value, locale)}</strong>
             {item.label}
           </span>
@@ -512,181 +508,240 @@ const PortfolioStrip: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
 const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytics }) => {
   const { t, locale } = useI18n();
   const current = analytics.timeseries;
-  const previous =
-    analytics.entitlements.advancedAnalytics && analytics.advanced
-      ? analytics.advanced.comparison.daily
-      : [];
+  const advanced =
+    analytics.entitlements.advancedAnalytics && analytics.advanced ? analytics.advanced : null;
+  const previous = advanced ? advanced.comparison.daily : [];
   const hasCurrentValues = current.some((day) => day.plays > 0);
   const hasPreviousValues = previous.some((day) => day.previousPlays > 0);
-  const maxValue = Math.max(
-    1,
-    ...current.map((day) => day.plays),
-    ...previous.map((day) => day.previousPlays),
-  );
-  const width = 820;
-  const height = 300;
-  const pad = { top: 22, right: 18, bottom: 48, left: 44 };
-  const plotWidth = width - pad.left - pad.right;
-  const plotHeight = height - pad.top - pad.bottom;
-  const barSlot = current.length > 0 ? plotWidth / current.length : plotWidth;
-  const barWidth = Math.max(5, Math.min(22, barSlot * 0.56));
-  const previousPoints = previous.map((day, index) => {
-    const x = pad.left + barSlot * index + barSlot / 2;
-    const y = pad.top + plotHeight - (day.previousPlays / maxValue) * plotHeight;
-    return `${x},${y}`;
-  });
-  const firstDate = current[0]?.date;
-  const middleDate = current[Math.floor(current.length / 2)]?.date;
-  const lastDate = current[current.length - 1]?.date;
+  const peak = current.reduce((max, day) => Math.max(max, day.plays), 0);
+  const maxValue = Math.max(1, peak, ...previous.map((day) => day.previousPlays));
+  const count = current.length;
+
+  const x = (index: number): number => (count > 1 ? (index / (count - 1)) * 100 : 50);
+  const y = (value: number): number => 100 - (value / maxValue) * 100;
+
+  const linePath =
+    count > 0 ? `M ${current.map((d, i) => `${x(i)},${y(d.plays)}`).join(' L ')}` : '';
+  const areaPath =
+    count > 0
+      ? `M ${x(0)},100 ${current.map((d, i) => `L ${x(i)},${y(d.plays)}`).join(' ')} L ${x(
+          count - 1,
+        )},100 Z`
+      : '';
+  const previousPath = hasPreviousValues
+    ? `M ${previous.map((d, i) => `${x(i)},${y(d.previousPlays)}`).join(' L ')}`
+    : '';
+
+  const axisIndices = pickAxisIndices(count, MAX_AXIS_LABELS);
+  const gridLines = [0, 25, 50, 75];
 
   return (
-    <section style={chartCardStyle} className="bg-glass" aria-labelledby="plays-over-time-title">
-      <div style={sectionHeaderStyle}>
-        <div>
-          <h2 id="plays-over-time-title" style={sectionTitleStyle}>
+    <section className="ca-card ca-section ca-chart-card" aria-labelledby="ca-plays-title">
+      <div className="ca-section__head">
+        <div className="ca-section__heading">
+          <h2 id="ca-plays-title" className="ca-section__title">
             <BarChart3 size={20} aria-hidden="true" />
             {t('analytics.playTrend')}
           </h2>
-          <p style={descriptionStyle}>{t('analytics.chartSummary')}</p>
+          <p className="ca-section__desc">{t('analytics.chartSummary')}</p>
         </div>
-        <div style={chartStatsStyle}>
-          <span>
+        <div className="ca-section__aside">
+          <span className="ca-tag">
             {t('analytics.chartTotal', {
               count: formatNumber(analytics.summary.playsInRange, locale),
             })}
           </span>
-          <span>
-            {t('analytics.chartPeak', {
-              count: formatNumber(Math.max(0, ...current.map((day) => day.plays)), locale),
-            })}
+          <span className="ca-tag">
+            {t('analytics.chartPeak', { count: formatNumber(peak, locale) })}
           </span>
         </div>
       </div>
 
-      <div style={chartFrameStyle}>
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          role="img"
-          aria-label={t('analytics.chartLabel')}
-          style={chartSvgStyle}
-          preserveAspectRatio="none"
-        >
-          <line
-            x1={pad.left}
-            y1={pad.top + plotHeight}
-            x2={width - pad.right}
-            y2={pad.top + plotHeight}
-            stroke="var(--border-strong)"
-            strokeWidth="1"
-          />
-          {[0.25, 0.5, 0.75, 1].map((tick) => {
-            const y = pad.top + plotHeight - plotHeight * tick;
-            return (
+      <div className="ca-chart">
+        <div className="ca-chart__canvas">
+          <div className="ca-chart__plot">
+            <svg
+              className="ca-chart__svg"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label={t('analytics.chartLabel')}
+            >
+              <defs>
+                <linearGradient id="caPlaysGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.34" />
+                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              {gridLines.map((line) => (
+                <line
+                  key={line}
+                  x1="0"
+                  x2="100"
+                  y1={line}
+                  y2={line}
+                  stroke="var(--border-subtle)"
+                  strokeWidth="1"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ))}
               <line
-                key={tick}
-                x1={pad.left}
-                y1={y}
-                x2={width - pad.right}
-                y2={y}
-                stroke="var(--border-subtle)"
+                x1="0"
+                x2="100"
+                y1="100"
+                y2="100"
+                stroke="var(--border-strong)"
                 strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
               />
-            );
-          })}
-          {hasPreviousValues ? (
-            <polyline
-              points={previousPoints.join(' ')}
-              fill="none"
-              stroke="var(--info)"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity="0.82"
-            />
-          ) : null}
-          {current.map((day, index) => {
-            const x = pad.left + barSlot * index + (barSlot - barWidth) / 2;
-            const barHeight = (day.plays / maxValue) * plotHeight;
-            const y = pad.top + plotHeight - barHeight;
-            return (
-              <rect
-                key={day.date}
-                x={x}
-                y={y}
-                width={barWidth}
-                height={Math.max(day.plays > 0 ? 2 : 0, barHeight)}
-                rx="5"
-                fill="var(--primary)"
-                opacity={day.plays > 0 ? 0.95 : 0.22}
-              >
-                <title>
-                  {t('analytics.dailyPlays', {
-                    date: formatDate(day.date, locale),
-                    count: formatNumber(day.plays, locale),
-                  })}
-                </title>
-              </rect>
-            );
-          })}
-          {firstDate ? (
-            <text x={pad.left} y={height - 18} fill="var(--text-muted)" fontSize="18">
-              {formatDate(firstDate, locale)}
-            </text>
-          ) : null}
-          {middleDate ? (
-            <text
-              x={width / 2}
-              y={height - 18}
-              textAnchor="middle"
-              fill="var(--text-muted)"
-              fontSize="18"
-            >
-              {formatDate(middleDate, locale)}
-            </text>
-          ) : null}
-          {lastDate ? (
-            <text
-              x={width - pad.right}
-              y={height - 18}
-              textAnchor="end"
-              fill="var(--text-muted)"
-              fontSize="18"
-            >
-              {formatDate(lastDate, locale)}
-            </text>
-          ) : null}
-        </svg>
-        {!hasCurrentValues ? (
-          <div style={chartEmptyOverlayStyle}>
-            <strong>{t('analytics.chartEmptyTitle')}</strong>
-            <span>{t('analytics.chartEmptyBody')}</span>
+              {hasCurrentValues ? <path d={areaPath} fill="url(#caPlaysGradient)" /> : null}
+              {hasPreviousValues ? (
+                <path
+                  d={previousPath}
+                  fill="none"
+                  stroke="var(--info)"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.85"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
+              {hasCurrentValues ? (
+                <path
+                  d={linePath}
+                  fill="none"
+                  stroke="var(--primary)"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                />
+              ) : null}
+            </svg>
           </div>
-        ) : null}
-      </div>
 
-      <div style={legendStyle}>
-        <span style={legendItemStyle}>
-          <span style={{ ...legendSwatchStyle, background: 'var(--primary)' }} />
-          {t('analytics.chartCurrentPeriod')}
-        </span>
-        {hasPreviousValues ? (
-          <span style={legendItemStyle}>
-            <span style={{ ...legendSwatchStyle, background: 'var(--info)' }} />
-            {t('analytics.chartPreviousPeriod')}
-          </span>
+          {hasCurrentValues
+            ? [0, 0.5, 1].map((fraction) => (
+                <span
+                  key={fraction}
+                  className="ca-chart__ylabel"
+                  style={{ top: `calc(14px + (100% - 44px) * ${fraction})` }}
+                >
+                  {formatCompactNumber(Math.round(maxValue * (1 - fraction)), locale)}
+                </span>
+              ))
+            : null}
+
+          {hasCurrentValues
+            ? axisIndices.map((index, position) => {
+                const isFirst = position === 0;
+                const isLast = position === axisIndices.length - 1;
+                const fraction = count > 1 ? index / (count - 1) : 0.5;
+                const className =
+                  'ca-chart__xlabel' +
+                  (isFirst ? ' ca-chart__xlabel--first' : '') +
+                  (isLast ? ' ca-chart__xlabel--last' : '');
+                const style: React.CSSProperties = isFirst
+                  ? { left: '46px' }
+                  : isLast
+                    ? { right: '14px', left: 'auto' }
+                    : { left: `calc(46px + (100% - 60px) * ${fraction})` };
+                return (
+                  <span key={current[index].date} className={className} style={style}>
+                    {formatShortDate(current[index].date, locale)}
+                  </span>
+                );
+              })
+            : null}
+
+          {!hasCurrentValues ? (
+            <div className="ca-chart__empty">
+              <strong>{t('analytics.chartEmptyTitle')}</strong>
+              <span>{t('analytics.chartEmptyBody')}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="ca-chart__footer">
+          <div className="ca-legend">
+            <span className="ca-legend__item">
+              <span className="ca-legend__swatch" style={{ background: 'var(--primary)' }} />
+              {t('analytics.chartCurrentPeriod')}
+            </span>
+            {hasPreviousValues ? (
+              <span className="ca-legend__item">
+                <span className="ca-legend__swatch ca-legend__swatch--line" />
+                {t('analytics.chartPreviousPeriod')}
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        {advanced ? (
+          <ComparisonCard advanced={advanced} playsInRange={analytics.summary.playsInRange} />
         ) : null}
+
+        <ul className="ca-visually-hidden">
+          {current.map((day) => (
+            <li key={day.date}>
+              {t('analytics.dailyPlays', {
+                date: formatDate(day.date, locale),
+                count: formatNumber(day.plays, locale),
+              })}
+            </li>
+          ))}
+        </ul>
       </div>
-      <ul style={visuallyHiddenStyle}>
-        {current.map((day) => (
-          <li key={day.date}>
-            {t('analytics.dailyPlays', {
-              date: formatDate(day.date, locale),
-              count: formatNumber(day.plays, locale),
-            })}
-          </li>
-        ))}
-      </ul>
     </section>
+  );
+};
+
+const ComparisonCard: React.FC<{
+  advanced: NonNullable<CreatorAnalyticsDto['advanced']>;
+  playsInRange: number;
+}> = ({ advanced, playsInRange }) => {
+  const { t, locale } = useI18n();
+  const change = advanced.comparison.changePercent;
+
+  if (change === null) {
+    return (
+      <div className="ca-compare" role="group" aria-label={t('analytics.periodComparison')}>
+        <span className="ca-compare__delta ca-compare__delta--flat">
+          <Minus size={16} aria-hidden="true" />
+          {t('analytics.notEnoughComparison')}
+        </span>
+      </div>
+    );
+  }
+
+  const direction = change > 0 ? 'up' : change < 0 ? 'down' : 'flat';
+  const DirIcon = direction === 'up' ? TrendingUp : direction === 'down' ? TrendingDown : Minus;
+  const signed = `${change > 0 ? '+' : ''}${formatNumber(change, locale)}`;
+  const srKey =
+    direction === 'up'
+      ? 'analytics.changeIncrease'
+      : direction === 'down'
+        ? 'analytics.changeDecrease'
+        : 'analytics.changeNoChange';
+
+  return (
+    <div className="ca-compare" role="group" aria-label={t('analytics.periodComparison')}>
+      <span className={`ca-compare__delta ca-compare__delta--${direction}`}>
+        <DirIcon size={16} aria-hidden="true" />
+        {t('analytics.percent', { count: signed })}
+        <span className="ca-visually-hidden">{t(srKey)}</span>
+      </span>
+      <span className="ca-compare__detail">
+        <strong>{formatNumber(playsInRange, locale)}</strong>
+        {t('analytics.comparisonThisPeriod')}
+      </span>
+      <span className="ca-compare__detail">
+        <strong>{formatNumber(advanced.comparison.previousPeriodPlays, locale)}</strong>
+        {t('analytics.comparisonPrevPeriod')}
+      </span>
+    </div>
   );
 };
 
@@ -696,14 +751,14 @@ const TopGamesSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analyti
     analytics.eventMetrics.topGamesByLaunch.map((game) => [game.gameId, game.launches]),
   );
   return (
-    <section style={panelStyle} className="bg-glass" aria-labelledby="top-games-title">
-      <div style={sectionHeaderStyle}>
-        <div>
-          <h2 id="top-games-title" style={sectionTitleStyle}>
+    <section className="ca-card ca-section" aria-labelledby="ca-top-games-title">
+      <div className="ca-section__head">
+        <div className="ca-section__heading">
+          <h2 id="ca-top-games-title" className="ca-section__title">
             <Gamepad2 size={20} aria-hidden="true" />
             {t('analytics.topGames')}
           </h2>
-          <p style={descriptionStyle}>{t('analytics.topGamesBody')}</p>
+          <p className="ca-section__desc">{t('analytics.topGamesBody')}</p>
         </div>
       </div>
 
@@ -714,8 +769,8 @@ const TopGamesSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analyti
           body={t('analytics.noTopGames')}
         />
       ) : (
-        <div style={topGamesTableStyle} className="creator-analytics-top-grid">
-          <div style={topGamesHeaderStyle} className="creator-analytics-top-header">
+        <div className="creator-analytics-top-grid">
+          <div className="creator-analytics-top-header" aria-hidden="true">
             <span>{t('analytics.game')}</span>
             <span>{t('analytics.plays')}</span>
             <span>{t('analytics.launches')}</span>
@@ -724,42 +779,41 @@ const TopGamesSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analyti
             <span>{t('analytics.playShare')}</span>
           </div>
           {analytics.topGames.map((game, index) => {
+            const launches = launchesByGame.get(game.gameId) ?? 0;
             const share =
               analytics.summary.playsInRange > 0
                 ? Math.round((game.plays / analytics.summary.playsInRange) * 100)
                 : 0;
             return (
-              <div key={game.gameId} style={topGameRowStyle} className="creator-analytics-top-row">
-                <div style={topGameTitleCellStyle} className="creator-analytics-top-game">
-                  <span style={gameAvatarStyle} aria-hidden="true">
+              <div key={game.gameId} className="creator-analytics-top-row">
+                <div className="creator-analytics-top-game">
+                  <span className="ca-rank" aria-hidden="true">
                     {index + 1}
                   </span>
-                  <div>
-                    <Link to={`/game/${game.slug}`} style={gameLinkStyle}>
+                  <div className="ca-top-game__meta">
+                    <Link to={`/game/${game.slug}`} className="ca-game-link" title={game.title}>
                       {game.title}
                     </Link>
-                    <span style={rowSubTextStyle}>
-                      {t('analytics.launchCount', {
-                        count: formatNumber(launchesByGame.get(game.gameId) ?? 0, locale),
-                      })}
+                    <span className="ca-top-game__sub">
+                      {t('analytics.launchCount', { count: formatNumber(launches, locale) })}
                     </span>
                   </div>
                 </div>
                 <MetricCell label={t('analytics.plays')} value={formatNumber(game.plays, locale)} />
                 <MetricCell
                   label={t('analytics.launches')}
-                  value={formatNumber(launchesByGame.get(game.gameId) ?? 0, locale)}
+                  value={formatNumber(launches, locale)}
                 />
                 <MetricCell label={t('analytics.likes')} value={formatNumber(game.likes, locale)} />
                 <MetricCell
                   label={t('analytics.comments')}
                   value={formatNumber(game.comments, locale)}
                 />
-                <div style={shareCellStyle}>
+                <div className="ca-top-cell ca-top-cell--share">
                   <span className="badge badge-secondary">
                     {t('analytics.percent', { count: share })}
                   </span>
-                  <Link to={`/game/${game.slug}`} style={iconLinkStyle}>
+                  <Link to={`/game/${game.slug}`} className="ca-open-link">
                     {t('analytics.openGame')}
                     <ArrowRight size={14} aria-hidden="true" />
                   </Link>
@@ -774,10 +828,8 @@ const TopGamesSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analyti
 };
 
 const MetricCell: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div style={tableMetricCellStyle}>
-    <span className="creator-analytics-mobile-label" style={mobileOnlyLabelStyle}>
-      {label}
-    </span>
+  <div className="ca-top-cell">
+    <span className="creator-analytics-mobile-label">{label}</span>
     <strong>{value}</strong>
   </div>
 );
@@ -785,18 +837,20 @@ const MetricCell: React.FC<{ label: string; value: string }> = ({ label, value }
 const ActivitySection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytics }) => {
   const { t, locale } = useI18n();
   return (
-    <section style={panelStyle} className="bg-glass" aria-labelledby="recent-activity-title">
-      <h2 id="recent-activity-title" style={sectionTitleStyle}>
-        <Activity size={20} aria-hidden="true" />
-        {t('analytics.recentActivity')}
-      </h2>
-      <p style={descriptionStyle}>{t('analytics.recentActivityBody')}</p>
-      <div style={activityGridStyle}>
+    <section className="ca-card ca-section" aria-labelledby="ca-activity-title">
+      <div className="ca-section__heading">
+        <h2 id="ca-activity-title" className="ca-section__title">
+          <Activity size={20} aria-hidden="true" />
+          {t('analytics.recentActivity')}
+        </h2>
+        <p className="ca-section__desc">{t('analytics.recentActivityBody')}</p>
+      </div>
+      <div className="ca-activity-grid">
         {analytics.recentActivity.map((activity) => {
           const Icon =
             activity.type === 'PLAY' ? Play : activity.type === 'LIKE' ? ThumbsUp : MessageSquare;
           return (
-            <article key={activity.type} style={activityCardStyle}>
+            <article key={activity.type} className="ca-activity">
               <Icon size={18} aria-hidden="true" />
               <strong>
                 {t(`analytics.activity${activity.type}`, {
@@ -805,9 +859,7 @@ const ActivitySection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analyti
               </strong>
               <span>
                 {activity.latestAt
-                  ? t('analytics.latestAt', {
-                      date: formatDate(activity.latestAt, locale),
-                    })
+                  ? t('analytics.latestAt', { date: formatDate(activity.latestAt, locale) })
                   : t('analytics.noActivity')}
               </span>
             </article>
@@ -829,30 +881,30 @@ const InternalEventsSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ a
     counts.set('play_session_started', analytics.eventMetrics.playsStarted);
     return counts;
   }, [analytics.eventMetrics]);
-  const totalKnownEvents = [...eventCounts.values()].reduce((sum, count) => sum + count, 0);
+  const totalKnownEvents = [...eventCounts.values()].reduce((sum, value) => sum + value, 0);
 
   return (
-    <section style={panelStyle} className="bg-glass" aria-labelledby="internal-events-title">
-      <div style={sectionHeaderStyle}>
-        <div>
-          <h2 id="internal-events-title" style={sectionTitleStyle}>
+    <section className="ca-card ca-section" aria-labelledby="ca-internal-events-title">
+      <div className="ca-section__head">
+        <div className="ca-section__heading">
+          <h2 id="ca-internal-events-title" className="ca-section__title">
             <ShieldCheck size={20} aria-hidden="true" />
             {t('analytics.internalEventsTitle')}
           </h2>
-          <p style={descriptionStyle}>{t('analytics.internalEventsBody')}</p>
+          <p className="ca-section__desc">{t('analytics.internalEventsBody')}</p>
         </div>
-        <div style={eventTotalsStyle}>
-          <span>
-            {t('analytics.launchSuccesses')}:{' '}
-            {formatNumber(analytics.eventMetrics.launchSuccesses, locale)}
+        <div className="ca-section__aside">
+          <span className="ca-tag">
+            <strong>{formatNumber(analytics.eventMetrics.launchSuccesses, locale)}</strong>
+            {t('analytics.launchSuccesses')}
           </span>
-          <span>
-            {t('analytics.launchFailures')}:{' '}
-            {formatNumber(analytics.eventMetrics.launchFailures, locale)}
+          <span className="ca-tag">
+            <strong>{formatNumber(analytics.eventMetrics.launchFailures, locale)}</strong>
+            {t('analytics.launchFailures')}
           </span>
-          <span>
-            {t('analytics.playsStarted')}:{' '}
-            {formatNumber(analytics.eventMetrics.playsStarted, locale)}
+          <span className="ca-tag">
+            <strong>{formatNumber(analytics.eventMetrics.playsStarted, locale)}</strong>
+            {t('analytics.playsStarted')}
           </span>
         </div>
       </div>
@@ -865,40 +917,51 @@ const InternalEventsSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ a
         />
       ) : (
         <>
-          <div style={eventGroupGridStyle}>
+          <div className="ca-events-grid">
             {EVENT_GROUPS.map((group) => {
               const Icon = group.icon;
               const groupEvents = group.types
                 .map((type) => ({ type, count: eventCounts.get(type) ?? 0 }))
                 .filter((event) => event.count > 0);
               const groupTotal = groupEvents.reduce((sum, event) => sum + event.count, 0);
+              const isEmpty = groupTotal === 0;
               return (
-                <article key={group.id} style={eventGroupCardStyle}>
-                  <div style={eventGroupHeaderStyle}>
-                    <span style={iconBubbleStyle(groupTotal > 0 ? 'info' : undefined)}>
+                <article
+                  key={group.id}
+                  className={`ca-event-group${isEmpty ? ' ca-event-group--empty' : ''}`}
+                >
+                  <div className="ca-event-group__head">
+                    <span className={toneIconClass(isEmpty ? undefined : 'info')}>
                       <Icon size={17} aria-hidden="true" />
                     </span>
-                    <div>
-                      <h3 style={smallHeadingStyle}>{t(group.titleKey)}</h3>
-                      <p style={smallDescriptionStyle}>{t(group.helperKey)}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <h3 className="ca-event-group__title">{t(group.titleKey)}</h3>
+                      <p className="ca-event-group__desc">{t(group.helperKey)}</p>
                     </div>
                   </div>
-                  <strong style={eventGroupTotalStyle}>
-                    {t('analytics.eventGroupTotal', {
-                      count: formatNumber(groupTotal, locale),
-                    })}
-                  </strong>
-                  {groupEvents.length > 0 ? (
-                    <div style={eventChipWrapStyle}>
-                      {groupEvents.slice(0, 3).map((event) => (
-                        <span key={event.type} style={eventChipStyle}>
-                          {t(`analytics.event.${event.type}`)}
-                          <strong>{formatNumber(event.count, locale)}</strong>
-                        </span>
-                      ))}
-                    </div>
+                  {isEmpty ? (
+                    <span className="ca-muted">{t('analytics.eventGroupNoEvents')}</span>
                   ) : (
-                    <span style={rowSubTextStyle}>{t('analytics.eventGroupNoEvents')}</span>
+                    <>
+                      <strong className="ca-event-group__total">
+                        {t('analytics.eventGroupTotal', {
+                          count: formatNumber(groupTotal, locale),
+                        })}
+                      </strong>
+                      <div className="ca-chips">
+                        {groupEvents.slice(0, 4).map((event) => (
+                          <span key={event.type} className="ca-chip">
+                            <span
+                              className="ca-chip__label"
+                              title={t(`analytics.event.${event.type}`)}
+                            >
+                              {t(`analytics.event.${event.type}`)}
+                            </span>
+                            <strong>{formatNumber(event.count, locale)}</strong>
+                          </span>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </article>
               );
@@ -906,16 +969,14 @@ const InternalEventsSection: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ a
           </div>
 
           {analytics.eventMetrics.topGamesByLaunch.length > 0 ? (
-            <div style={topLaunchesStyle}>
-              <h3 style={compactTitleStyle}>{t('analytics.topLaunchesTitle')}</h3>
-              <div style={compactListStyle}>
+            <div>
+              <p className="ca-subgrid-title">{t('analytics.topLaunchesTitle')}</p>
+              <div className="ca-sublist" style={{ marginTop: '0.6rem' }}>
                 {analytics.eventMetrics.topGamesByLaunch.slice(0, 5).map((game) => (
-                  <Link key={game.gameId} to={`/game/${game.slug}`} style={compactListRowStyle}>
-                    <span>{game.title}</span>
+                  <Link key={game.gameId} to={`/game/${game.slug}`} className="ca-sublist__row">
+                    <span title={game.title}>{game.title}</span>
                     <strong>
-                      {t('analytics.launchCount', {
-                        count: formatNumber(game.launches, locale),
-                      })}
+                      {t('analytics.launchCount', { count: formatNumber(game.launches, locale) })}
                     </strong>
                   </Link>
                 ))}
@@ -939,26 +1000,26 @@ const CreatorPlusUpsell: React.FC = () => {
     'analytics.locked.retention',
   ];
   return (
-    <section style={lockedStyle} className="bg-glass" aria-labelledby="creator-plus-title">
-      <div style={lockedIconStyle}>
-        <LockKeyhole size={28} aria-hidden="true" />
-      </div>
-      <div style={{ flex: 1 }}>
+    <section className="ca-locked" aria-labelledby="ca-creator-plus-title">
+      <span className="ca-locked__icon" aria-hidden="true">
+        <LockKeyhole size={26} />
+      </span>
+      <div className="ca-locked__body">
         <span className="badge badge-primary">{t('analytics.freeAdvancedEyebrow')}</span>
-        <h2 id="creator-plus-title" style={lockedTitleStyle}>
+        <h2 id="ca-creator-plus-title" className="ca-locked__title">
           {t('analytics.creatorPlusTitle')}
         </h2>
-        <p style={descriptionStyle}>{t('analytics.creatorPlusBody')}</p>
-        <div style={lockedFeatureGridStyle}>
+        <p className="ca-section__desc">{t('analytics.creatorPlusBody')}</p>
+        <div className="ca-locked__features">
           {locked.map((key) => (
-            <span key={key} style={lockedFeatureStyle}>
+            <span key={key} className="ca-locked__feature">
               <Sparkles size={14} aria-hidden="true" />
               {t(key)}
             </span>
           ))}
         </div>
       </div>
-      <Link to="/settings/billing" className="btn btn-primary">
+      <Link to="/settings/billing" className="btn btn-primary ca-locked__cta">
         {t('billing.upgrade')}
       </Link>
     </section>
@@ -979,149 +1040,167 @@ const AdvancedAnalytics: React.FC<{
     totalAudiencePlays > 0 ? Math.round((advanced.guestPlays / totalAudiencePlays) * 100) : 0;
   const conversionAvailable = advanced.conversion.registrationCta !== 'NOT_ENOUGH_INTERNAL_DATA';
 
+  const overviewCards: KpiCard[] = [
+    {
+      key: 'uniquePlayers',
+      label: t('analytics.uniquePlayers'),
+      value: formatNumber(advanced.uniquePlayers, locale),
+      helper: t('analytics.metricHelper.uniquePlayers'),
+      icon: Users,
+    },
+    {
+      key: 'returningPlayers',
+      label: t('analytics.returningPlayers'),
+      value: formatNumber(advanced.returningPlayers, locale),
+      helper: t('analytics.metricHelper.returningPlayers'),
+      icon: RotateCcw,
+    },
+    {
+      key: 'cloudSaveUsers',
+      label: t('analytics.cloudSaveUsers'),
+      value: formatNumber(advanced.cloudSaveUsers, locale),
+      helper: t('analytics.metricHelper.cloudSaveUsers'),
+      icon: Save,
+    },
+    {
+      key: 'cloudSaveAdoption',
+      label: t('analytics.cloudSaveAdoption'),
+      value: percent(advanced.cloudSaveAdoptionPercent),
+      helper: t('analytics.metricHelper.cloudSaveAdoption'),
+      icon: Cloud,
+      tone: 'info',
+    },
+    {
+      key: 'p50',
+      label: t('analytics.durationP50'),
+      value: duration(advanced.durationPercentiles?.p50Seconds ?? null),
+      helper: t('analytics.metricHelper.durationP50'),
+      icon: Clock,
+      tone: 'warning',
+    },
+    {
+      key: 'p90',
+      label: t('analytics.durationP90'),
+      value: duration(advanced.durationPercentiles?.p90Seconds ?? null),
+      helper: t('analytics.metricHelper.durationP90'),
+      icon: Clock,
+      tone: 'warning',
+    },
+  ];
+
   return (
-    <section style={advancedSectionStyle} aria-labelledby="advanced-analytics-title">
-      <div style={advancedHeaderStyle} className="bg-glass">
-        <div>
-          <span className="badge badge-primary">{t('analytics.advancedBadge')}</span>
-          <h2 id="advanced-analytics-title" style={sectionTitleBareStyle}>
-            {t('analytics.advancedTitle')}
-          </h2>
-          <p style={descriptionStyle}>{t('analytics.advancedBody')}</p>
-        </div>
+    <section className="ca-advanced" aria-labelledby="ca-advanced-title">
+      <div className="ca-card bg-glass ca-advanced__head">
+        <span className="badge badge-primary">{t('analytics.advancedBadge')}</span>
+        <h2 id="ca-advanced-title" className="ca-advanced__title">
+          {t('analytics.advancedTitle')}
+        </h2>
+        <p className="ca-section__desc">{t('analytics.advancedBody')}</p>
       </div>
 
-      <div style={advancedGridStyle}>
-        <MetricCard
-          card={{
-            key: 'uniquePlayers',
-            label: t('analytics.uniquePlayers'),
-            value: formatNumber(advanced.uniquePlayers, locale),
-            helper: t('analytics.metricHelper.uniquePlayers'),
-            icon: Users,
-          }}
-        />
-        <MetricCard
-          card={{
-            key: 'returningPlayers',
-            label: t('analytics.returningPlayers'),
-            value: formatNumber(advanced.returningPlayers, locale),
-            helper: t('analytics.metricHelper.returningPlayers'),
-            icon: RotateCcw,
-          }}
-        />
-        <MetricCard
-          card={{
-            key: 'cloudSaveUsers',
-            label: t('analytics.cloudSaveUsers'),
-            value: formatNumber(advanced.cloudSaveUsers, locale),
-            helper: t('analytics.metricHelper.cloudSaveUsers'),
-            icon: Save,
-          }}
-        />
-        <MetricCard
-          card={{
-            key: 'cloudSaveAdoption',
-            label: t('analytics.cloudSaveAdoption'),
-            value: percent(advanced.cloudSaveAdoptionPercent),
-            helper: t('analytics.metricHelper.cloudSaveAdoption'),
-            icon: Cloud,
-          }}
-        />
-        <MetricCard
-          card={{
-            key: 'p50',
-            label: t('analytics.durationP50'),
-            value: duration(advanced.durationPercentiles?.p50Seconds ?? null),
-            helper: t('analytics.metricHelper.durationP50'),
-            icon: Clock,
-            tone: 'warning',
-          }}
-        />
-        <MetricCard
-          card={{
-            key: 'p90',
-            label: t('analytics.durationP90'),
-            value: duration(advanced.durationPercentiles?.p90Seconds ?? null),
-            helper: t('analytics.metricHelper.durationP90'),
-            icon: Clock,
-            tone: 'warning',
-          }}
-        />
+      <div className="ca-kpi-grid ca-kpi-grid--six">
+        {overviewCards.map((card) => (
+          <MetricCard key={card.key} card={card} />
+        ))}
       </div>
 
-      <div style={advancedTwoColumnStyle}>
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <Users size={19} aria-hidden="true" />
-            {t('analytics.playerMixTitle')}
-          </h3>
-          <p style={descriptionStyle}>{t('analytics.playerMixBody')}</p>
-          <div style={splitBarStyle} aria-hidden="true">
-            <span style={{ ...splitBarSegmentStyle, width: `${signedInShare}%` }} />
+      <div className="ca-grid-2">
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <Users size={19} aria-hidden="true" />
+              {t('analytics.playerMixTitle')}
+            </h3>
+            <p className="ca-section__desc">{t('analytics.playerMixBody')}</p>
+          </div>
+          <div
+            className="ca-splitbar"
+            role="img"
+            aria-label={t('analytics.playerMixAria', {
+              signed: signedInShare,
+              guest: guestShare,
+            })}
+          >
             <span
-              style={{
-                ...splitBarSegmentStyle,
-                width: `${guestShare}%`,
-                background: 'var(--info)',
-              }}
+              className="ca-splitbar__seg ca-splitbar__seg--primary"
+              style={{ width: `${signedInShare}%` }}
+            />
+            <span
+              className="ca-splitbar__seg ca-splitbar__seg--info"
+              style={{ width: `${guestShare}%` }}
             />
           </div>
-          <div style={splitStatsStyle}>
+          <div className="ca-split-stats">
             <span>
               <strong>{formatNumber(advanced.loggedInPlays, locale)}</strong>
-              {t('analytics.signedInShare', { count: signedInShare })}
+              <span>
+                <span
+                  className="ca-dot"
+                  style={{ background: 'var(--primary)' }}
+                  aria-hidden="true"
+                />
+                {t('analytics.signedInShare', { count: signedInShare })}
+              </span>
             </span>
             <span>
               <strong>{formatNumber(advanced.guestPlays, locale)}</strong>
-              {t('analytics.guestShare', { count: guestShare })}
+              <span>
+                <span className="ca-dot" style={{ background: 'var(--info)' }} aria-hidden="true" />
+                {t('analytics.guestShare', { count: guestShare })}
+              </span>
             </span>
           </div>
         </section>
 
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <Gauge size={19} aria-hidden="true" />
-            {t('analytics.launchDiagnostics')}
-          </h3>
-          <p style={descriptionStyle}>
-            {t('analytics.launchDiagnosticsBody', {
-              rate: percent(advanced.eventInsights.launchSuccessRate),
-            })}
-          </p>
-          <div style={eventChipWrapStyle}>
-            {advanced.eventInsights.launchFailureReasons.length > 0 ? (
-              advanced.eventInsights.launchFailureReasons.map((reason) => (
-                <span key={reason.code} style={eventChipStyle}>
-                  {reason.code}
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <Gauge size={19} aria-hidden="true" />
+              {t('analytics.launchDiagnostics')}
+            </h3>
+            <p className="ca-section__desc">
+              {t('analytics.launchDiagnosticsBody', {
+                rate: percent(advanced.eventInsights.launchSuccessRate),
+              })}
+            </p>
+          </div>
+          {advanced.eventInsights.launchFailureReasons.length > 0 ? (
+            <div className="ca-chips">
+              {advanced.eventInsights.launchFailureReasons.map((reason) => (
+                <span key={reason.code} className="ca-chip">
+                  <span className="ca-chip__label" title={reason.code}>
+                    {reason.code}
+                  </span>
                   <strong>{formatNumber(reason.count, locale)}</strong>
                 </span>
-              ))
-            ) : (
-              <span style={rowSubTextStyle}>{t('analytics.noFailureCodes')}</span>
-            )}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <span className="ca-muted">{t('analytics.noFailureCodes')}</span>
+          )}
         </section>
       </div>
 
-      <div style={advancedTwoColumnStyle}>
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <Cloud size={19} aria-hidden="true" />
-            {t('analytics.cloudSaveFunnel')}
-          </h3>
-          <p style={descriptionStyle}>
-            {t('analytics.cloudSaveFunnelValues', {
-              shown: formatNumber(advanced.eventInsights.cloudSaveFunnel.ctaShown, locale),
-              clicked: formatNumber(
-                advanced.eventInsights.cloudSaveFunnel.signupClicks +
-                  advanced.eventInsights.cloudSaveFunnel.loginClicks,
-                locale,
-              ),
-              synced: formatNumber(advanced.eventInsights.cloudSaveFunnel.syncAccepted, locale),
-            })}
-          </p>
-          <div style={funnelGridStyle}>
+      <div className="ca-grid-2">
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <Cloud size={19} aria-hidden="true" />
+              {t('analytics.cloudSaveFunnel')}
+            </h3>
+            <p className="ca-section__desc">
+              {t('analytics.cloudSaveFunnelValues', {
+                shown: formatNumber(advanced.eventInsights.cloudSaveFunnel.ctaShown, locale),
+                clicked: formatNumber(
+                  advanced.eventInsights.cloudSaveFunnel.signupClicks +
+                    advanced.eventInsights.cloudSaveFunnel.loginClicks,
+                  locale,
+                ),
+                synced: formatNumber(advanced.eventInsights.cloudSaveFunnel.syncAccepted, locale),
+              })}
+            </p>
+          </div>
+          <div className="ca-pill-grid">
             <MetricPill
               label={t('analytics.cloudSavePrompts')}
               value={formatNumber(advanced.eventInsights.cloudSaveFunnel.ctaShown, locale)}
@@ -1141,17 +1220,19 @@ const AdvancedAnalytics: React.FC<{
           </div>
         </section>
 
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <TrendingUp size={19} aria-hidden="true" />
-            {t('analytics.conversionTitle')}
-          </h3>
-          <p style={descriptionStyle}>
-            {conversionAvailable
-              ? t('analytics.conversionBody')
-              : t('analytics.notEnoughInternalData')}
-          </p>
-          <div style={funnelGridStyle}>
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <TrendingUp size={19} aria-hidden="true" />
+              {t('analytics.conversionTitle')}
+            </h3>
+            <p className="ca-section__desc">
+              {conversionAvailable
+                ? t('analytics.conversionBody')
+                : t('analytics.notEnoughInternalData')}
+            </p>
+          </div>
+          <div className="ca-pill-grid">
             <MetricPill
               label={t('analytics.registrationClicks')}
               value={formatNumber(advanced.conversion.registrationClicks, locale)}
@@ -1168,14 +1249,14 @@ const AdvancedAnalytics: React.FC<{
         </section>
       </div>
 
-      <section style={panelStyle} className="bg-glass">
-        <div style={sectionHeaderStyle}>
-          <div>
-            <h3 style={sectionTitleStyle}>
+      <section className="ca-card ca-section">
+        <div className="ca-section__head">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
               <Gamepad2 size={19} aria-hidden="true" />
               {t('analytics.perGame')}
             </h3>
-            <p style={descriptionStyle}>{t('analytics.perGameBody')}</p>
+            <p className="ca-section__desc">{t('analytics.perGameBody')}</p>
           </div>
           <span className="badge badge-secondary">
             {t('analytics.previousPeriodPlays', {
@@ -1190,14 +1271,14 @@ const AdvancedAnalytics: React.FC<{
             body={t('analytics.noAdvancedGames')}
           />
         ) : (
-          <div style={compactListStyle}>
+          <div className="ca-sublist">
             {advanced.games.map((game) => (
-              <div key={game.gameId} style={advancedGameRowStyle}>
-                <div>
-                  <Link to={`/game/${game.slug}`} style={gameLinkStyle}>
+              <div key={game.gameId} className="ca-game-row">
+                <div className="ca-game-row__meta">
+                  <Link to={`/game/${game.slug}`} className="ca-game-link" title={game.title}>
                     {game.title}
                   </Link>
-                  <p style={smallDescriptionStyle}>
+                  <p>
                     {t('analytics.gameBreakdown', {
                       plays: formatNumber(game.plays, locale),
                       players: formatNumber(game.uniquePlayers, locale),
@@ -1235,17 +1316,21 @@ const AdvancedAnalytics: React.FC<{
         )}
       </section>
 
-      <div style={advancedTwoColumnStyle}>
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <Sparkles size={19} aria-hidden="true" />
-            {t('analytics.customEventsTitle')}
-          </h3>
+      <div className="ca-grid-2">
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <Sparkles size={19} aria-hidden="true" />
+              {t('analytics.customEventsTitle')}
+            </h3>
+          </div>
           {advanced.eventInsights.customEvents.length > 0 ? (
-            <div style={eventChipWrapStyle}>
+            <div className="ca-chips">
               {advanced.eventInsights.customEvents.map((event) => (
-                <span key={event.name} style={eventChipStyle}>
-                  {event.name}
+                <span key={event.name} className="ca-chip">
+                  <span className="ca-chip__label" title={event.name}>
+                    {event.name}
+                  </span>
                   <strong>{formatNumber(event.count, locale)}</strong>
                 </span>
               ))}
@@ -1259,17 +1344,19 @@ const AdvancedAnalytics: React.FC<{
           )}
         </section>
 
-        <section style={panelStyle} className="bg-glass">
-          <h3 style={sectionTitleStyle}>
-            <BarChart3 size={19} aria-hidden="true" />
-            {t('analytics.versionComparisonTitle')}
-          </h3>
+        <section className="ca-card ca-section">
+          <div className="ca-section__heading">
+            <h3 className="ca-section__title">
+              <BarChart3 size={19} aria-hidden="true" />
+              {t('analytics.versionComparisonTitle')}
+            </h3>
+          </div>
           {advanced.eventInsights.versions.length > 0 ? (
-            <div style={compactListStyle}>
+            <div className="ca-sublist">
               {advanced.eventInsights.versions.slice(0, 5).map((version) => (
-                <div key={`${version.gameId}-${version.versionId}`} style={versionRowStyle}>
-                  <span>
-                    <strong>{version.gameTitle}</strong>
+                <div key={`${version.gameId}-${version.versionId}`} className="ca-version-row">
+                  <span className="ca-version-row__name">
+                    <strong title={version.gameTitle}>{version.gameTitle}</strong>
                     <small>{t('analytics.versionLabel', { version: version.version })}</small>
                   </span>
                   <MetricPill
@@ -1297,7 +1384,7 @@ const AdvancedAnalytics: React.FC<{
 };
 
 const MetricPill: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <span style={metricPillStyle}>
+  <span className="ca-pill">
     <small>{label}</small>
     <strong>{value}</strong>
   </span>
@@ -1309,11 +1396,13 @@ const EmptyState: React.FC<{
   body: string;
   action?: React.ReactNode;
 }> = ({ icon: Icon, title, body, action }) => (
-  <section style={emptyStateStyle} className="bg-glass">
-    <Icon size={30} aria-hidden="true" />
+  <section className="ca-card ca-empty">
+    <span className="ca-empty__icon" aria-hidden="true">
+      <Icon size={26} />
+    </span>
     <div>
-      <h2 style={compactTitleStyle}>{title}</h2>
-      <p style={descriptionStyle}>{body}</p>
+      <h2>{title}</h2>
+      <p>{body}</p>
     </div>
     {action}
   </section>
@@ -1324,777 +1413,11 @@ const InlineEmptyState: React.FC<{ icon: LucideIcon; title: string; body: string
   title,
   body,
 }) => (
-  <div style={inlineEmptyStyle}>
-    <Icon size={24} aria-hidden="true" />
+  <div className="ca-inline-empty">
+    <Icon size={22} aria-hidden="true" />
     <div>
       <strong>{title}</strong>
       <p>{body}</p>
     </div>
   </div>
 );
-
-const iconBubbleStyle = (tone?: KpiCard['tone']): React.CSSProperties => ({
-  width: 34,
-  height: 34,
-  borderRadius: 8,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color:
-    tone === 'success'
-      ? 'var(--success)'
-      : tone === 'warning'
-        ? 'var(--warning)'
-        : tone === 'danger'
-          ? 'var(--danger)'
-          : tone === 'info'
-            ? 'var(--info)'
-            : 'var(--primary)',
-  background:
-    tone === 'success'
-      ? 'var(--success-soft)'
-      : tone === 'warning'
-        ? 'var(--warning-soft)'
-        : tone === 'danger'
-          ? 'var(--danger-soft)'
-          : tone === 'info'
-            ? 'var(--info-soft)'
-            : 'var(--primary-soft)',
-  border: '1px solid var(--border-default)',
-  flexShrink: 0,
-});
-
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.4rem',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'stretch',
-  flexWrap: 'wrap',
-  gap: '1.25rem',
-  padding: '1.5rem',
-  borderRadius: 12,
-  border: '1px solid var(--border-color)',
-  boxShadow: 'var(--shadow-card)',
-};
-
-const headerCopyStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.85rem',
-  maxWidth: 720,
-  flex: '1 1 420px',
-};
-
-const headerControlsStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-end',
-  justifyContent: 'flex-end',
-  gap: '0.75rem',
-  flexWrap: 'wrap',
-  flex: '1 1 280px',
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: 'clamp(1.8rem, 2.2vw, 2.4rem)',
-  lineHeight: 1,
-  letterSpacing: 0,
-  margin: 0,
-};
-
-const subtitleStyle: React.CSSProperties = {
-  marginTop: '0.45rem',
-  color: 'var(--text-secondary)',
-  fontSize: '0.98rem',
-  lineHeight: 1.55,
-  maxWidth: 720,
-};
-
-const verifiedBadgeStyle: React.CSSProperties = {
-  width: 'fit-content',
-  gap: '0.35rem',
-};
-
-const metaRowStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.55rem 1rem',
-  color: 'var(--text-muted)',
-  fontSize: '0.78rem',
-};
-
-const rangeGroupStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  padding: 4,
-  borderRadius: 10,
-  background: 'var(--bg-surface)',
-  border: '1px solid var(--border-color)',
-  gap: 4,
-  minHeight: 42,
-};
-
-const rangeButtonStyle: React.CSSProperties = {
-  border: 0,
-  borderRadius: 8,
-  padding: '0.55rem 0.75rem',
-  background: 'transparent',
-  color: 'var(--text-secondary)',
-  fontWeight: 700,
-  cursor: 'pointer',
-  minWidth: 58,
-};
-
-const activeRangeButtonStyle: React.CSSProperties = {
-  ...rangeButtonStyle,
-  background: 'var(--primary-soft)',
-  color: 'var(--text-primary)',
-  boxShadow: 'inset 0 0 0 1px var(--primary-border)',
-};
-
-const refreshButtonStyle: React.CSSProperties = {
-  minHeight: 42,
-};
-
-const refreshingPillStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-  minHeight: 42,
-  padding: '0 0.8rem',
-  borderRadius: 999,
-  color: 'var(--text-secondary)',
-  background: 'var(--bg-surface)',
-  border: '1px solid var(--border-color)',
-  fontSize: '0.8rem',
-  fontWeight: 700,
-};
-
-const kpiGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-  gap: '1rem',
-};
-
-const metricCardStyle: React.CSSProperties = {
-  minHeight: 154,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  gap: '0.8rem',
-  padding: '1.1rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 12,
-  background: 'var(--bg-card)',
-};
-
-const metricCardHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: '0.75rem',
-  alignItems: 'flex-start',
-};
-
-const metricLabelStyle: React.CSSProperties = {
-  color: 'var(--text-secondary)',
-  fontSize: '0.78rem',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0,
-};
-
-const metricValueStyle: React.CSSProperties = {
-  fontSize: '2rem',
-  lineHeight: 1,
-  fontFamily: 'var(--font-display)',
-  letterSpacing: 0,
-};
-
-const metricHelperStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
-  fontSize: '0.78rem',
-  lineHeight: 1.4,
-};
-
-const portfolioStripStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '1rem',
-  flexWrap: 'wrap',
-  padding: '1rem 1.1rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 12,
-  background: 'var(--bg-surface)',
-};
-
-const portfolioMetricsStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.6rem',
-};
-
-const portfolioPillStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.45rem',
-  padding: '0.55rem 0.7rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 999,
-  color: 'var(--text-secondary)',
-  background: 'var(--bg-card)',
-  fontSize: '0.78rem',
-};
-
-const contentGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '1rem',
-};
-
-const panelStyle: React.CSSProperties = {
-  padding: '1.25rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 12,
-  background: 'var(--bg-card)',
-};
-
-const chartCardStyle: React.CSSProperties = {
-  ...panelStyle,
-  overflow: 'hidden',
-};
-
-const sectionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  flexWrap: 'wrap',
-  gap: '1rem',
-};
-
-const sectionTitleStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  fontSize: '1.05rem',
-  letterSpacing: 0,
-  margin: 0,
-};
-
-const sectionTitleBareStyle: React.CSSProperties = {
-  fontSize: '1.25rem',
-  letterSpacing: 0,
-  marginTop: '0.7rem',
-};
-
-const compactTitleStyle: React.CSSProperties = {
-  fontSize: '1rem',
-  letterSpacing: 0,
-  margin: 0,
-};
-
-const smallHeadingStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  letterSpacing: 0,
-  margin: 0,
-};
-
-const descriptionStyle: React.CSSProperties = {
-  marginTop: '0.35rem',
-  color: 'var(--text-secondary)',
-  fontSize: '0.86rem',
-  lineHeight: 1.5,
-};
-
-const smallDescriptionStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
-  fontSize: '0.76rem',
-  lineHeight: 1.45,
-  marginTop: '0.18rem',
-};
-
-const chartStatsStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '0.55rem',
-  flexWrap: 'wrap',
-  justifyContent: 'flex-end',
-  color: 'var(--text-secondary)',
-  fontSize: '0.78rem',
-  fontWeight: 700,
-};
-
-const chartFrameStyle: React.CSSProperties = {
-  position: 'relative',
-  marginTop: '1.1rem',
-  minHeight: 310,
-  border: '1px solid var(--border-color)',
-  borderRadius: 12,
-  background:
-    'linear-gradient(180deg, rgba(var(--primary-rgb), 0.08) 0%, rgba(var(--primary-rgb), 0.02) 100%)',
-  overflow: 'hidden',
-};
-
-const chartSvgStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  height: 310,
-};
-
-const chartEmptyOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: '50% auto auto 50%',
-  transform: 'translate(-50%, -50%)',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: '0.35rem',
-  maxWidth: 360,
-  textAlign: 'center',
-  color: 'var(--text-secondary)',
-  padding: '1rem',
-  borderRadius: 12,
-  background: 'rgba(0, 0, 0, 0.32)',
-  border: '1px solid var(--border-color)',
-};
-
-const legendStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.75rem',
-  marginTop: '0.9rem',
-  color: 'var(--text-secondary)',
-  fontSize: '0.78rem',
-};
-
-const legendItemStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-};
-
-const legendSwatchStyle: React.CSSProperties = {
-  width: 10,
-  height: 10,
-  borderRadius: 999,
-};
-
-const topGamesTableStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.55rem',
-  marginTop: '1rem',
-};
-
-const topGamesHeaderStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(220px, 1.8fr) repeat(5, minmax(82px, 0.7fr))',
-  gap: '0.75rem',
-  padding: '0 0.85rem',
-  color: 'var(--text-muted)',
-  fontSize: '0.72rem',
-  fontWeight: 800,
-  textTransform: 'uppercase',
-  letterSpacing: 0,
-};
-
-const topGameRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'minmax(220px, 1.8fr) repeat(5, minmax(82px, 0.7fr))',
-  gap: '0.75rem',
-  alignItems: 'center',
-  padding: '0.8rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 10,
-  background: 'var(--bg-surface)',
-};
-
-const topGameTitleCellStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.75rem',
-  minWidth: 0,
-};
-
-const gameAvatarStyle: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 8,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: 'var(--primary)',
-  background: 'var(--primary-soft)',
-  border: '1px solid var(--primary-border)',
-  fontWeight: 900,
-  flexShrink: 0,
-};
-
-const gameLinkStyle: React.CSSProperties = {
-  color: 'var(--text-primary)',
-  fontWeight: 800,
-  textDecoration: 'none',
-};
-
-const rowSubTextStyle: React.CSSProperties = {
-  display: 'block',
-  marginTop: 2,
-  color: 'var(--text-muted)',
-  fontSize: '0.74rem',
-};
-
-const tableMetricCellStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-  minWidth: 0,
-  color: 'var(--text-primary)',
-};
-
-const mobileOnlyLabelStyle: React.CSSProperties = {
-  color: 'var(--text-muted)',
-  fontSize: '0.68rem',
-  textTransform: 'uppercase',
-  letterSpacing: 0,
-};
-
-const shareCellStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '0.55rem',
-  flexWrap: 'wrap',
-};
-
-const iconLinkStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.25rem',
-  color: 'var(--primary)',
-  fontSize: '0.78rem',
-  fontWeight: 800,
-  textDecoration: 'none',
-};
-
-const activityGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: '0.75rem',
-  marginTop: '1rem',
-};
-
-const activityCardStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.35rem',
-  minHeight: 116,
-  padding: '0.9rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 10,
-  background: 'var(--bg-surface)',
-  color: 'var(--text-secondary)',
-  fontSize: '0.78rem',
-};
-
-const eventTotalsStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.55rem',
-  justifyContent: 'flex-end',
-  maxWidth: 520,
-  color: 'var(--text-secondary)',
-  fontSize: '0.76rem',
-  fontWeight: 700,
-};
-
-const eventGroupGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-  gap: '0.85rem',
-  marginTop: '1rem',
-};
-
-const eventGroupCardStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-  minHeight: 176,
-  padding: '1rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 10,
-  background: 'var(--bg-surface)',
-};
-
-const eventGroupHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '0.65rem',
-  alignItems: 'flex-start',
-};
-
-const eventGroupTotalStyle: React.CSSProperties = {
-  fontSize: '1.35rem',
-  lineHeight: 1,
-};
-
-const eventChipWrapStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.5rem',
-};
-
-const eventChipStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.45rem',
-  padding: '0.45rem 0.55rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 999,
-  background: 'var(--bg-card)',
-  color: 'var(--text-secondary)',
-  fontSize: '0.74rem',
-};
-
-const topLaunchesStyle: React.CSSProperties = {
-  marginTop: '1.1rem',
-};
-
-const compactListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.65rem',
-  marginTop: '0.85rem',
-};
-
-const compactListRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: '0.75rem',
-  padding: '0.75rem',
-  borderRadius: 10,
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  textDecoration: 'none',
-};
-
-const lockedStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '1.2rem',
-  padding: '1.35rem',
-  border: '1px solid var(--primary-border)',
-  borderRadius: 12,
-  background: 'var(--bg-card)',
-};
-
-const lockedIconStyle: React.CSSProperties = {
-  ...iconBubbleStyle('warning'),
-  width: 54,
-  height: 54,
-};
-
-const lockedTitleStyle: React.CSSProperties = {
-  marginTop: '0.65rem',
-  fontSize: '1.25rem',
-  letterSpacing: 0,
-};
-
-const lockedFeatureGridStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.5rem',
-  marginTop: '0.9rem',
-};
-
-const lockedFeatureStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.35rem',
-  padding: '0.45rem 0.6rem',
-  borderRadius: 999,
-  color: 'var(--text-secondary)',
-  background: 'var(--bg-surface)',
-  border: '1px solid var(--border-color)',
-  fontSize: '0.76rem',
-};
-
-const advancedSectionStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const advancedHeaderStyle: React.CSSProperties = {
-  padding: '1.25rem',
-  border: '1px solid var(--primary-border)',
-  borderRadius: 12,
-};
-
-const advancedGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-  gap: '1rem',
-};
-
-const advancedTwoColumnStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '1rem',
-};
-
-const splitBarStyle: React.CSSProperties = {
-  display: 'flex',
-  height: 14,
-  borderRadius: 999,
-  background: 'var(--bg-surface)',
-  border: '1px solid var(--border-color)',
-  overflow: 'hidden',
-  marginTop: '1rem',
-};
-
-const splitBarSegmentStyle: React.CSSProperties = {
-  display: 'block',
-  background: 'var(--primary)',
-  minWidth: 0,
-};
-
-const splitStatsStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: '0.7rem',
-  marginTop: '0.85rem',
-  color: 'var(--text-secondary)',
-  fontSize: '0.78rem',
-};
-
-const funnelGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-  gap: '0.7rem',
-  marginTop: '1rem',
-};
-
-const metricPillStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.2rem',
-  padding: '0.7rem',
-  borderRadius: 10,
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-secondary)',
-  fontSize: '0.72rem',
-};
-
-const advancedGameRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-  gap: '0.75rem',
-  alignItems: 'center',
-  padding: '0.85rem',
-  borderRadius: 10,
-  border: '1px solid var(--border-color)',
-  background: 'var(--bg-surface)',
-};
-
-const versionRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-  gap: '0.7rem',
-  alignItems: 'center',
-  padding: '0.8rem',
-  border: '1px solid var(--border-color)',
-  borderRadius: 10,
-  background: 'var(--bg-surface)',
-};
-
-const emptyStateStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '1rem',
-  padding: '1.25rem',
-  border: '1px dashed var(--border-strong)',
-  borderRadius: 12,
-  color: 'var(--text-secondary)',
-};
-
-const inlineEmptyStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.75rem',
-  padding: '1rem',
-  marginTop: '1rem',
-  border: '1px dashed var(--border-color)',
-  borderRadius: 10,
-  color: 'var(--text-secondary)',
-  background: 'var(--bg-surface)',
-};
-
-const errorPanelStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  flexWrap: 'wrap',
-  gap: '1rem',
-  padding: '1rem',
-  color: 'var(--danger)',
-  border: '1px solid var(--danger)',
-  borderRadius: 12,
-  background: 'var(--danger-soft)',
-};
-
-const skeletonWrapStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-  padding: '1.25rem',
-  borderRadius: 12,
-  border: '1px solid var(--border-color)',
-};
-
-const skeletonHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-};
-
-const skeletonLineStyle: React.CSSProperties = {
-  display: 'block',
-  width: '56%',
-  height: 14,
-  borderRadius: 999,
-  background: 'linear-gradient(90deg, var(--bg-surface), var(--surface-3), var(--bg-surface))',
-  color: 'transparent',
-  overflow: 'hidden',
-};
-
-const skeletonCardStyle: React.CSSProperties = {
-  ...metricCardStyle,
-  minHeight: 154,
-};
-
-const skeletonChartStyle: React.CSSProperties = {
-  minHeight: 300,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: '1px solid var(--border-color)',
-  borderRadius: 12,
-  background: 'var(--bg-surface)',
-};
-
-const visuallyHiddenStyle: React.CSSProperties = {
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  padding: 0,
-  margin: -1,
-  overflow: 'hidden',
-  clip: 'rect(0, 0, 0, 0)',
-  whiteSpace: 'nowrap',
-  border: 0,
-};

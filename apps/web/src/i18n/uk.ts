@@ -979,6 +979,12 @@ export const uk: Record<keyof typeof en, string> = {
   'analytics.previousPeriodPlays': 'Запусків у попередньому періоді: {{count}}',
   'analytics.notEnoughComparison': 'Даних за попередній період поки недостатньо',
   'analytics.changePercent': 'Зміна: {{count}}%',
+  'analytics.changeIncrease': 'Зростання порівняно з попереднім періодом',
+  'analytics.changeDecrease': 'Спад порівняно з попереднім періодом',
+  'analytics.changeNoChange': 'Без змін порівняно з попереднім періодом',
+  'analytics.comparisonThisPeriod': 'цей період',
+  'analytics.comparisonPrevPeriod': 'попередній період',
+  'analytics.playerMixAria': 'Після входу {{signed}}%, гості {{guest}}%',
   'analytics.playerMixTitle': 'Гості та авторизовані гравці',
   'analytics.playerMixBody':
     'Як запуски за поточний період діляться між анонімними гостями та гравцями після входу.',

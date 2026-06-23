@@ -965,6 +965,12 @@ export const en = {
   'analytics.previousPeriodPlays': '{{count}} plays in the previous period',
   'analytics.notEnoughComparison': 'Not enough previous-period data yet',
   'analytics.changePercent': '{{count}}% change',
+  'analytics.changeIncrease': 'Increase versus the previous period',
+  'analytics.changeDecrease': 'Decrease versus the previous period',
+  'analytics.changeNoChange': 'No change versus the previous period',
+  'analytics.comparisonThisPeriod': 'this period',
+  'analytics.comparisonPrevPeriod': 'previous period',
+  'analytics.playerMixAria': 'Signed-in {{signed}}%, guest {{guest}}%',
   'analytics.playerMixTitle': 'Guest vs signed-in split',
   'analytics.playerMixBody':
     'How current-range plays divide between anonymous guests and signed-in players.',
