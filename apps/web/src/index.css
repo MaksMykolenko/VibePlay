@@ -1665,6 +1665,37 @@ a {
   border: 1px solid var(--danger-soft) !important;
 }
 
+/* Creator analytics dashboard responsive rows */
+@media (min-width: 761px) {
+  .creator-analytics-mobile-label {
+    display: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .creator-analytics-top-header {
+    display: none !important;
+  }
+
+  .creator-analytics-top-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .creator-analytics-top-game {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .creator-analytics-range {
+    width: 100%;
+  }
+
+  .creator-analytics-range button {
+    flex: 1 1 0;
+  }
+}
+
 /* Skeleton Loading Shimmer */
 .skeleton {
   background: #151928;
