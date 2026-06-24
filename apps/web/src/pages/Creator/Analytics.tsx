@@ -39,6 +39,7 @@ import {
   formatNumber,
   formatShortDate,
 } from '../../lib/formatTime';
+import { buildChartGeometry } from './chartGeometry';
 
 interface CreatorAnalyticsViewProps {
   analytics: CreatorAnalyticsDto | null;
@@ -334,7 +335,7 @@ export const CreatorAnalyticsView: React.FC<CreatorAnalyticsViewProps> = ({
             />
           ) : null}
 
-          <PlayTrendChart analytics={analytics} />
+          <PlayTrendChart key={analytics.range} analytics={analytics} />
 
           <TopGamesSection analytics={analytics} />
 
@@ -507,33 +508,82 @@ const PortfolioStrip: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
 
 const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytics }) => {
   const { t, locale } = useI18n();
-  const current = analytics.timeseries;
   const advanced =
     analytics.entitlements.advancedAnalytics && analytics.advanced ? analytics.advanced : null;
-  const previous = advanced ? advanced.comparison.daily : [];
-  const hasCurrentValues = current.some((day) => day.plays > 0);
-  const hasPreviousValues = previous.some((day) => day.previousPlays > 0);
-  const peak = current.reduce((max, day) => Math.max(max, day.plays), 0);
-  const maxValue = Math.max(1, peak, ...previous.map((day) => day.previousPlays));
-  const count = current.length;
+  const previous = useMemo(() => (advanced ? advanced.comparison.daily : []), [advanced]);
+  const geometry = useMemo(
+    () => buildChartGeometry(analytics.timeseries, previous),
+    [analytics.timeseries, previous],
+  );
+  const {
+    points,
+    maxValue,
+    peak,
+    hasCurrentValues,
+    hasPreviousValues,
+    areaPath,
+    linePath,
+    previousPath,
+  } = geometry;
+  const count = points.length;
 
-  const x = (index: number): number => (count > 1 ? (index / (count - 1)) * 100 : 50);
-  const y = (value: number): number => 100 - (value / maxValue) * 100;
+  // The chart is remounted per range (see key on <PlayTrendChart/>), so local
+  // interaction state resets cleanly when the dataset changes.
+  const [active, setActive] = useState<number | null>(null);
+  const activePoint = active !== null && active < count ? points[active] : null;
 
-  const linePath =
-    count > 0 ? `M ${current.map((d, i) => `${x(i)},${y(d.plays)}`).join(' L ')}` : '';
-  const areaPath =
-    count > 0
-      ? `M ${x(0)},100 ${current.map((d, i) => `L ${x(i)},${y(d.plays)}`).join(' ')} L ${x(
-          count - 1,
-        )},100 Z`
-      : '';
-  const previousPath = hasPreviousValues
-    ? `M ${previous.map((d, i) => `${x(i)},${y(d.previousPlays)}`).join(' L ')}`
-    : '';
+  const selectFromPointer = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (count === 0) return;
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (rect.width <= 0) return;
+      const ratio = (event.clientX - rect.left) / rect.width;
+      const index = Math.max(0, Math.min(count - 1, Math.round(ratio * (count - 1))));
+      setActive(index);
+    },
+    [count],
+  );
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (count === 0) return;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        setActive((value) => Math.min(count - 1, (value ?? -1) + 1));
+      } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        setActive((value) => Math.max(0, (value ?? count) - 1));
+      } else if (event.key === 'Home') {
+        event.preventDefault();
+        setActive(0);
+      } else if (event.key === 'End') {
+        event.preventDefault();
+        setActive(count - 1);
+      } else if (event.key === 'Escape') {
+        setActive(null);
+      }
+    },
+    [count],
+  );
 
   const axisIndices = pickAxisIndices(count, MAX_AXIS_LABELS);
   const gridLines = [0, 25, 50, 75];
+
+  const activeLabel = activePoint
+    ? t('analytics.chart.activePoint', {
+        date: formatDate(activePoint.date, locale),
+        count: formatNumber(activePoint.value, locale),
+      }) +
+      (activePoint.previousValue !== null
+        ? `, ${t('analytics.tooltip.previous')}: ${formatNumber(activePoint.previousValue, locale)}`
+        : '')
+    : '';
+  const tipAnchor =
+    activePoint && activePoint.x < 33
+      ? 'left'
+      : activePoint && activePoint.x > 67
+        ? 'right'
+        : 'center';
 
   return (
     <section className="ca-card ca-section ca-chart-card" aria-labelledby="ca-plays-title">
@@ -620,6 +670,85 @@ const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
                 />
               ) : null}
             </svg>
+
+            {activePoint ? (
+              <span
+                className="ca-chart__crosshair"
+                style={{ left: `${activePoint.x}%` }}
+                aria-hidden="true"
+              />
+            ) : null}
+            {activePoint && hasPreviousValues && activePoint.previousY !== null ? (
+              <span
+                className="ca-chart__point ca-chart__point--prev"
+                style={{ left: `${activePoint.x}%`, top: `${activePoint.previousY}%` }}
+                aria-hidden="true"
+              />
+            ) : null}
+            {activePoint ? (
+              <span
+                className="ca-chart__point"
+                style={{ left: `${activePoint.x}%`, top: `${activePoint.y}%` }}
+                aria-hidden="true"
+              />
+            ) : null}
+
+            {activePoint ? (
+              <div
+                className={`ca-chart__tip ca-chart__tip--${tipAnchor}`}
+                style={{ left: `${activePoint.x}%` }}
+                role="status"
+                aria-hidden="true"
+              >
+                <span className="ca-chart__tip-date">{formatDate(activePoint.date, locale)}</span>
+                <span className="ca-chart__tip-row">
+                  <span className="ca-chart__tip-dot" aria-hidden="true" />
+                  <span>{t('analytics.tooltip.current')}</span>
+                  <strong>{formatNumber(activePoint.value, locale)}</strong>
+                </span>
+                {activePoint.previousValue !== null ? (
+                  <span className="ca-chart__tip-row">
+                    <span
+                      className="ca-chart__tip-dot ca-chart__tip-dot--prev"
+                      aria-hidden="true"
+                    />
+                    <span>{t('analytics.tooltip.previous')}</span>
+                    <strong>{formatNumber(activePoint.previousValue, locale)}</strong>
+                  </span>
+                ) : null}
+                {activePoint.previousValue !== null ? (
+                  <span className="ca-chart__tip-delta">
+                    {t('analytics.tooltip.delta', {
+                      count: `${activePoint.value - activePoint.previousValue >= 0 ? '+' : ''}${formatNumber(
+                        activePoint.value - activePoint.previousValue,
+                        locale,
+                      )}`,
+                    })}
+                  </span>
+                ) : null}
+              </div>
+            ) : null}
+
+            {hasCurrentValues ? (
+              <div
+                className="ca-chart__hit"
+                role="slider"
+                tabIndex={0}
+                aria-label={t('analytics.chartLabel')}
+                aria-valuemin={0}
+                aria-valuemax={count - 1}
+                aria-valuenow={active ?? 0}
+                aria-valuetext={activeLabel || undefined}
+                onPointerMove={selectFromPointer}
+                onPointerDown={selectFromPointer}
+                onPointerLeave={(event) => {
+                  if (event.pointerType === 'mouse') setActive(null);
+                }}
+                onFocus={() => setActive((value) => (value === null ? count - 1 : value))}
+                onBlur={() => setActive(null)}
+                onKeyDown={handleKeyDown}
+              />
+            ) : null}
           </div>
 
           {hasCurrentValues
@@ -649,8 +778,8 @@ const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
                     ? { right: '14px', left: 'auto' }
                     : { left: `calc(46px + (100% - 60px) * ${fraction})` };
                 return (
-                  <span key={current[index].date} className={className} style={style}>
-                    {formatShortDate(current[index].date, locale)}
+                  <span key={points[index].date} className={className} style={style}>
+                    {formatShortDate(points[index].date, locale)}
                   </span>
                 );
               })
@@ -677,6 +806,9 @@ const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
               </span>
             ) : null}
           </div>
+          {hasCurrentValues ? (
+            <span className="ca-chart__hint">{t('analytics.chart.tapHint')}</span>
+          ) : null}
         </div>
 
         {advanced ? (
@@ -684,11 +816,11 @@ const PlayTrendChart: React.FC<{ analytics: CreatorAnalyticsDto }> = ({ analytic
         ) : null}
 
         <ul className="ca-visually-hidden">
-          {current.map((day) => (
-            <li key={day.date}>
+          {points.map((point) => (
+            <li key={point.date}>
               {t('analytics.dailyPlays', {
-                date: formatDate(day.date, locale),
-                count: formatNumber(day.plays, locale),
+                date: formatDate(point.date, locale),
+                count: formatNumber(point.value, locale),
               })}
             </li>
           ))}
@@ -707,12 +839,10 @@ const ComparisonCard: React.FC<{
 
   if (change === null) {
     return (
-      <div className="ca-compare" role="group" aria-label={t('analytics.periodComparison')}>
-        <span className="ca-compare__delta ca-compare__delta--flat">
-          <Minus size={16} aria-hidden="true" />
-          {t('analytics.notEnoughComparison')}
-        </span>
-      </div>
+      <p className="ca-compare ca-compare--muted" role="note">
+        <Minus size={14} aria-hidden="true" />
+        {t('analytics.notEnoughComparison')}
+      </p>
     );
   }
 

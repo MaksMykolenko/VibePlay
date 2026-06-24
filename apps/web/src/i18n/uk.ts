@@ -946,6 +946,12 @@ export const uk: Record<keyof typeof en, string> = {
   'analytics.chartEmptyBody':
     'Графік залишиться порожнім, доки в цей період не потрапить перевірений запуск.',
   'analytics.dailyPlays': '{{date}}: запусків — {{count}}',
+  'analytics.chart.activePoint': '{{date}}: запусків — {{count}}',
+  'analytics.chart.tapHint': 'Наведіть або торкніться графіка, щоб переглянути день',
+  'analytics.tooltip.current': 'Поточний період',
+  'analytics.tooltip.previous': 'Попередній період',
+  'analytics.tooltip.delta': '{{count}} проти попереднього',
+  'analytics.tooltip.noPrevious': 'Немає даних за попередній період',
   'analytics.topGames': 'Найпопулярніші ігри за запусками',
   'analytics.noTopGames': 'За цей період жодна гра не має запусків.',
   'analytics.noTopGamesTitle': 'Топ ігор ще не сформовано',
