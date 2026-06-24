@@ -101,3 +101,17 @@ export type GameSort = (typeof GAME_SORTS)[number];
 /** Browser platforms/input devices a creator may advertise for a game. */
 export const SUPPORTED_DEVICES = ['desktop', 'mobile', 'tablet', 'gamepad'] as const;
 export type SupportedDevice = (typeof SUPPORTED_DEVICES)[number];
+
+// --- Multiplayer rooms (must match the Prisma enums in packages/database) ----
+
+export const GAME_ROOM_STATUSES = ['WAITING', 'ACTIVE', 'FINISHED', 'EXPIRED'] as const;
+export type GameRoomStatus = (typeof GAME_ROOM_STATUSES)[number];
+
+export const GAME_ROOM_VISIBILITIES = ['PRIVATE', 'PUBLIC'] as const;
+export type GameRoomVisibility = (typeof GAME_ROOM_VISIBILITIES)[number];
+
+export const GAME_ROOM_PLAYER_STATUSES = ['JOINED', 'LEFT', 'KICKED'] as const;
+export type GameRoomPlayerStatus = (typeof GAME_ROOM_PLAYER_STATUSES)[number];
+
+export const MULTIPLAYER_TRANSPORTS = ['NONE', 'EXTERNAL_WS', 'VIBEPLAY_SDK'] as const;
+export type MultiplayerTransport = (typeof MULTIPLAYER_TRANSPORTS)[number];

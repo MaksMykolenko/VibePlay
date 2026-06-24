@@ -150,6 +150,13 @@ function toDetail(
         ? { id: `${g.id}_v`, version: g.version, changelog: '', approvedAt: null }
         : null,
     changelog: g.changelog.map((c) => ({ version: c.version, date: c.date, notes: c.notes })),
+    multiplayerInfo: {
+      enabled: g.multiplayer,
+      maxPlayers: 8,
+      transport: g.multiplayer ? 'EXTERNAL_WS' : 'NONE',
+      wsUrl: null,
+      modes: [],
+    },
     viewer: viewerId
       ? {
           liked: lib.likes.includes(g.id),
@@ -644,6 +651,26 @@ export function createDemoClient(): ApiClient {
     async endPlaySession() {},
     async trackAnalyticsEvent() {},
     async trackAnalyticsBatch() {},
+
+    // ----- multiplayer rooms (require the real backend) -----
+    async createRoom() {
+      notInDemo('Multiplayer rooms');
+    },
+    async getRoom() {
+      notInDemo('Multiplayer rooms');
+    },
+    async joinRoom() {
+      notInDemo('Multiplayer rooms');
+    },
+    async leaveRoom() {
+      notInDemo('Multiplayer rooms');
+    },
+    async startRoom() {
+      notInDemo('Multiplayer rooms');
+    },
+    async getRoomToken() {
+      notInDemo('Multiplayer rooms');
+    },
 
     // ----- cloud saves (browser-local demo data; no real backend) -----
     async getGameSave(gameId: string) {

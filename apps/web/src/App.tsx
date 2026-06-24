@@ -12,6 +12,7 @@ import { LandingPage } from './pages/LandingPage';
 import { GamesPage } from './pages/GamesPage';
 import { GameDetailPage } from './pages/GameDetailPage';
 import { GamePlayerPage } from './pages/GamePlayerPage';
+import { RoomLobbyPage } from './pages/RoomLobbyPage';
 import {
   LoginPage,
   RegisterPage,
@@ -88,6 +89,7 @@ function App() {
                   <Route path="browse" element={<GamesPage />} />
                   <Route path="categories" element={<GamesPage />} />
                   <Route path="game/:slug" element={<GameDetailPage />} />
+                  <Route path="rooms/:roomCode" element={<RoomLobbyPage />} />
                   <Route path="profile/:username" element={<ProfilePage />} />
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="settings/billing" element={<SettingsPage />} />

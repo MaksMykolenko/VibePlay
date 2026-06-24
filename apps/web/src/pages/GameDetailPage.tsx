@@ -14,6 +14,10 @@ import { trackInternalEvent } from '../lib/internalAnalytics';
 import { canShowCta, suppressCta } from '../lib/cloudSaveCta';
 import { withReturnTo } from '../lib/returnTo';
 import { formatDate, formatNumber } from '../lib/formatTime';
+import { api } from '../lib/api';
+import { IS_DEMO } from '../lib/appMode';
+import { multiplayerUi, roomErrorKey } from '../lib/rooms';
+import { MultiplayerActions } from '../components/MultiplayerActions';
 import {
   Play,
   ThumbsUp,
@@ -40,6 +44,7 @@ export const GameDetailPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'info' | 'screenshots' | 'changelog'>('info');
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [showGuestCta, setShowGuestCta] = useState(() => canShowCta(!currentUser));
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   // Locate the game
   const game = games.find((g) => g.slug === slug);
@@ -87,6 +92,15 @@ export const GameDetailPage: React.FC = () => {
 
   const isOwner = currentUser?.id === game.creatorId;
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'owner';
+
+  // Multiplayer affordances. Hidden entirely when multiplayer is off or in demo;
+  // the wsUrl warning is owner/admin-only and never shown to normal players.
+  const mpUi = multiplayerUi({
+    multiplayer: game.multiplayer,
+    isDemo: IS_DEMO,
+    info: game.multiplayerInfo,
+    isOwnerOrAdmin: isOwner || isAdmin,
+  });
 
   // Guard: If not published, only owner or admin can see
   if (game.status !== 'published' && !isOwner && !isAdmin) {
@@ -153,6 +167,26 @@ export const GameDetailPage: React.FC = () => {
       logged_in: Boolean(currentUser),
     });
     navigate(`/play/${game.slug}`);
+  };
+
+  // Create a multiplayer room (works for logged-in users and guests) and open the
+  // lobby. `mode` is set for Quick Play. The backend enforces multiplayer eligibility.
+  const handleCreateRoom = async (mode?: string) => {
+    if (creatingRoom) return;
+    setCreatingRoom(true);
+    try {
+      const res = await api.createRoom(game.id, mode ? { mode } : undefined);
+      trackEvent('click_play_game', {
+        game_id: game.id,
+        game_slug: game.slug,
+        source: mode === 'quick_play' ? 'quick_play' : 'play_with_friends',
+        logged_in: Boolean(currentUser),
+      });
+      navigate(`/rooms/${res.roomCode}`);
+    } catch (err) {
+      toast.danger(t(roomErrorKey(err)));
+      setCreatingRoom(false);
+    }
   };
 
   const handleCreateAccount = () => {
@@ -312,6 +346,28 @@ export const GameDetailPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Owner/admin-only heads-up when external multiplayer has no server URL. */}
+          {mpUi.ownerWsWarning && (
+            <div
+              className="bg-glass"
+              style={{
+                display: 'flex',
+                gap: '10px',
+                alignItems: 'flex-start',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--warning)',
+                backgroundColor: 'rgba(255, 184, 77, 0.12)',
+              }}
+              data-testid="mp-ws-warning"
+            >
+              <AlertTriangle size={18} color="var(--warning)" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                {t('game.multiplayerWsWarning')}
+              </span>
+            </div>
+          )}
+
           {/* Action Buttons Row */}
           <div style={actionsRowStyle}>
             <button
@@ -322,6 +378,14 @@ export const GameDetailPage: React.FC = () => {
               <Play size={20} fill="#fff" />
               <strong style={{ fontSize: '1.05rem' }}>{t('game.playNow')}</strong>
             </button>
+
+            <MultiplayerActions
+              ui={mpUi}
+              creating={creatingRoom}
+              onPlayWithFriends={() => void handleCreateRoom()}
+              onQuickPlay={() => void handleCreateRoom('quick_play')}
+              t={t}
+            />
 
             <button
               onClick={handleLike}

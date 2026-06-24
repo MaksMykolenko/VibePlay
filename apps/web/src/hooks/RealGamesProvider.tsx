@@ -44,6 +44,7 @@ function toGame(dto: GameListItemDto | GameDetailDto): Game {
     devices: dto.devices ?? ['desktop'],
     controls: detail.controls ?? [],
     multiplayer: dto.multiplayer,
+    multiplayerInfo: detail.multiplayerInfo,
     aiDisclosure:
       dto.aiDisclosure === 'NONE'
         ? 'no'
@@ -286,6 +287,15 @@ export const RealGamesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           ...(fields.devices !== undefined ? { devices: fields.devices } : {}),
           ...(fields.controls !== undefined ? { controls: fields.controls } : {}),
           ...(fields.multiplayer !== undefined ? { multiplayer: fields.multiplayer } : {}),
+          ...(fields.multiplayerInfo !== undefined
+            ? {
+                multiplayerEnabled: fields.multiplayerInfo.enabled,
+                multiplayerMaxPlayers: fields.multiplayerInfo.maxPlayers,
+                multiplayerTransport: fields.multiplayerInfo.transport,
+                multiplayerWsUrl: fields.multiplayerInfo.wsUrl,
+                multiplayerModes: fields.multiplayerInfo.modes,
+              }
+            : {}),
           ...(fields.coverUrl !== undefined ? { coverUrl: fields.coverUrl || null } : {}),
           ...(fields.screenshots !== undefined ? { screenshots: fields.screenshots } : {}),
         }),

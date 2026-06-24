@@ -46,6 +46,8 @@ export interface Game {
   devices: string[];
   controls: GameControlDto[];
   multiplayer: boolean;
+  /** Detailed multiplayer metadata (present on detail/owned games; wsUrl owner/admin-only). */
+  multiplayerInfo?: import('@vibeplay/shared').GameMultiplayerDto;
   aiDisclosure: 'no' | 'assisted' | 'generated';
   aiTools: string[];
   status: GameStatus;

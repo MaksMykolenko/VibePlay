@@ -25,7 +25,21 @@ import type {
   SessionDto,
   UploadIntentResponseDto,
   UploadStatusDto,
+  CreateRoomResponseDto,
+  JoinRoomResponseDto,
+  LeaveRoomResponseDto,
+  RoomDto,
+  RoomTokenResponseDto,
+  StartRoomResponseDto,
 } from '@vibeplay/shared';
+
+export interface CreateRoomInput {
+  maxPlayers?: number;
+  visibility?: 'PRIVATE' | 'PUBLIC';
+  mode?: string;
+  /** Guest-chosen display name (logged-in users use their account name). */
+  displayName?: string;
+}
 
 export interface RegisterInput {
   email: string;
@@ -79,6 +93,11 @@ export interface CreateGameInput {
   devices?: string[];
   controls?: GameControlDto[];
   multiplayer?: boolean;
+  multiplayerEnabled?: boolean;
+  multiplayerMaxPlayers?: number;
+  multiplayerTransport?: 'NONE' | 'EXTERNAL_WS' | 'VIBEPLAY_SDK';
+  multiplayerWsUrl?: string | null;
+  multiplayerModes?: string[];
   aiDisclosure?: string;
   toolsUsed?: string[];
   coverUrl?: string | null;
@@ -226,6 +245,20 @@ export interface ApiClient {
   endPlaySession(sessionId: string): Promise<void>;
   trackAnalyticsEvent(event: AnalyticsEventInput): Promise<void>;
   trackAnalyticsBatch(batch: AnalyticsEventBatchInput): Promise<void>;
+
+  // multiplayer rooms (VibePlay-owned; works for logged-in users and guests)
+  /** Create a room for a published, multiplayer-enabled game. */
+  createRoom(gameId: string, input?: CreateRoomInput): Promise<CreateRoomResponseDto>;
+  /** Public room info by code. */
+  getRoom(roomCode: string): Promise<RoomDto>;
+  /** Join (or rejoin) a room as the current user/guest. */
+  joinRoom(roomCode: string, input?: { displayName?: string }): Promise<JoinRoomResponseDto>;
+  /** Leave the room (host transfers; empty room expires). */
+  leaveRoom(roomCode: string): Promise<LeaveRoomResponseDto>;
+  /** Host-only: set the room ACTIVE and get the play URL. */
+  startRoom(roomCode: string): Promise<StartRoomResponseDto>;
+  /** Mint a fresh short-lived signed room token for the current player. */
+  getRoomToken(roomCode: string): Promise<RoomTokenResponseDto>;
 
   // cloud saves (authenticated; the Play Page bridge calls these on the game's behalf)
   /** The caller's save for a game, or null when none exists (404). */

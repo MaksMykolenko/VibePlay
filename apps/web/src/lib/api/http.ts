@@ -23,6 +23,12 @@ import type {
   SessionDto,
   UploadIntentResponseDto,
   UploadStatusDto,
+  CreateRoomResponseDto,
+  JoinRoomResponseDto,
+  LeaveRoomResponseDto,
+  RoomDto,
+  RoomTokenResponseDto,
+  StartRoomResponseDto,
 } from '@vibeplay/shared';
 import { API_URL } from '../appMode';
 import { ApiClientError } from './errors';
@@ -366,6 +372,42 @@ export function createHttpClient(): ApiClient {
     },
     async trackAnalyticsBatch(batch: AnalyticsEventBatchInput) {
       await request('/analytics/batch', { method: 'POST', body: batch, keepalive: true });
+    },
+
+    // ----- multiplayer rooms -----
+    async createRoom(gameId, input) {
+      return request<CreateRoomResponseDto>(`/games/${encodeURIComponent(gameId)}/rooms`, {
+        method: 'POST',
+        body: input ?? {},
+      });
+    },
+    async getRoom(roomCode) {
+      const r = await request<{ room: RoomDto }>(`/rooms/${encodeURIComponent(roomCode)}`);
+      return r.room;
+    },
+    async joinRoom(roomCode, input) {
+      return request<JoinRoomResponseDto>(`/rooms/${encodeURIComponent(roomCode)}/join`, {
+        method: 'POST',
+        body: input ?? {},
+      });
+    },
+    async leaveRoom(roomCode) {
+      return request<LeaveRoomResponseDto>(`/rooms/${encodeURIComponent(roomCode)}/leave`, {
+        method: 'POST',
+        body: {},
+      });
+    },
+    async startRoom(roomCode) {
+      return request<StartRoomResponseDto>(`/rooms/${encodeURIComponent(roomCode)}/start`, {
+        method: 'POST',
+        body: {},
+      });
+    },
+    async getRoomToken(roomCode) {
+      return request<RoomTokenResponseDto>(`/rooms/${encodeURIComponent(roomCode)}/token`, {
+        method: 'POST',
+        body: {},
+      });
     },
 
     // ----- cloud saves -----

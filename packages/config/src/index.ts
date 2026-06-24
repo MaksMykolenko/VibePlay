@@ -35,6 +35,12 @@ const secretsSchema = z.object({
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET must be at least 32 chars'),
   PASSWORD_PEPPER: z.string().min(16, 'PASSWORD_PEPPER must be at least 16 chars'),
   PREVIEW_URL_SECRET: z.string().min(32, 'PREVIEW_URL_SECRET must be at least 32 chars'),
+  /// Signs short-lived multiplayer room tokens handed to game iframes / external
+  /// realtime servers (e.g. Boxy Tanks). Must match the game server's
+  /// VIBEPLAY_ROOM_TOKEN_SECRET. Never logged; never exposed to the iframe.
+  MULTIPLAYER_ROOM_TOKEN_SECRET: z
+    .string()
+    .min(32, 'MULTIPLAYER_ROOM_TOKEN_SECRET must be at least 32 chars'),
   SESSION_TTL_HOURS: z.coerce
     .number()
     .int()

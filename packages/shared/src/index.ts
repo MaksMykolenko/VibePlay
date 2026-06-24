@@ -5,6 +5,7 @@ export * from './stateMachine.js';
 export * from './schemas.js';
 export * from './gameSave.js';
 export * from './returnTo.js';
+export * from './rooms.js';
 export * from './dto.js';
 export * from './sdkProtocol.js';
 export * from './archive.js';

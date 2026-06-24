@@ -52,6 +52,8 @@ import {
   type LocalSaveProvidedPayload,
   type AnalyticsCustomEventPayload,
   type PlayerSummaryPayload,
+  type RoomContextPayload,
+  type RoomTokenPayload,
   type SaveResultPayload,
   type SaveStatusInfo,
 } from '@vibeplay/shared/sdk-protocol';
@@ -92,6 +94,27 @@ export interface VibePlaySaveApi {
   onLocalSaveRequested(provider: LocalSaveProvider): void;
 }
 
+/**
+ * Multiplayer room surface (Phase 4). The game receives room context (room code,
+ * signed room token, ws url, player identity) from the VibePlay parent over
+ * postMessage and NEVER calls VibePlay auth/APIs itself.
+ */
+export interface VibePlayRoomsApi {
+  /** True when running in VibePlay AND a room context has been received. */
+  isAvailable(): boolean;
+  /** Current room context (resolves null when not in a multiplayer room). */
+  getContext(): Promise<RoomContextPayload | null>;
+  /**
+   * Subscribe to room-context updates (initial + refreshes). Fires immediately
+   * with the current context if one was already received. Returns an unsubscribe.
+   */
+  onContext(callback: (ctx: RoomContextPayload | null) => void): () => void;
+  /** Ask the parent for a FRESH short-lived room token (tokens expire fast). */
+  getToken(): Promise<RoomTokenPayload | null>;
+  /** Ask the parent (which owns the session) to leave the room. */
+  leave(): void;
+}
+
 /** Privacy-safe analytics surface. All calls use postMessage; no API credentials are exposed. */
 export interface VibePlayAnalyticsApi {
   /** Signal that the game's analytics integration is ready. */
@@ -120,9 +143,16 @@ export class VibePlayGameSdk {
   private savePromiseResolve: ((r: SaveResultPayload) => void) | null = null;
   private localSaveProvider: LocalSaveProvider | null = null;
 
+  // Room context state (Phase 4).
+  private roomContext: RoomContextPayload | null = null;
+  private roomContextReceived = false;
+  private roomContextListeners = new Set<(ctx: RoomContextPayload | null) => void>();
+
   /** Cloud-save API namespace (see VibePlaySaveApi). */
   readonly save: VibePlaySaveApi;
   readonly analytics: VibePlayAnalyticsApi;
+  /** Multiplayer room namespace (see VibePlayRoomsApi). */
+  readonly rooms: VibePlayRoomsApi;
 
   constructor() {
     window.addEventListener('message', (event: MessageEvent) => this.onMessage(event));
@@ -136,6 +166,25 @@ export class VibePlayGameSdk {
       onLocalSaveRequested: (provider) => {
         this.localSaveProvider = provider;
       },
+    };
+    this.rooms = {
+      isAvailable: () =>
+        this.hostOrigin !== null && this.roomContextReceived && this.roomContext !== null,
+      getContext: () => this.roomGetContext(),
+      onContext: (callback) => {
+        this.roomContextListeners.add(callback);
+        // Fire immediately if a context was already received (common case).
+        if (this.roomContextReceived) {
+          try {
+            callback(this.roomContext);
+          } catch {
+            /* listener errors never break the SDK */
+          }
+        }
+        return () => this.roomContextListeners.delete(callback);
+      },
+      getToken: () => this.roomGetToken(),
+      leave: () => this.send('roomLeave'),
     };
     this.analytics = {
       ready: () => this.send('analyticsReady'),
@@ -282,6 +331,20 @@ export class VibePlayGameSdk {
     resolve?.(result);
   }
 
+  // --- multiplayer rooms ----------------------------------------------------
+
+  private roomGetContext(): Promise<RoomContextPayload | null> {
+    if (this.hostOrigin === null) return Promise.resolve(null);
+    // Resolve from cache once the parent has pushed context (it does so on init).
+    if (this.roomContextReceived) return Promise.resolve(this.roomContext);
+    return this.request<RoomContextPayload | null>('requestRoomContext', 5000, null);
+  }
+
+  private roomGetToken(): Promise<RoomTokenPayload | null> {
+    if (this.hostOrigin === null) return Promise.resolve(null);
+    return this.request<RoomTokenPayload | null>('requestRoomToken', SAVE_REQUEST_TIMEOUT_MS, null);
+  }
+
   // --- transport ------------------------------------------------------------
 
   private send(type: string, payload?: unknown, requestId?: string): void {
@@ -315,6 +378,29 @@ export class VibePlayGameSdk {
 
     // After init, only accept messages from the locked origin.
     if (this.hostOrigin !== event.origin) return;
+
+    // Room context: handle BOTH the proactive push (no requestId) and the
+    // correlated response to getContext(). Cache it, notify onContext listeners,
+    // and resolve any awaiting getContext() promise.
+    if (msg.type === 'roomContext') {
+      const ctx = (msg.payload as RoomContextPayload | null) ?? null;
+      this.roomContext = ctx;
+      this.roomContextReceived = true;
+      for (const cb of this.roomContextListeners) {
+        try {
+          cb(ctx);
+        } catch {
+          /* listener errors never break the SDK */
+        }
+      }
+      if (msg.requestId && this.pending.has(msg.requestId)) {
+        const entry = this.pending.get(msg.requestId)!;
+        clearTimeout(entry.timer);
+        this.pending.delete(msg.requestId);
+        entry.resolve(ctx);
+      }
+      return;
+    }
 
     // Correlated responses (playerSummary, fullscreenResult, saveResult, ...).
     if (msg.requestId && this.pending.has(msg.requestId)) {

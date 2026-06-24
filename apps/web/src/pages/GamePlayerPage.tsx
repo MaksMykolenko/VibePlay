@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   isAllowedGameLaunchUrl,
   type AnalyticsEventType,
   type LaunchDescriptorDto,
   type LocalSaveAvailablePayload,
+  type RoomContextPayload,
   type SaveResultCode,
 } from '@vibeplay/shared';
-import { GameBridge, type HostSaveAdapter } from '@vibeplay/sdk';
+import { GameBridge, type HostSaveAdapter, type RoomTokenProvider } from '@vibeplay/sdk';
 import { useAuth } from '../hooks/useAuth';
 import { useGames } from '../hooks/useGames';
 import { api } from '../lib/api';
+import { buildRoomContext, deriveLobbyView, roomErrorKey } from '../lib/rooms';
 import { GAME_ORIGIN } from '../lib/appMode';
 import { createCloudSaveAdapter } from '../lib/cloudSaveAdapter';
 import { CloudSaveCTA } from '../components/CloudSaveCTA';
@@ -88,6 +90,13 @@ export const GamePlayerPage: React.FC = () => {
   const [iframeKey, setIframeKey] = useState(0);
   const [sdkReady, setSdkReady] = useState(false);
 
+  // Multiplayer room context (only when /play/:slug?room=CODE). Null in normal
+  // single-player play — in which case the bridge behaves exactly as before.
+  const [searchParams] = useSearchParams();
+  const roomCode = searchParams.get('room');
+  const [roomContext, setRoomContext] = useState<RoomContextPayload | null>(null);
+  const [roomErrorKeyState, setRoomErrorKeyState] = useState<string | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -106,7 +115,12 @@ export const GamePlayerPage: React.FC = () => {
 
   const game = games.find((g) => g.slug === slug);
   const gameId = game?.id;
-  const launchLoading = IS_DEMO ? loading : launch === null;
+  // In room mode we also wait for the room context (membership + token) before
+  // showing the iframe; a room failure shows a friendly error, not a broken frame.
+  const roomMode = !IS_DEMO && roomCode != null;
+  const roomPending = roomMode && roomContext == null && roomErrorKeyState == null;
+  const launchLoading = (IS_DEMO ? loading : launch === null) || roomPending;
+  const iframeReady = !IS_DEMO && launch != null && (!roomMode || roomContext != null);
   const isGuest = !currentUser;
 
   const emitPlayAnalytics = useCallback(
@@ -375,6 +389,53 @@ export const GamePlayerPage: React.FC = () => {
     };
   }, [currentUser, gameId, slug]);
 
+  // Multiplayer: when ?room=CODE is present, confirm membership (join if needed),
+  // mint a signed room token, and build the RoomContext the bridge hands to the
+  // game. All sensitive calls happen HERE in the parent — never in the iframe.
+  useEffect(() => {
+    if (IS_DEMO || !roomCode || !gameId) return;
+    let active = true;
+    void (async () => {
+      setRoomContext(null);
+      setRoomErrorKeyState(null);
+      try {
+        let room = await api.getRoom(roomCode);
+        let view = deriveLobbyView(room);
+        if (!view.isMember) {
+          const joined = await api.joinRoom(roomCode);
+          room = joined.room;
+          view = deriveLobbyView(room);
+        }
+        if (!view.me) throw new Error('not_a_member');
+        const token = await api.getRoomToken(roomCode);
+        if (!active) return;
+        setRoomContext(buildRoomContext(room, view.me, token));
+      } catch (err) {
+        if (active) setRoomErrorKeyState(roomErrorKey(err));
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [roomCode, gameId]);
+
+  // Refresh the (short-lived) room token on the game's request.
+  const roomTokenProvider = useCallback<RoomTokenProvider>(async () => {
+    if (!roomCode) return null;
+    try {
+      const tk = await api.getRoomToken(roomCode);
+      return { token: tk.token, expiresAt: tk.expiresAt, wsUrl: tk.wsUrl, transport: tk.transport };
+    } catch {
+      return null;
+    }
+  }, [roomCode]);
+
+  // The game asked the platform to leave the room — leave and return to the page.
+  const handleRoomLeaveRequest = useCallback(() => {
+    if (roomCode) void api.leaveRoom(roomCode).catch(() => undefined);
+    navigate(game ? `/game/${game.slug}` : '/games');
+  }, [roomCode, navigate, game]);
+
   const handleIframeLoad = useCallback(() => {
     if (!launch || !gameId || launchSuccessRef.current.has(launch.sessionId)) return;
     launchSuccessRef.current.add(launch.sessionId);
@@ -434,7 +495,11 @@ export const GamePlayerPage: React.FC = () => {
           }
         : null,
       saveAdapter,
+      // Multiplayer room context + token refresh (null/undefined in single-player).
+      roomContext,
+      roomTokenProvider: roomCode ? roomTokenProvider : null,
       events: {
+        onRoomLeaveRequest: handleRoomLeaveRequest,
         onReady: () => {
           setSdkReady(true);
           if (!sdkReadyRef.current.has(launch.sessionId)) {
@@ -478,7 +543,19 @@ export const GamePlayerPage: React.FC = () => {
       bridgeRef.current = null;
       bridge.destroy();
     };
-  }, [currentUser, emitPlayAnalytics, iframeKey, launch, gameId, requestCta, offerSyncIfNeeded]);
+  }, [
+    currentUser,
+    emitPlayAnalytics,
+    iframeKey,
+    launch,
+    gameId,
+    requestCta,
+    offerSyncIfNeeded,
+    roomContext,
+    roomCode,
+    roomTokenProvider,
+    handleRoomLeaveRequest,
+  ]);
 
   // Soft CTA after a few minutes of guest play (complements progress/guest-save).
   useEffect(() => {
@@ -805,11 +882,17 @@ export const GamePlayerPage: React.FC = () => {
         {/* Display Wrapper */}
         <div className="game-theater__viewport">
           {/* Loading Layer */}
-          {launchLoading && (
+          {launchLoading && !roomErrorKeyState && (
             <div className="game-theater__loading">
               <div className="game-theater__spinner"></div>
               <h2>{t('player.launching')}</h2>
-              <p>{IS_DEMO ? LOADING_TEXTS[loadingStep] : t('player.authorizing')}</p>
+              <p>
+                {IS_DEMO
+                  ? LOADING_TEXTS[loadingStep]
+                  : roomPending
+                    ? t('rooms.playConnecting')
+                    : t('player.authorizing')}
+              </p>
               <div className="game-theater__progress">
                 <div
                   className="game-theater__progress-value"
@@ -821,7 +904,23 @@ export const GamePlayerPage: React.FC = () => {
             </div>
           )}
 
-          {!IS_DEMO && launch && (
+          {/* Room failure — show a friendly error instead of a broken iframe. */}
+          {roomErrorKeyState && (
+            <div className="game-theater__loading" data-testid="room-error">
+              <AlertCircle size={32} color="var(--danger)" />
+              <h2>{t('rooms.lobbyTitle')}</h2>
+              <p>{t(roomErrorKeyState)}</p>
+              <button
+                onClick={handleExit}
+                className="btn btn-primary"
+                style={{ marginTop: '1rem' }}
+              >
+                {t('rooms.backToGame')}
+              </button>
+            </div>
+          )}
+
+          {iframeReady && (
             <iframe
               key={iframeKey}
               ref={iframeRef}

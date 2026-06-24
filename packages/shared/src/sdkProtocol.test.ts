@@ -122,4 +122,58 @@ describe('SDK protocol', () => {
       parseGameMessage(makeEnvelope('analyticsError', { code: 'sdk_timeout', stack: 'raw stack' })),
     ).toBeNull();
   });
+
+  // --- multiplayer room message types --------------------------------------
+
+  const roomContext = {
+    roomId: 'room-1',
+    roomCode: 'ABC123',
+    gameId: 'game-1',
+    versionId: 'ver-1',
+    playerId: 'player-1',
+    playerName: 'Maks',
+    playerAvatarUrl: null,
+    isHost: true,
+    maxPlayers: 8,
+    mode: 'free_for_all',
+    transport: 'external_ws',
+    wsUrl: 'wss://boxy.example.com',
+    token: 'signed.room.token',
+    expiresAt: '2030-01-01T00:00:00.000Z',
+  };
+
+  it('accepts game→host room requests (context/token/leave)', () => {
+    expect(parseGameMessage(makeEnvelope('requestRoomContext', undefined, 'r1'))?.type).toBe(
+      'requestRoomContext',
+    );
+    expect(parseGameMessage(makeEnvelope('requestRoomToken', undefined, 'r2'))?.type).toBe(
+      'requestRoomToken',
+    );
+    expect(parseGameMessage(makeEnvelope('roomLeave'))?.type).toBe('roomLeave');
+  });
+
+  it('validates host→game roomContext payload (and allows null = no room)', () => {
+    expect(parseHostMessage(makeEnvelope('roomContext', roomContext))?.type).toBe('roomContext');
+    expect(parseHostMessage(makeEnvelope('roomContext', null))?.type).toBe('roomContext');
+    // Missing required fields / wrong types are rejected.
+    expect(parseHostMessage(makeEnvelope('roomContext', { roomId: 'x' }))).toBeNull();
+    expect(
+      parseHostMessage(makeEnvelope('roomContext', { ...roomContext, isHost: 'yes' })),
+    ).toBeNull();
+    // Oversized token rejected.
+    expect(
+      parseHostMessage(makeEnvelope('roomContext', { ...roomContext, token: 'x'.repeat(9000) })),
+    ).toBeNull();
+  });
+
+  it('validates host→game roomTokenResult payload', () => {
+    const ok = { token: 't', expiresAt: '2030-01-01T00:00:00.000Z', wsUrl: null, transport: 'x' };
+    expect(parseHostMessage(makeEnvelope('roomTokenResult', ok, 'r1'))?.type).toBe(
+      'roomTokenResult',
+    );
+    expect(parseHostMessage(makeEnvelope('roomTokenResult', null, 'r2'))?.type).toBe(
+      'roomTokenResult',
+    );
+    expect(parseHostMessage(makeEnvelope('roomTokenResult', { token: 123 }, 'r3'))).toBeNull();
+  });
 });

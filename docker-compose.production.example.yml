@@ -27,6 +27,7 @@ x-required-secrets: &required-secrets
   SESSION_SECRET: ${SESSION_SECRET:?set in .env.production}
   PASSWORD_PEPPER: ${PASSWORD_PEPPER:?set in .env.production}
   PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET:?set in .env.production}
+  MULTIPLAYER_ROOM_TOKEN_SECRET: ${MULTIPLAYER_ROOM_TOKEN_SECRET:?set in .env.production}
 
 x-storage-env: &storage-env
   STORAGE_DRIVER: s3

@@ -5,11 +5,19 @@ import {
   FEATURED_CATEGORIES,
   GAME_CATEGORIES,
   GAME_SORTS,
+  MULTIPLAYER_TRANSPORTS,
   REPORT_REASONS,
   REPORT_STATUSES,
   REPORT_TARGET_TYPES,
   SUPPORTED_DEVICES,
 } from './enums.js';
+import {
+  MULTIPLAYER_MODES_MAX,
+  MULTIPLAYER_MODE_MAX_LENGTH,
+  ROOM_DEFAULT_MAX_PLAYERS,
+  ROOM_MAX_PLAYERS_CAP,
+  ROOM_MIN_MAX_PLAYERS,
+} from './rooms.js';
 import {
   BIO_MAX_LENGTH,
   COMMENT_MAX_LENGTH,
@@ -182,6 +190,22 @@ export const createGameSchema = z
       .default(['desktop']),
     controls: gameControlsSchema.default([]),
     multiplayer: z.boolean().default(false),
+    // VibePlay-owned multiplayer settings (spec Phase 5). Cross-field rules (e.g.
+    // EXTERNAL_WS requires a valid wss:// URL) are enforced in the API handler,
+    // which knows the production flag and the merged final state.
+    multiplayerEnabled: z.boolean().default(false),
+    multiplayerMaxPlayers: z.coerce
+      .number()
+      .int()
+      .min(ROOM_MIN_MAX_PLAYERS)
+      .max(ROOM_MAX_PLAYERS_CAP)
+      .default(ROOM_DEFAULT_MAX_PLAYERS),
+    multiplayerTransport: z.enum(MULTIPLAYER_TRANSPORTS).default('NONE'),
+    multiplayerWsUrl: z.string().trim().max(2000).nullish(),
+    multiplayerModes: z
+      .array(z.string().trim().min(1).max(MULTIPLAYER_MODE_MAX_LENGTH))
+      .max(MULTIPLAYER_MODES_MAX)
+      .default([]),
     aiDisclosure: z.enum(AI_DISCLOSURES).default('NONE'),
     toolsUsed: z.array(z.string().trim().min(1).max(40)).max(10).default([]),
     coverUrl: httpUrlSchema.nullable().optional(),

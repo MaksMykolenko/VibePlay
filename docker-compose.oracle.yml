@@ -19,6 +19,7 @@ x-secrets: &secrets
   SESSION_SECRET: ${SESSION_SECRET:?set in .env}
   PASSWORD_PEPPER: ${PASSWORD_PEPPER:?set in .env}
   PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET:?set in .env}
+  MULTIPLAYER_ROOM_TOKEN_SECRET: ${MULTIPLAYER_ROOM_TOKEN_SECRET:?set in .env}
 
 x-storage-env: &storage-env
   STORAGE_DRIVER: s3

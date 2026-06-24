@@ -13,6 +13,7 @@ x-dev-secrets: &dev-secrets
   SESSION_SECRET: ${SESSION_SECRET:-dev-session-secret-change-me-0123456789abcdef}
   PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev-pepper-change-me-0123456789}
   PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET:-dev-preview-secret-change-me-0123456789abcdef}
+  MULTIPLAYER_ROOM_TOKEN_SECRET: ${MULTIPLAYER_ROOM_TOKEN_SECRET:-dev-room-token-secret-change-me-0123456789abcdef}
 
 x-storage-env: &storage-env
   STORAGE_DRIVER: s3

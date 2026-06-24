@@ -250,4 +250,124 @@ describe('GameBridge', () => {
     expect(result).toEqual({ data: { level: 9 }, schemaVersion: 2 });
     bridge.destroy();
   });
+
+  // --- multiplayer rooms ----------------------------------------------------
+
+  const roomContext = {
+    roomId: 'room-1',
+    roomCode: 'ABC123',
+    gameId: 'game-1',
+    versionId: 'ver-1',
+    playerId: 'player-1',
+    playerName: 'Maks',
+    playerAvatarUrl: null,
+    isHost: true,
+    maxPlayers: 8,
+    mode: 'free_for_all',
+    transport: 'external_ws',
+    wsUrl: 'wss://boxy.example.com',
+    token: 'signed.room.token',
+    expiresAt: '2030-01-01T00:00:00.000Z',
+  };
+
+  it('pushes room context to the game on handshake', async () => {
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      roomContext,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'roomContext', payload: roomContext }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
+
+  it('answers requestRoomContext with the current context (correlated)', async () => {
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      roomContext,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+    postMessage.mockClear();
+
+    send('https://games.example.com', makeEnvelope('requestRoomContext', undefined, 'rc1'));
+    await flush();
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'roomContext', requestId: 'rc1', payload: roomContext }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
+
+  it('mints a fresh token via the provider on requestRoomToken', async () => {
+    const fresh = {
+      token: 'new.room.token',
+      expiresAt: '2030-01-01T00:02:00.000Z',
+      wsUrl: 'wss://boxy.example.com',
+      transport: 'external_ws',
+    };
+    const roomTokenProvider = vi.fn(async () => fresh);
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      roomContext,
+      roomTokenProvider,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+
+    send('https://games.example.com', makeEnvelope('requestRoomToken', undefined, 'rt1'));
+    await flush();
+    expect(roomTokenProvider).toHaveBeenCalledOnce();
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'roomTokenResult', requestId: 'rt1', payload: fresh }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
+
+  it('fires onRoomLeaveRequest when the game asks to leave', async () => {
+    const onRoomLeaveRequest = vi.fn();
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      roomContext,
+      events: { onRoomLeaveRequest },
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+
+    send('https://games.example.com', makeEnvelope('roomLeave'));
+    await flush();
+    expect(onRoomLeaveRequest).toHaveBeenCalledOnce();
+    bridge.destroy();
+  });
+
+  it('setRoomContext pushes an updated context after handshake', async () => {
+    const bridge = new GameBridge({
+      iframe,
+      gameOrigin: 'https://games.example.com',
+      playerSummary: null,
+      roomContext: null,
+    });
+    send('https://games.example.com', makeEnvelope('ready'));
+    await flush();
+    postMessage.mockClear();
+
+    bridge.setRoomContext(roomContext);
+    expect(postMessage).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'roomContext', payload: roomContext }),
+      'https://games.example.com',
+    );
+    bridge.destroy();
+  });
 });

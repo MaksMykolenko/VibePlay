@@ -14,6 +14,7 @@ import type {
   UserStatus,
 } from './enums.js';
 import type { AnalyticsEventType } from './analyticsEvents.js';
+import type { GameMultiplayerDto } from './rooms.js';
 
 /** Public view of a user (safe to expose to anyone). */
 export interface PublicUserDto {
@@ -239,6 +240,8 @@ export interface GameDetailDto extends GameListItemDto {
     approvedAt: string | null;
   } | null;
   changelog: { version: string; date: string; notes: string }[];
+  /** Multiplayer metadata. `wsUrl` is populated only for the owner/admin viewer. */
+  multiplayerInfo: GameMultiplayerDto;
   viewer: {
     liked: boolean;
     favorited: boolean;

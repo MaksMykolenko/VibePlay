@@ -25,6 +25,9 @@ export const ERROR_CODES = [
   'COVER_NOT_FOUND',
   'SAVE_NOT_FOUND',
   'SAVE_INVALID',
+  'ROOM_NOT_FOUND',
+  'ROOM_FULL',
+  'ROOM_NOT_JOINABLE',
   'CONFLICT',
   'INVALID_STATE_TRANSITION',
   'ALREADY_COMPLETED',
@@ -91,6 +94,10 @@ export const errors = {
       detail ?? 'Save data is invalid',
       detail ? { detail } : undefined,
     ),
+  roomNotFound: (message = 'Room not found') => new ApiError(404, 'ROOM_NOT_FOUND', message),
+  roomFull: (message = 'This room is full') => new ApiError(409, 'ROOM_FULL', message),
+  roomNotJoinable: (message = 'This room can no longer be joined') =>
+    new ApiError(409, 'ROOM_NOT_JOINABLE', message),
   planLimit: (message: string, details?: unknown) =>
     new ApiError(409, 'PLAN_LIMIT_REACHED', message, details),
   rateLimited: () => new ApiError(429, 'RATE_LIMITED', 'Too many requests, slow down'),

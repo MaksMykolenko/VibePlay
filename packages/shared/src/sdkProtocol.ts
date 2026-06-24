@@ -30,7 +30,12 @@ export type GameToHostType =
   // Privacy-safe first-party analytics, relayed by the parent Play Page:
   | 'analyticsReady'
   | 'analyticsError'
-  | 'analyticsCustomEvent';
+  | 'analyticsCustomEvent'
+  // Multiplayer rooms (Phase 4): the game asks the parent (which holds the
+  // session) for room context / a fresh room token, or asks to leave the room.
+  | 'requestRoomContext'
+  | 'requestRoomToken'
+  | 'roomLeave';
 
 export type HostToGameType =
   | 'init'
@@ -39,7 +44,12 @@ export type HostToGameType =
   // Correlated response to any save* request:
   | 'saveResult'
   // Host asks the game to hand over its local (device) save for syncing:
-  | 'requestLocalSave';
+  | 'requestLocalSave'
+  // Multiplayer rooms (Phase 4): room context push / correlated response, and the
+  // correlated response to requestRoomToken. Carries the signed ROOM token only —
+  // never a VibePlay auth cookie/token.
+  | 'roomContext'
+  | 'roomTokenResult';
 
 export interface SdkEnvelope<TType extends string = string, TPayload = unknown> {
   vibeplay: true;
@@ -146,7 +156,40 @@ export interface AnalyticsCustomEventPayload {
   label?: string;
 }
 
+/**
+ * Multiplayer room context delivered host → game (Phase 4). Structurally mirrors
+ * the platform's RoomContextDto. Carries the signed, short-lived ROOM token (for
+ * the game's own realtime server) — NEVER a VibePlay auth cookie/token. Defined
+ * locally (not imported) so the game-side SDK bundle stays dependency-free.
+ */
+export interface RoomContextPayload {
+  roomId: string;
+  roomCode: string;
+  gameId: string;
+  versionId: string | null;
+  playerId: string;
+  playerName: string;
+  playerAvatarUrl: string | null;
+  isHost: boolean;
+  maxPlayers: number;
+  mode: string;
+  transport: string;
+  wsUrl: string | null;
+  token: string;
+  expiresAt: string;
+}
+
+/** Correlated response to `requestRoomToken` (a refreshed room token). */
+export interface RoomTokenPayload {
+  token: string;
+  expiresAt: string;
+  wsUrl: string | null;
+  transport: string;
+}
+
 const MAX_STRING = 5000;
+/** Room/JWT tokens can be a few KB; bound generously but finitely. */
+const MAX_TOKEN = 8192;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -173,6 +216,9 @@ const GAME_TO_HOST_TYPES: ReadonlySet<string> = new Set([
   'analyticsReady',
   'analyticsError',
   'analyticsCustomEvent',
+  'requestRoomContext',
+  'requestRoomToken',
+  'roomLeave',
 ]);
 
 const HOST_TO_GAME_TYPES: ReadonlySet<string> = new Set([
@@ -181,6 +227,8 @@ const HOST_TO_GAME_TYPES: ReadonlySet<string> = new Set([
   'fullscreenResult',
   'saveResult',
   'requestLocalSave',
+  'roomContext',
+  'roomTokenResult',
 ]);
 
 const SAVE_RESULT_CODES: ReadonlySet<string> = new Set([
@@ -296,7 +344,42 @@ export function parseHostMessage(data: unknown): SdkEnvelope<HostToGameType> | n
     // `p.data` (a successful saveGet payload) may be any JSON of any size — the
     // protocol layer never inspects or size-limits it.
   }
+  // Room context push / correlated response. `null` means "no room" (not in a
+  // multiplayer room) and is valid; an object must match the bounded shape.
+  if (data.type === 'roomContext' && data.payload !== null && data.payload !== undefined) {
+    if (!isRoomContextPayload(data.payload)) return null;
+  }
+  if (data.type === 'roomTokenResult' && data.payload !== null && data.payload !== undefined) {
+    if (!isRoomTokenPayload(data.payload)) return null;
+  }
   return data as unknown as SdkEnvelope<HostToGameType>;
+}
+
+/** Strict, bounded validation of a host→game room context payload. */
+function isRoomContextPayload(p: unknown): p is RoomContextPayload {
+  if (!isPlainObject(p)) return false;
+  if (!isShortString(p.roomId, 64) || !isShortString(p.roomCode, 16)) return false;
+  if (!isShortString(p.gameId, 64)) return false;
+  if (p.versionId !== null && !isShortString(p.versionId, 64)) return false;
+  if (!isShortString(p.playerId, 64)) return false;
+  if (!isShortString(p.playerName, 100)) return false;
+  if (p.playerAvatarUrl !== null && !isShortString(p.playerAvatarUrl, 2000)) return false;
+  if (typeof p.isHost !== 'boolean') return false;
+  if (!isFiniteNumber(p.maxPlayers)) return false;
+  if (!isShortString(p.mode, 40) || !isShortString(p.transport, 40)) return false;
+  if (p.wsUrl !== null && !isShortString(p.wsUrl, 2000)) return false;
+  if (!isShortString(p.token, MAX_TOKEN)) return false;
+  if (!isShortString(p.expiresAt, 40)) return false;
+  return true;
+}
+
+function isRoomTokenPayload(p: unknown): p is RoomTokenPayload {
+  if (!isPlainObject(p)) return false;
+  if (!isShortString(p.token, MAX_TOKEN)) return false;
+  if (!isShortString(p.expiresAt, 40)) return false;
+  if (p.wsUrl !== null && !isShortString(p.wsUrl, 2000)) return false;
+  if (!isShortString(p.transport, 40)) return false;
+  return true;
 }
 
 export function makeEnvelope<TType extends string, TPayload>(

@@ -71,6 +71,8 @@ model User {
   subscription            Subscription?
   gameSaves               GameSave[]
   analyticsEvents         AnalyticsEvent[]
+  hostedRooms             GameRoom[]               @relation("GameRoomHostUser")
+  roomPlayers             GameRoomPlayer[]
 
   @@index([status])
   @@index([role])
@@ -231,34 +233,44 @@ enum FeaturedCategory {
 }
 
 model Game {
-  id                 String            @id @default(cuid())
-  slug               String            @unique
-  creatorId          String
-  creator            User              @relation(fields: [creatorId], references: [id], onDelete: Restrict)
-  title              String
-  shortDescription   String
-  description        String
-  category           String
-  ageRating          AgeRating         @default(EVERYONE)
-  status             GameStatus        @default(DRAFT)
-  tags               String[]          @default([])
-  devices            String[]          @default(["desktop"])
-  controls           Json              @default("[]")
-  toolsUsed          String[]          @default([])
-  multiplayer        Boolean           @default(false)
-  aiDisclosure       AiDisclosure      @default(NONE)
-  featuredCategory   FeaturedCategory?
-  coverUrl           String?
+  id                    String               @id @default(cuid())
+  slug                  String               @unique
+  creatorId             String
+  creator               User                 @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  title                 String
+  shortDescription      String
+  description           String
+  category              String
+  ageRating             AgeRating            @default(EVERYONE)
+  status                GameStatus           @default(DRAFT)
+  tags                  String[]             @default([])
+  devices               String[]             @default(["desktop"])
+  controls              Json                 @default("[]")
+  toolsUsed             String[]             @default([])
+  multiplayer           Boolean              @default(false)
+  // VibePlay-owned multiplayer metadata (spec Phase 5). `multiplayer` above stays
+  // as the catalog/browse flag; these describe HOW multiplayer works for the game.
+  multiplayerEnabled    Boolean              @default(false)
+  multiplayerMaxPlayers Int                  @default(8)
+  multiplayerTransport  MultiplayerTransport @default(NONE)
+  /// External realtime server base URL (wss:// in production). Null for NONE /
+  /// VIBEPLAY_SDK transports. Validated before persistence; never points at MinIO.
+  multiplayerWsUrl      String?
+  /// Optional list of supported modes, e.g. ["free_for_all","teams"]. Validated JSON.
+  multiplayerModes      Json                 @default("[]")
+  aiDisclosure          AiDisclosure         @default(NONE)
+  featuredCategory      FeaturedCategory?
+  coverUrl              String?
   /// Private object-storage key for a creator-uploaded raster cover. The public
   /// coverUrl points to the API streaming endpoint; object storage stays private.
-  coverObjectKey     String?
-  publishedVersionId String?           @unique
-  publishedVersion   GameVersion?      @relation("PublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
-  publishedAt        DateTime?
-  likesCount         Int               @default(0)
-  playsCount         Int               @default(0)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  coverObjectKey        String?
+  publishedVersionId    String?              @unique
+  publishedVersion      GameVersion?         @relation("PublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+  publishedAt           DateTime?
+  likesCount            Int                  @default(0)
+  playsCount            Int                  @default(0)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
 
   versions        GameVersion[]    @relation("GameVersions")
   screenshots     GameScreenshot[]
@@ -268,6 +280,7 @@ model Game {
   comments        Comment[]
   gameSaves       GameSave[]
   analyticsEvents AnalyticsEvent[]
+  rooms           GameRoom[]
 
   @@index([status, category])
   @@index([creatorId])
@@ -305,6 +318,7 @@ model GameVersion {
   playSessions        PlaySession[]
   upload              Upload?
   analyticsEvents     AnalyticsEvent[]
+  rooms               GameRoom[]           @relation("GameRoomVersion")
 
   @@unique([gameId, version])
   @@index([status, submittedAt])
@@ -594,4 +608,115 @@ model Feedback {
 
   @@index([status, createdAt])
   @@index([resolvedById])
+}
+
+// ---------------------------------------------------------------------------
+// Multiplayer rooms (VibePlay-owned). VibePlay owns room lifecycle, identity, and
+// the short join code; the game's external realtime server (e.g. the Boxy Tanks
+// WebSocket server) owns the live simulation, keyed by the VibePlay roomCode. Auth
+// never enters the game iframe — the game receives a short-lived signed room token.
+// ---------------------------------------------------------------------------
+
+enum GameRoomStatus {
+  WAITING
+  ACTIVE
+  FINISHED
+  EXPIRED
+}
+
+enum GameRoomVisibility {
+  PRIVATE
+  PUBLIC
+}
+
+enum GameRoomPlayerStatus {
+  JOINED
+  LEFT
+  KICKED
+}
+
+/// How a game's realtime multiplayer is transported.
+/// - NONE: no multiplayer.
+/// - EXTERNAL_WS: game ships its own WebSocket server (Boxy Tanks model).
+/// - VIBEPLAY_SDK: realtime relayed over the VibePlay SDK bridge (future).
+enum MultiplayerTransport {
+  NONE
+  EXTERNAL_WS
+  VIBEPLAY_SDK
+}
+
+/// Anonymous, cookie-scoped guest identity. Lets a not-logged-in player create,
+/// host, and rejoin multiplayer rooms without an account. The raw cookie token is
+/// NEVER stored — only its HMAC hash (mirrors Session). Holds no PII beyond an
+/// optional display name the guest chose for a room.
+model Guest {
+  id          String   @id @default(cuid())
+  /// HMAC-SHA256 of the opaque guest cookie token (never store the raw token).
+  tokenHash   String   @unique
+  displayName String?
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  hostedRooms GameRoom[]       @relation("GameRoomHostGuest")
+  roomPlayers GameRoomPlayer[]
+
+  @@index([lastSeenAt])
+}
+
+model GameRoom {
+  id          String             @id @default(cuid())
+  gameId      String
+  game        Game               @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  versionId   String?
+  version     GameVersion?       @relation("GameRoomVersion", fields: [versionId], references: [id], onDelete: SetNull)
+  /// Short, human-typable join code (unique). 4-6 chars, ambiguity-free alphabet.
+  roomCode    String             @unique
+  status      GameRoomStatus     @default(WAITING)
+  visibility  GameRoomVisibility @default(PRIVATE)
+  /// Exactly one of hostUserId / hostGuestId is set at a time. Host can transfer.
+  hostUserId  String?
+  hostUser    User?              @relation("GameRoomHostUser", fields: [hostUserId], references: [id], onDelete: SetNull)
+  hostGuestId String?
+  hostGuest   Guest?             @relation("GameRoomHostGuest", fields: [hostGuestId], references: [id], onDelete: SetNull)
+  maxPlayers  Int                @default(8)
+  /// Denormalized count of JOINED players, kept in sync inside transactions.
+  playerCount Int                @default(0)
+  mode        String             @default("free_for_all")
+  /// Mirrors MultiplayerTransport as a stable string for the room token payload.
+  transport   String             @default("external_ws")
+  /// Realtime server URL handed to the game via the room token (wss:// in prod).
+  wsUrl       String?
+  expiresAt   DateTime
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  players GameRoomPlayer[]
+
+  @@index([gameId, status])
+  @@index([status, expiresAt])
+}
+
+model GameRoomPlayer {
+  id          String               @id @default(cuid())
+  roomId      String
+  room        GameRoom             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  /// Exactly one of userId / guestId identifies the player. Null user + null guest
+  /// is never written. Unique-per-room (below) prevents duplicate membership rows.
+  userId      String?
+  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestId     String?
+  guest       Guest?               @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  displayName String
+  avatarUrl   String?
+  isHost      Boolean              @default(false)
+  status      GameRoomPlayerStatus @default(JOINED)
+  joinedAt    DateTime             @default(now())
+  leftAt      DateTime?
+
+  // Postgres treats NULLs as distinct, so these uniques bind only real ids: a
+  // user (or guest) can hold at most one membership row per room; rejoin updates
+  // the existing row rather than inserting a duplicate.
+  @@unique([roomId, userId])
+  @@unique([roomId, guestId])
+  @@index([roomId, status])
 }

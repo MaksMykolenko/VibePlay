@@ -18,6 +18,7 @@ export function testEnv(overrides: Partial<Record<string, string>> = {}): ApiEnv
     SESSION_SECRET: 'test-session-secret-0123456789abcdef0123456789abcdef',
     PASSWORD_PEPPER: 'test-pepper-0123456789abcdef',
     PREVIEW_URL_SECRET: 'test-preview-secret-0123456789abcdef0123456789ab',
+    MULTIPLAYER_ROOM_TOKEN_SECRET: 'test-room-token-secret-0123456789abcdef0123456789ab',
     GOOGLE_CLIENT_ID: 'test-google-client-id',
     GOOGLE_CLIENT_SECRET: 'test-google-client-secret',
     GOOGLE_REDIRECT_URI: 'http://localhost:3000/api/auth/google/callback',
@@ -68,6 +69,9 @@ export async function buildTestApp(
 /** Wipe data between suites (order respects FK constraints via cascade). */
 export async function resetDb(prisma: PrismaClient): Promise<void> {
   await prisma.$transaction([
+    prisma.gameRoomPlayer.deleteMany(),
+    prisma.gameRoom.deleteMany(),
+    prisma.guest.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.feedback.deleteMany(),
     prisma.notification.deleteMany(),

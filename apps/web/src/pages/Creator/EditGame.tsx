@@ -1,5 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { SUPPORTED_DEVICES, type GameControlDto, type SupportedDevice } from '@vibeplay/shared';
+import {
+  MULTIPLAYER_TRANSPORTS,
+  SUPPORTED_DEVICES,
+  type GameControlDto,
+  type MultiplayerTransport,
+  type SupportedDevice,
+} from '@vibeplay/shared';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGames } from '../../hooks/useGames';
 import { useAuth } from '../../hooks/useAuth';
@@ -63,6 +69,19 @@ export const EditGame: React.FC = () => {
   const [coverProgress, setCoverProgress] = useState(0);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [multiplayer] = useState(() => game?.multiplayer ?? false);
+  // Multiplayer metadata (real mode). Validation (e.g. wss:// in production, URL
+  // required for EXTERNAL_WS) is enforced by the backend on save.
+  const [mpEnabled, setMpEnabled] = useState(
+    () => game?.multiplayerInfo?.enabled ?? game?.multiplayer ?? false,
+  );
+  const [mpMaxPlayers, setMpMaxPlayers] = useState(() => game?.multiplayerInfo?.maxPlayers ?? 8);
+  const [mpTransport, setMpTransport] = useState<MultiplayerTransport>(
+    () => game?.multiplayerInfo?.transport ?? 'NONE',
+  );
+  const [mpWsUrl, setMpWsUrl] = useState(() => game?.multiplayerInfo?.wsUrl ?? '');
+  const [mpModesInput, setMpModesInput] = useState(
+    () => (game?.multiplayerInfo?.modes ?? []).join(', '),
+  );
   const [aiDisclosure] = useState<'no' | 'assisted' | 'generated'>(
     () => game?.aiDisclosure ?? 'no',
   );
@@ -152,6 +171,22 @@ export const EditGame: React.FC = () => {
       devices,
       controls,
       multiplayer,
+      // Multiplayer metadata is a real-backend feature; the backend validates the
+      // URL (wss:// in production, required for EXTERNAL_WS) and rejects bad input.
+      ...(IS_DEMO
+        ? {}
+        : {
+            multiplayerInfo: {
+              enabled: mpEnabled,
+              maxPlayers: mpMaxPlayers,
+              transport: mpTransport,
+              wsUrl: mpWsUrl.trim() ? mpWsUrl.trim() : null,
+              modes: mpModesInput
+                .split(',')
+                .map((m) => m.trim())
+                .filter((m) => m.length > 0),
+            },
+          }),
       aiDisclosure,
       aiTools,
       version: version || game.version,
@@ -417,6 +452,77 @@ export const EditGame: React.FC = () => {
           </div>
           <span style={helperStyle}>{t('cover.devicesHelper')}</span>
         </fieldset>
+
+        {/* Multiplayer metadata (real backend feature). Backend validates URLs. */}
+        {!IS_DEMO && (
+          <fieldset style={deviceFieldsetStyle}>
+            <legend className="form-label">{t('editGame.multiplayerSection')}</legend>
+            <label style={mpToggleStyle}>
+              <input
+                type="checkbox"
+                checked={mpEnabled}
+                onChange={(e) => setMpEnabled(e.target.checked)}
+              />
+              <span>{t('editGame.multiplayerEnable')}</span>
+            </label>
+
+            {mpEnabled && (
+              <div style={mpFieldsStyle}>
+                <div className="form-group">
+                  <label className="form-label">{t('editGame.multiplayerMaxPlayers')}</label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={16}
+                    value={mpMaxPlayers}
+                    onChange={(e) => setMpMaxPlayers(Number(e.target.value))}
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('editGame.multiplayerTransport')}</label>
+                  <select
+                    value={mpTransport}
+                    onChange={(e) => setMpTransport(e.target.value as MultiplayerTransport)}
+                    className="form-input form-select"
+                  >
+                    {MULTIPLAYER_TRANSPORTS.map((tr) => (
+                      <option key={tr} value={tr}>
+                        {tr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {mpTransport === 'EXTERNAL_WS' && (
+                  <div className="form-group">
+                    <label className="form-label">{t('editGame.multiplayerWsUrl')}</label>
+                    <input
+                      type="text"
+                      value={mpWsUrl}
+                      onChange={(e) => setMpWsUrl(e.target.value)}
+                      className="form-input"
+                      placeholder={t('editGame.multiplayerWsPlaceholder')}
+                    />
+                    <span style={helperStyle}>{t('editGame.multiplayerWsHint')}</span>
+                  </div>
+                )}
+
+                <div className="form-group">
+                  <label className="form-label">{t('editGame.multiplayerModes')}</label>
+                  <input
+                    type="text"
+                    value={mpModesInput}
+                    onChange={(e) => setMpModesInput(e.target.value)}
+                    className="form-input"
+                    placeholder={t('editGame.multiplayerModesPlaceholder')}
+                  />
+                </div>
+              </div>
+            )}
+          </fieldset>
+        )}
 
         <fieldset className="controls-editor">
           <legend className="form-label">{t('controls.title')}</legend>
@@ -694,6 +800,21 @@ const deviceOptionStyle: React.CSSProperties = {
   border: '1px solid var(--border-color)',
   borderRadius: '8px',
   cursor: 'pointer',
+};
+
+const mpToggleStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  minHeight: '44px',
+  cursor: 'pointer',
+};
+
+const mpFieldsStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '1rem',
+  marginTop: '0.75rem',
 };
 
 const footerRowStyle: React.CSSProperties = {

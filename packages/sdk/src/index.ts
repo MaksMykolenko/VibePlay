@@ -3,11 +3,17 @@ export type {
   SaveSetOptions,
   VibePlaySaveApi,
   VibePlayAnalyticsApi,
+  VibePlayRoomsApi,
   LocalSaveProvider,
 } from './sdk-entry.js';
 export { GameBridge } from './host.js';
-export type { GameBridgeEvents, GameBridgeOptions, HostSaveAdapter } from './host.js';
-// Re-export the save protocol types games/host commonly need.
+export type {
+  GameBridgeEvents,
+  GameBridgeOptions,
+  HostSaveAdapter,
+  RoomTokenProvider,
+} from './host.js';
+// Re-export the save + room protocol types games/host commonly need.
 export type {
   SaveResultPayload,
   SaveResultCode,
@@ -18,4 +24,6 @@ export type {
   ProgressPayload,
   AnalyticsErrorPayload,
   AnalyticsCustomEventPayload,
+  RoomContextPayload,
+  RoomTokenPayload,
 } from '@vibeplay/shared/sdk-protocol';

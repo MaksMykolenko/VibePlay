@@ -8,6 +8,7 @@ import {
   storageKeys,
   updateGameSchema,
   uploadIntentSchema,
+  validateMultiplayerWsUrl,
 } from '@vibeplay/shared';
 import { audit } from '../lib/audit.js';
 import { getCreatorAnalytics } from '../lib/creatorAnalytics.js';
@@ -130,6 +131,28 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
     const existing = await prisma.game.findUnique({ where: { id: req.params.gameId } });
     if (!existing) throw errors.notFound('GAME_NOT_FOUND', 'Game not found');
     requireOwnershipOrAdmin(req, existing.creatorId);
+
+    // Validate multiplayer settings against the MERGED final state (existing +
+    // patch). External multiplayer requires a server URL that is wss:// (and not
+    // a private/local address) in production. Normalize the stored URL.
+    const mpEnabled = body.multiplayerEnabled ?? existing.multiplayerEnabled;
+    const mpTransport = body.multiplayerTransport ?? existing.multiplayerTransport;
+    const mpWsUrlRaw =
+      body.multiplayerWsUrl !== undefined ? body.multiplayerWsUrl : existing.multiplayerWsUrl;
+    let mpWsUrlNormalized = body.multiplayerWsUrl ?? null;
+    if (mpEnabled && mpTransport === 'EXTERNAL_WS') {
+      if (!mpWsUrlRaw) {
+        throw errors.validation([
+          { path: 'multiplayerWsUrl', message: 'A wss:// server URL is required for external multiplayer' },
+        ]);
+      }
+      const res = validateMultiplayerWsUrl(mpWsUrlRaw, {
+        production: env.NODE_ENV === 'production',
+      });
+      if (!res.ok) throw errors.validation([{ path: 'multiplayerWsUrl', message: res.reason }]);
+      if (body.multiplayerWsUrl !== undefined) mpWsUrlNormalized = res.url;
+    }
+
     const game = await prisma.$transaction(async (tx) => {
       if (body.screenshots) {
         await tx.gameScreenshot.deleteMany({ where: { gameId: existing.id } });
@@ -148,6 +171,20 @@ export async function registerCreatorRoutes(app: FastifyInstance): Promise<void>
           ...(body.devices !== undefined ? { devices: body.devices } : {}),
           ...(body.controls !== undefined ? { controls: body.controls } : {}),
           ...(body.multiplayer !== undefined ? { multiplayer: body.multiplayer } : {}),
+          // Keep the catalog browse flag aligned with the multiplayer toggle.
+          ...(body.multiplayerEnabled !== undefined
+            ? { multiplayerEnabled: body.multiplayerEnabled, multiplayer: body.multiplayerEnabled }
+            : {}),
+          ...(body.multiplayerMaxPlayers !== undefined
+            ? { multiplayerMaxPlayers: body.multiplayerMaxPlayers }
+            : {}),
+          ...(body.multiplayerTransport !== undefined
+            ? { multiplayerTransport: body.multiplayerTransport }
+            : {}),
+          ...(body.multiplayerWsUrl !== undefined ? { multiplayerWsUrl: mpWsUrlNormalized } : {}),
+          ...(body.multiplayerModes !== undefined
+            ? { multiplayerModes: body.multiplayerModes }
+            : {}),
           ...(body.aiDisclosure !== undefined ? { aiDisclosure: body.aiDisclosure } : {}),
           ...(body.toolsUsed !== undefined ? { toolsUsed: body.toolsUsed } : {}),
           ...(body.coverUrl !== undefined ? { coverUrl: body.coverUrl, coverObjectKey: null } : {}),

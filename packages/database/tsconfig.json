@@ -6,7 +6,12 @@
     "composite": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    // The Prisma `prisma-client` generator emits relative imports with explicit
+    // `.ts` extensions (e.g. "./internal/class.ts"). Rewrite them to `.js` on
+    // emit so the compiled dist resolves correctly under Node/NodeNext at runtime.
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": true
   },
   "include": ["src"],
   "exclude": ["src/seed.ts", "src/grant-admin.ts"]

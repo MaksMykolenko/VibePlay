@@ -1,6 +1,8 @@
 import type {
   Comment,
   Game,
+  GameRoom,
+  GameRoomPlayer,
   GameSave,
   GameScreenshot,
   GameVersion,
@@ -16,6 +18,7 @@ import type {
   GameDetailDto,
   GameControlDto,
   GameListItemDto,
+  GameMultiplayerDto,
   GameSaveDto,
   GameSaveSummaryDto,
   GameVersionDto,
@@ -23,11 +26,21 @@ import type {
   PaginatedDto,
   PublicUserDto,
   ReportDto,
+  RoomDto,
+  RoomPlayerDto,
   SessionDto,
   ValidationReportDto,
   SupportedDevice,
 } from '@vibeplay/shared';
 import { SUPPORTED_DEVICES } from '@vibeplay/shared';
+
+/** Identity of the viewer requesting a room view (for isYou/canJoin). */
+export type RoomViewer = { userId: string | null; guestId: string | null } | null;
+
+export type RoomWithRelations = GameRoom & {
+  game: Pick<Game, 'id' | 'slug' | 'title' | 'coverUrl'>;
+  players: GameRoomPlayer[];
+};
 import { hasActiveCreatorPlus } from './entitlements.js';
 
 type UserWithSubscription = User & { subscription?: Subscription | null };
@@ -158,6 +171,8 @@ export function toGameDetail(
         }
       : null,
     changelog,
+    // wsUrl is sensitive-ish (server location) — expose only to the owner/admin.
+    multiplayerInfo: toGameMultiplayerDto(g, viewer?.isOwner ?? false),
     viewer,
   };
 }
@@ -263,5 +278,96 @@ export function toGameSaveSummary(s: {
     dataHash: s.dataHash,
     createdAt: s.createdAt.toISOString(),
     updatedAt: s.updatedAt.toISOString(),
+  };
+}
+
+// --- Multiplayer rooms ------------------------------------------------------
+
+function isViewerPlayer(p: GameRoomPlayer, viewer: RoomViewer): boolean {
+  if (!viewer) return false;
+  if (p.userId && viewer.userId && p.userId === viewer.userId) return true;
+  if (p.guestId && viewer.guestId && p.guestId === viewer.guestId) return true;
+  return false;
+}
+
+function toRoomPlayerDto(p: GameRoomPlayer, viewer: RoomViewer): RoomPlayerDto {
+  return {
+    playerId: p.id,
+    displayName: p.displayName,
+    avatarUrl: p.avatarUrl,
+    isHost: p.isHost,
+    isYou: isViewerPlayer(p, viewer),
+    // Identity kind only — never expose the underlying user/guest id to players.
+    kind: p.userId ? 'user' : 'guest',
+  };
+}
+
+/**
+ * Public room view. Never leaks user/guest ids, ws urls, or tokens. `canJoin`
+ * reflects whether a NEW identity could join now (WAITING + capacity + unexpired);
+ * membership/ability-to-play for the viewer is handled by the route/UI.
+ */
+export function toRoomDto(
+  room: RoomWithRelations,
+  viewer: RoomViewer,
+  now: Date = new Date(),
+): RoomDto {
+  const joined = room.players
+    .filter((p) => p.status === 'JOINED')
+    .sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime());
+  const hostPlayer = joined.find((p) => p.isHost) ?? null;
+  const canJoin =
+    room.status === 'WAITING' &&
+    room.expiresAt.getTime() > now.getTime() &&
+    joined.length < room.maxPlayers;
+
+  return {
+    roomId: room.id,
+    roomCode: room.roomCode,
+    status: room.status,
+    visibility: room.visibility,
+    mode: room.mode,
+    maxPlayers: room.maxPlayers,
+    playerCount: joined.length,
+    game: {
+      id: room.game.id,
+      slug: room.game.slug,
+      title: room.game.title,
+      coverUrl: room.game.coverUrl,
+    },
+    host: hostPlayer
+      ? { playerId: hostPlayer.id, displayName: hostPlayer.displayName, avatarUrl: hostPlayer.avatarUrl }
+      : null,
+    players: joined.map((p) => toRoomPlayerDto(p, viewer)),
+    canJoin,
+    expiresAt: room.expiresAt.toISOString(),
+    createdAt: room.createdAt.toISOString(),
+  };
+}
+
+/**
+ * Creator/admin multiplayer-metadata view. `wsUrl` is included ONLY for the
+ * creator/admin (callers pass includeWsUrl=false for any player-facing surface).
+ */
+export function toGameMultiplayerDto(
+  g: Pick<
+    Game,
+    | 'multiplayerEnabled'
+    | 'multiplayerMaxPlayers'
+    | 'multiplayerTransport'
+    | 'multiplayerWsUrl'
+    | 'multiplayerModes'
+  >,
+  includeWsUrl: boolean,
+): GameMultiplayerDto {
+  const modes = Array.isArray(g.multiplayerModes)
+    ? g.multiplayerModes.filter((m): m is string => typeof m === 'string')
+    : [];
+  return {
+    enabled: g.multiplayerEnabled,
+    maxPlayers: g.multiplayerMaxPlayers,
+    transport: g.multiplayerTransport,
+    wsUrl: includeWsUrl ? g.multiplayerWsUrl : null,
+    modes,
   };
 }

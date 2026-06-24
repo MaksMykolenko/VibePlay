@@ -21,6 +21,8 @@ import {
   type AnalyticsCustomEventPayload,
   type AnalyticsErrorPayload,
   type PlayerSummaryPayload,
+  type RoomContextPayload,
+  type RoomTokenPayload,
   type SaveResultPayload,
   type SaveSetPayload,
 } from '@vibeplay/shared/sdk-protocol';
@@ -56,7 +58,16 @@ export interface GameBridgeEvents {
   onAnalyticsReady?: () => void;
   onAnalyticsError?: (event: AnalyticsErrorPayload) => void;
   onAnalyticsCustomEvent?: (event: AnalyticsCustomEventPayload) => void;
+  /** The game asked the platform to leave the current room (Phase 4). */
+  onRoomLeaveRequest?: () => void;
 }
+
+/**
+ * Mints a FRESH room token on demand (room tokens are short-lived). Implemented
+ * by the Play Page against POST /api/rooms/:code/token. Returns null when no
+ * token can be issued (room ended / player no longer a member).
+ */
+export type RoomTokenProvider = () => Promise<RoomTokenPayload | null>;
 
 export interface GameBridgeOptions {
   iframe: HTMLIFrameElement;
@@ -71,6 +82,14 @@ export interface GameBridgeOptions {
    * `auth_required` (and a save attempt fires `onGuestSaveAttempt`).
    */
   saveAdapter?: HostSaveAdapter | null;
+  /**
+   * Multiplayer room context for the game (Phase 4), or null when not in a room.
+   * Pushed to the game on handshake and answered on `requestRoomContext`. Contains
+   * only the signed ROOM token — never a VibePlay auth cookie/token.
+   */
+  roomContext?: RoomContextPayload | null;
+  /** Mints fresh room tokens on the game's `getToken()` request. */
+  roomTokenProvider?: RoomTokenProvider | null;
 }
 
 type HostPending = {
@@ -84,6 +103,8 @@ export class GameBridge {
   private readonly playerSummary: PlayerSummaryPayload | null;
   private readonly events: GameBridgeEvents;
   private readonly saveAdapter: HostSaveAdapter | null;
+  private readonly roomTokenProvider: RoomTokenProvider | null;
+  private roomContext: RoomContextPayload | null;
   private readonly listener: (e: MessageEvent) => void;
   private readonly hostPending = new Map<string, HostPending>();
   private counter = 0;
@@ -96,8 +117,19 @@ export class GameBridge {
     this.playerSummary = opts.playerSummary;
     this.events = opts.events ?? {};
     this.saveAdapter = opts.saveAdapter ?? null;
+    this.roomContext = opts.roomContext ?? null;
+    this.roomTokenProvider = opts.roomTokenProvider ?? null;
     this.listener = (e) => this.onMessage(e);
     window.addEventListener('message', this.listener);
+  }
+
+  /**
+   * Update the room context after construction (e.g. token refresh) and push it
+   * to the game. Safe to call before/after handshake — pushes only once handshaken.
+   */
+  setRoomContext(ctx: RoomContextPayload | null): void {
+    this.roomContext = ctx;
+    if (this.handshaken && !this.destroyed) this.post('roomContext', ctx);
   }
 
   get isHandshaken(): boolean {
@@ -148,6 +180,9 @@ export class GameBridge {
       case 'ready': {
         this.handshaken = true;
         this.post('init');
+        // Proactively hand the game its room context (if any) right after init so
+        // it can connect to its realtime server without an extra round-trip.
+        if (this.roomContext) this.post('roomContext', this.roomContext);
         this.events.onReady?.();
         break;
       }
@@ -225,7 +260,30 @@ export class GameBridge {
         this.events.onAnalyticsCustomEvent?.(msg.payload as AnalyticsCustomEventPayload);
         break;
       }
+      case 'requestRoomContext': {
+        // Correlated reply with the current context (or null when not in a room).
+        this.post('roomContext', this.roomContext, msg.requestId);
+        break;
+      }
+      case 'requestRoomToken': {
+        await this.handleRoomToken(msg.requestId);
+        break;
+      }
+      case 'roomLeave': {
+        this.events.onRoomLeaveRequest?.();
+        break;
+      }
     }
+  }
+
+  private async handleRoomToken(requestId: string | undefined): Promise<void> {
+    let payload: RoomTokenPayload | null;
+    try {
+      payload = (await this.roomTokenProvider?.()) ?? null;
+    } catch {
+      payload = null;
+    }
+    this.post('roomTokenResult', payload, requestId);
   }
 
   private async handleSave(

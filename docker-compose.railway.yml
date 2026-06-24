@@ -42,6 +42,7 @@ x-required-secrets: &required-secrets
   SESSION_SECRET: ${SESSION_SECRET}
   PASSWORD_PEPPER: ${PASSWORD_PEPPER}
   PREVIEW_URL_SECRET: ${PREVIEW_URL_SECRET}
+  MULTIPLAYER_ROOM_TOKEN_SECRET: ${MULTIPLAYER_ROOM_TOKEN_SECRET}
 
 services:
   # ── Migrations ──────────────────────────────────────────────────────────────
