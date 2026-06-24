@@ -6,6 +6,7 @@ import { I18nContext } from '../../i18n/context';
 import { en } from '../../i18n/en';
 import { uk } from '../../i18n/uk';
 import { CreatorAnalyticsView } from './Analytics';
+import { buildChartGeometry } from './chartGeometry';
 
 const translations = en as Record<string, string>;
 
@@ -249,6 +250,31 @@ describe('CreatorAnalyticsView', () => {
     // Area chart fill + a finite SVG line path (no NaN/Infinity).
     expect(markup).toContain('url(#caPlaysGradient)');
     expect(markup).not.toMatch(/d="[^"]*(NaN|Infinity)/);
+    // Interactive layer is present when there is data to inspect.
+    expect(markup).toContain('role="slider"');
+    expect(markup).toContain('aria-valuemax');
+    expect(markup).toContain('ca-chart__hit');
+  });
+
+  it('exposes a focusable, labelled interaction layer with a tap hint', () => {
+    const markup = render(advancedResponse());
+    expect(markup).toContain('role="slider"');
+    expect(markup).toContain('tabindex="0"');
+    expect(markup).toContain('aria-valuemin="0"');
+    expect(markup).toContain('Hover or tap the chart to inspect a day');
+  });
+
+  it('renders a lighter no-previous comparison note when change data is missing', () => {
+    const base = advancedResponse();
+    const markup = render({
+      ...base,
+      advanced: {
+        ...base.advanced!,
+        comparison: { ...base.advanced!.comparison, changePercent: null },
+      },
+    });
+    expect(markup).toContain('ca-compare--muted');
+    expect(markup).toContain('Not enough previous-period data yet');
   });
 
   it('renders a polished comparison card with a signed change', () => {
@@ -300,6 +326,8 @@ describe('CreatorAnalyticsView', () => {
     // No area path and no axis labels are drawn when the window is empty.
     expect(markup).not.toContain('url(#caPlaysGradient)');
     expect(countAxisLabels(markup)).toBe(0);
+    // No interaction layer when the window is empty (no broken tooltip behavior).
+    expect(markup).not.toContain('role="slider"');
   });
 
   it('groups internal events into product categories', () => {
@@ -364,6 +392,12 @@ describe('CreatorAnalyticsView', () => {
       'analytics.comparisonThisPeriod',
       'analytics.comparisonPrevPeriod',
       'analytics.playerMixAria',
+      'analytics.tooltip.current',
+      'analytics.tooltip.previous',
+      'analytics.tooltip.delta',
+      'analytics.tooltip.noPrevious',
+      'analytics.chart.activePoint',
+      'analytics.chart.tapHint',
     ];
     for (const key of requiredKeys) {
       expect(en).toHaveProperty(key);
@@ -375,5 +409,70 @@ describe('CreatorAnalyticsView', () => {
     const markup = render(response()).toLowerCase();
     expect(markup).not.toContain('demo analytics');
     expect(markup).not.toContain('mock analytics');
+  });
+});
+
+describe('buildChartGeometry', () => {
+  it('produces normalized points with previous-period values', () => {
+    const geo = buildChartGeometry(
+      [
+        { date: '2026-06-20', plays: 4 },
+        { date: '2026-06-21', plays: 12 },
+        { date: '2026-06-22', plays: 26 },
+      ],
+      [{ previousPlays: 2 }, { previousPlays: 8 }, { previousPlays: 20 }],
+    );
+    expect(geo.points).toHaveLength(3);
+    expect(geo.points[0].x).toBe(0);
+    expect(geo.points[1].x).toBe(50);
+    expect(geo.points[2].x).toBe(100);
+    expect(geo.points[2].value).toBe(26);
+    expect(geo.points[2].previousValue).toBe(20);
+    expect(geo.peak).toBe(26);
+    expect(geo.maxValue).toBe(30); // nice-rounded headroom above the actual peak
+    expect(geo.hasCurrentValues).toBe(true);
+    expect(geo.hasPreviousValues).toBe(true);
+    expect(geo.previousPath).not.toBe('');
+    expect(geo.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+  });
+
+  it('stays finite for all-zero data and reports no current values', () => {
+    const geo = buildChartGeometry(
+      [
+        { date: '2026-06-20', plays: 0 },
+        { date: '2026-06-21', plays: 0 },
+        { date: '2026-06-22', plays: 0 },
+      ],
+      [],
+    );
+    expect(geo.hasCurrentValues).toBe(false);
+    expect(geo.previousPath).toBe('');
+    expect(geo.points.every((p) => Number.isFinite(p.y) && p.previousValue === null)).toBe(true);
+  });
+
+  it('omits previous values when no comparison series is provided', () => {
+    const geo = buildChartGeometry(
+      [
+        { date: '2026-06-20', plays: 4 },
+        { date: '2026-06-21', plays: 26 },
+      ],
+      [],
+    );
+    expect(geo.points[0].previousValue).toBeNull();
+    expect(geo.points[1].previousY).toBeNull();
+    expect(geo.hasPreviousValues).toBe(false);
+  });
+
+  it('handles high spike values without overflowing the plot', () => {
+    const geo = buildChartGeometry(
+      [
+        { date: '2026-06-20', plays: 200 },
+        { date: '2026-06-21', plays: 50000 },
+      ],
+      [],
+    );
+    expect(geo.peak).toBe(50000);
+    expect(geo.maxValue).toBeGreaterThanOrEqual(50000);
+    expect(geo.points.every((p) => p.y >= 0 && p.y <= 100)).toBe(true);
   });
 });
